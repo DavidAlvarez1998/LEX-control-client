@@ -1,39 +1,111 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, StatCard } from "@/components/ui";
+import { api } from "@/lib/api";
+import { formatMoney } from "@/lib/format";
+
+type Cliente = { id: string; nombre: string; estado: string; fechaIngreso: string };
+type CarteraRow = { saldoPendiente: number | null };
+type Reporte = { utilidadNeta: number };
+type Alertas = Record<string, { id: string }[]>;
+
+const periodo = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
 
 export default function InicioPage() {
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [procesos, setProcesos] = useState(0);
+  const [cartera, setCartera] = useState<number | null>(null);
+  const [utilidad, setUtilidad] = useState<number | null>(null);
+  const [alertas, setAlertas] = useState<Alertas | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const [cl, pr, ca, re, al] = await Promise.all([
+        api.get<Cliente[]>("/clientes").catch(() => [] as Cliente[]),
+        api.get<{ total: number }>("/procesos").catch(() => ({ total: 0 })),
+        api.get<CarteraRow[]>("/contable/cartera").catch(() => [] as CarteraRow[]),
+        api.get<Reporte>(`/contable/reportes?periodo=${periodo()}`).catch(() => null),
+        api.get<Alertas>("/comercial/alertas").catch(() => null),
+      ]);
+      setClientes(cl);
+      setProcesos(pr.total ?? 0);
+      setCartera(ca.length ? ca.reduce((s, c) => s + (c.saldoPendiente ?? 0), 0) : null);
+      setUtilidad(re ? re.utilidadNeta : null);
+      setAlertas(al);
+      setLoading(false);
+    })();
+  }, []);
+
+  const prospectos = clientes.filter((c) => c.estado === "PROSPECTO").length;
+  const money = (v: number | null) => (v == null ? "—" : `$${formatMoney(v)}`);
+  const recientes = [...clientes].sort((a, b) => +new Date(b.fechaIngreso) - +new Date(a.fechaIngreso)).slice(0, 5);
+
+  const ALERTAS_LABEL: [string, string][] = [
+    ["tareaVencida", "Tareas vencidas"],
+    ["propuestaSinRespuesta", "Propuestas sin respuesta"],
+    ["contratoSinFirmar", "Contratos sin firmar"],
+    ["prospectoSinSeguimiento", "Prospectos sin seguimiento"],
+    ["cuotaInicialVencida", "Cuotas iniciales vencidas"],
+    ["citaHoy", "Citas de hoy"],
+  ];
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-slate-800">
-          Bienvenido a tu portal
-        </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Resumen de tus servicios y facturación.
-        </p>
+        <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Bienvenido a tu portal</h2>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Resumen de tu despacho · {periodo()}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Servicios activos" value="0" />
-        <StatCard label="Pendiente de pago" value="$0" />
-        <StatCard label="Facturas (mes)" value="0" />
-        <StatCard label="Tickets abiertos" value="0" />
+        <StatCard label="Clientes" value={loading ? "…" : String(clientes.length)} hint={`${prospectos} en prospecto`} />
+        <StatCard label="Procesos" value={loading ? "…" : String(procesos)} />
+        <StatCard label="Cartera pendiente" value={loading ? "…" : money(cartera)} />
+        <StatCard label="Utilidad del mes" value={loading ? "…" : money(utilidad)} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <h3 className="font-medium text-slate-800">Actividad reciente</h3>
-          <p className="mt-4 text-sm text-slate-500">
-            Aún no hay actividad registrada.
-          </p>
+          <h3 className="font-medium text-slate-800 dark:text-slate-100">Pendientes</h3>
+          {!alertas ? (
+            <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">{loading ? "Cargando…" : "Sin pendientes (o el módulo comercial no está contratado)."}</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {ALERTAS_LABEL.map(([k, label]) => {
+                const n = alertas[k]?.length ?? 0;
+                return (
+                  <li key={k} className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600 dark:text-slate-300">{label}</span>
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${n > 0 ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" : "bg-slate-100 text-slate-400 dark:bg-slate-800"}`}>{n}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </Card>
+
         <Card>
-          <h3 className="font-medium text-slate-800">Accesos rápidos</h3>
-          <ul className="mt-4 space-y-2 text-sm text-indigo-600">
-            <li><a href="/servicios" className="hover:underline">→ Ver mis servicios</a></li>
-            <li><a href="/facturacion" className="hover:underline">→ Ver facturación</a></li>
-            <li><a href="/soporte" className="hover:underline">→ Abrir un ticket</a></li>
-            <li><a href="/cuenta" className="hover:underline">→ Editar mi cuenta</a></li>
-          </ul>
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-slate-800 dark:text-slate-100">Últimos clientes</h3>
+            <Link href="/clientes" className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">Ver todos</Link>
+          </div>
+          {recientes.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">{loading ? "Cargando…" : "Aún no hay clientes."}</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {recientes.map((c) => (
+                <li key={c.id} className="flex items-center justify-between text-sm">
+                  <Link href={`/clientes/${c.id}`} className="font-medium text-slate-700 hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400">{c.nombre}</Link>
+                  <span className="text-xs text-slate-400">{c.estado.toLowerCase()}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
       </div>
     </div>

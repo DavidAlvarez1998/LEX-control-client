@@ -1,0 +1,428 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Button, Card, EmptyState, PageHeader, PlusIcon } from "@/components/ui";
+import { Checkbox, Field, Input } from "@/components/form-ui";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { api, ApiError } from "@/lib/api";
+import { getUser } from "@/lib/auth";
+
+type Estado = "ACTIVO" | "PENDIENTE" | "INACTIVO";
+
+type Miembro = {
+  id: string;
+  email: string;
+  nombre: string;
+  esAdminEmpresa: boolean;
+  activo: boolean;
+  estado: Estado;
+  createdAt: string;
+};
+
+type FormState = {
+  email: string;
+  nombre: string;
+  esAdminEmpresa: boolean;
+};
+
+const EMPTY_FORM: FormState = { email: "", nombre: "", esAdminEmpresa: false };
+
+const ESTADO_STYLES: Record<Estado, string> = {
+  ACTIVO: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
+  PENDIENTE: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300",
+  INACTIVO: "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400",
+};
+
+export default function EquipoPage() {
+  const [esAdmin, setEsAdmin] = useState<boolean | null>(null);
+  const [miId, setMiId] = useState<string | null>(null);
+
+  const [miembros, setMiembros] = useState<Miembro[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Enlace de activación a compartir manualmente (no hay envío por email aún).
+  const [link, setLink] = useState<{ url: string; nombre: string } | null>(null);
+
+  // Confirmación (modal acorde al portal, en vez de window.confirm).
+  const [confirm, setConfirm] = useState<{
+    title: string;
+    message: string;
+    confirmText: string;
+    danger: boolean;
+    onConfirm: () => Promise<void>;
+  } | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+
+  async function ejecutarConfirm() {
+    if (!confirm) return;
+    setConfirmBusy(true);
+    setError(null);
+    try {
+      await confirm.onConfirm();
+      setConfirm(null);
+    } catch (err) {
+      setConfirm(null);
+      setError(err instanceof Error ? err.message : "Error");
+    } finally {
+      setConfirmBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    const u = getUser();
+    setEsAdmin(!!u?.esAdminEmpresa);
+    setMiId(u?.id ?? null);
+  }, []);
+
+  async function cargar() {
+    setLoading(true);
+    setError(null);
+    try {
+      const ms = await api.get<Miembro[]>("/mi-empresa/usuarios");
+      setMiembros(ms);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al cargar");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (esAdmin) cargar();
+  }, [esAdmin]);
+
+  function abrirCrear() {
+    setForm(EMPTY_FORM);
+    setFormError(null);
+    setFormOpen(true);
+  }
+
+  async function crear() {
+    setFormError(null);
+    const faltan: string[] = [];
+    if (!form.nombre.trim()) faltan.push("Nombre");
+    if (!form.email.trim()) faltan.push("Correo");
+    if (faltan.length) {
+      setFormError(`Completa los campos obligatorios: ${faltan.join(", ")}`);
+      return;
+    }
+    setSaving(true);
+    try {
+      const { user, activationUrl } = await api.post<{
+        user: Miembro;
+        activationUrl: string;
+      }>("/mi-empresa/usuarios", {
+        email: form.email.trim(),
+        nombre: form.nombre.trim(),
+        esAdminEmpresa: form.esAdminEmpresa,
+      });
+      setFormOpen(false);
+      await cargar();
+      setLink({ url: activationUrl, nombre: user.nombre });
+    } catch (err) {
+      setFormError(
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : "Error al crear el usuario",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Aplica el cambio de estado. Lanza en error para que el modal lo capture.
+  async function aplicarActivo(m: Miembro) {
+    await api.patch(`/mi-empresa/usuarios/${m.id}`, { activo: !m.activo });
+    await cargar();
+    setAviso(`Usuario ${m.activo ? "desactivado" : "activado"}.`);
+  }
+
+  function alternarActivo(m: Miembro) {
+    setAviso(null);
+    setError(null);
+    // Activar no es destructivo → sin confirmación. Desactivar sí pregunta.
+    if (!m.activo) {
+      aplicarActivo(m).catch((err) =>
+        setError(err instanceof Error ? err.message : "Error al activar el usuario"),
+      );
+      return;
+    }
+    setConfirm({
+      title: "Desactivar usuario",
+      message: `Se desactivará a "${m.nombre}". No podrá iniciar sesión y se cerrará su sesión activa. ¿Continuar?`,
+      confirmText: "Desactivar",
+      danger: true,
+      onConfirm: () => aplicarActivo(m),
+    });
+  }
+
+  // Regenera el enlace de activación (reenvío / restablecer). Lanza en error.
+  async function generarEnlace(m: Miembro) {
+    const { activationUrl } = await api.post<{ activationUrl: string }>(
+      `/mi-empresa/usuarios/${m.id}/activation`,
+      {},
+    );
+    await cargar();
+    setLink({ url: activationUrl, nombre: m.nombre });
+  }
+
+  function reenviarEnlace(m: Miembro) {
+    setAviso(null);
+    setError(null);
+    setConfirm({
+      title: "Reenviar enlace",
+      message: `Se generará un enlace de activación nuevo para "${m.nombre}". El enlace anterior y su sesión activa dejarán de servir. ¿Continuar?`,
+      confirmText: "Generar enlace",
+      danger: false,
+      onConfirm: () => generarEnlace(m),
+    });
+  }
+
+  // Restablecer la contraseña de un miembro ya activado: regenera el enlace de
+  // activación (mismo endpoint que el reenvío), revocando su sesión y el enlace
+  // anterior. Equivale al "Restablecer contraseña" del panel ADMIN.
+  function restablecerPassword(m: Miembro) {
+    setAviso(null);
+    setError(null);
+    setConfirm({
+      title: "Restablecer contraseña",
+      message: `Se generará un nuevo enlace de activación para "${m.nombre}". El enlace anterior y su sesión activa dejarán de servir. ¿Continuar?`,
+      confirmText: "Generar enlace",
+      danger: false,
+      onConfirm: () => generarEnlace(m),
+    });
+  }
+
+  async function copiarLink() {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link.url);
+      setAviso("Enlace copiado al portapapeles.");
+    } catch {
+      setAviso("No se pudo copiar automáticamente. Cópialo manualmente.");
+    }
+  }
+
+  // La API es la autoridad (403 a no-admins); la UI solo evita mostrar la pantalla.
+  if (esAdmin === false) {
+    return (
+      <div>
+        <PageHeader title="Equipo" subtitle="Gestión de los usuarios de tu empresa." />
+        <EmptyState
+          title="Acceso restringido"
+          description="Solo el administrador de la empresa puede gestionar el equipo."
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="Equipo"
+        subtitle="Crea y administra los usuarios de tu empresa."
+        action={
+          <Button onClick={abrirCrear}>
+            <PlusIcon />
+            Invitar usuario
+          </Button>
+        }
+      />
+
+      {error && (
+        <Card className="mb-4 border-red-200 bg-red-50 dark:bg-red-950/40 text-sm text-red-700 dark:text-red-300">
+          {error}{" "}
+          <button onClick={cargar} className="font-medium underline">
+            reintentar
+          </button>
+        </Card>
+      )}
+      {aviso && (
+        <Card className="mb-4 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 text-sm text-emerald-700 dark:text-emerald-300">
+          {aviso}
+        </Card>
+      )}
+
+      {loading ? (
+        <Card className="text-sm text-slate-500 dark:text-slate-400">Cargando…</Card>
+      ) : miembros.length === 0 ? (
+        <EmptyState
+          title="Sin usuarios todavía"
+          description="Invita al primer miembro de tu equipo. Recibirá un enlace para definir su contraseña."
+          action={
+            <Button onClick={abrirCrear}>
+              <PlusIcon />
+              Invitar usuario
+            </Button>
+          }
+        />
+      ) : (
+        <Card className="p-0">
+          <table className="w-full text-sm">
+            <thead className="border-b border-slate-200 dark:border-slate-800 text-left text-slate-500 dark:text-slate-400">
+              <tr>
+                <th className="px-5 py-3 font-medium">Nombre</th>
+                <th className="px-5 py-3 font-medium">Acceso</th>
+                <th className="px-5 py-3 font-medium">Estado</th>
+                <th className="px-5 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {miembros.map((m) => (
+                <tr key={m.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                  <td className="px-5 py-3">
+                    <div className="font-medium text-slate-800 dark:text-slate-100">
+                      {m.nombre}
+                      {m.id === miId && (
+                        <span className="ml-2 text-xs font-normal text-slate-400">(tú)</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">{m.email}</div>
+                  </td>
+                  <td className="px-5 py-3">
+                    <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300">
+                      {m.esAdminEmpresa ? "Administrador" : "Usuario"}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${ESTADO_STYLES[m.estado]}`}>
+                      {m.estado}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-right whitespace-nowrap">
+                    {m.estado === "PENDIENTE" ? (
+                      <button
+                        onClick={() => reenviarEnlace(m)}
+                        className="mr-4 font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500"
+                      >
+                        Reenviar enlace
+                      </button>
+                    ) : (
+                      m.id !== miId && (
+                        <button
+                          onClick={() => restablecerPassword(m)}
+                          className="mr-4 font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500"
+                        >
+                          Restablecer contraseña
+                        </button>
+                      )
+                    )}
+                    {m.id !== miId && (
+                      <button
+                        onClick={() => alternarActivo(m)}
+                        className={
+                          m.activo
+                            ? "font-medium text-red-600 dark:text-red-400 hover:text-red-500"
+                            : "font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500"
+                        }
+                      >
+                        {m.activo ? "Desactivar" : "Activar"}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+
+      {formOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !saving) setFormOpen(false);
+          }}
+        >
+          <Card className="w-full max-w-md">
+            <h3 className="mb-4 text-lg font-semibold text-slate-800 dark:text-slate-100">
+              Invitar usuario
+            </h3>
+
+            <div className="space-y-3">
+              <Field label="Correo" requerido>
+                <Input
+                  type="text"
+                  value={form.email}
+                  onChange={(v) => setForm({ ...form, email: v })}
+                  placeholder="usuario@empresa.com"
+                />
+              </Field>
+
+              <Field label="Nombre" requerido>
+                <Input
+                  value={form.nombre}
+                  onChange={(v) => setForm({ ...form, nombre: v })}
+                  placeholder="Nombre y apellido"
+                />
+              </Field>
+
+              <Checkbox
+                checked={form.esAdminEmpresa}
+                onChange={(v) => setForm({ ...form, esAdminEmpresa: v })}
+                label="Administrador de la empresa (puede gestionar al equipo)"
+              />
+            </div>
+
+            {formError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{formError}</p>}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setFormOpen(false)} disabled={saving}>
+                Cancelar
+              </Button>
+              <Button onClick={crear} disabled={saving}>
+                {saving ? "Creando…" : "Crear y generar enlace"}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {link && (
+        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60">
+          <Card className="w-full max-w-lg">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+              Enlace de activación
+            </h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+              Comparte este enlace con <strong>{link.nombre}</strong> para que defina su
+              contraseña. Es de un solo uso y vence en 48 horas.
+            </p>
+            <div className="mt-4 flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 px-3 py-2">
+              <input
+                readOnly
+                value={link.url}
+                onFocus={(e) => e.target.select()}
+                className="flex-1 bg-transparent text-sm text-slate-700 dark:text-slate-200 outline-none"
+              />
+              <Button onClick={copiarLink}>Copiar</Button>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <Button variant="ghost" onClick={() => setLink(null)}>
+                Cerrar
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={!!confirm}
+        title={confirm?.title ?? ""}
+        message={confirm?.message ?? ""}
+        confirmText={confirm?.confirmText}
+        danger={confirm?.danger}
+        busy={confirmBusy}
+        onConfirm={ejecutarConfirm}
+        onCancel={() => setConfirm(null)}
+      />
+    </div>
+  );
+}

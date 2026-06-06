@@ -1,0 +1,239 @@
+"use client";
+
+// Primitivas de formulario del portal del cliente. El portal solo tenía
+// componentes de presentación (ui.tsx); estos son los inputs interactivos que
+// usa <FormularioDinamico> y las pantallas de procesos. Regla del proyecto:
+// todo campo requerido marca su label con un asterisco rojo (*).
+
+import type { ReactNode } from "react";
+
+const base =
+  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
+
+/** Envuelve un campo con su label (asterisco rojo si es requerido) y error. */
+export function Field({
+  label,
+  requerido = false,
+  error,
+  children,
+}: {
+  label: string;
+  requerido?: boolean;
+  error?: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
+        {label}
+        {requerido && <span className="ml-0.5 text-red-500">*</span>}
+      </span>
+      {children}
+      {error && <span className="mt-1 block text-xs text-red-600">{error}</span>}
+    </label>
+  );
+}
+
+export function Input({
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: "text" | "date";
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={base}
+    />
+  );
+}
+
+export function Textarea({
+  value,
+  onChange,
+  placeholder,
+  rows = 3,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={rows}
+      className={`${base} resize-y`}
+    />
+  );
+}
+
+/** Solo dígitos; devuelve el texto crudo (el llamador parsea a número). */
+export function NumberInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={value}
+      onChange={(e) => onChange(e.target.value.replace(/[^\d.-]/g, ""))}
+      placeholder={placeholder}
+      className={base}
+    />
+  );
+}
+
+export function Select({
+  value,
+  onChange,
+  opciones,
+  placeholder = "Selecciona…",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  opciones: string[];
+  placeholder?: string;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={base}
+    >
+      <option value="">{placeholder}</option>
+      {opciones.map((o) => (
+        <option key={o} value={o}>
+          {o}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** Selección múltiple con chips (no hay control nativo para esto). */
+export function MultiSelect({
+  value,
+  onChange,
+  opciones,
+}: {
+  value: string[];
+  onChange: (v: string[]) => void;
+  opciones: string[];
+}) {
+  const toggle = (o: string) =>
+    onChange(value.includes(o) ? value.filter((x) => x !== o) : [...value, o]);
+  return (
+    <div className="flex flex-wrap gap-2">
+      {opciones.map((o) => {
+        const on = value.includes(o);
+        return (
+          <button
+            key={o}
+            type="button"
+            onClick={() => toggle(o)}
+            className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+              on
+                ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            }`}
+          >
+            {o}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function Checkbox({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400"
+      />
+      {label}
+    </label>
+  );
+}
+
+/** Input de dinero con formato 1.000.000 (convención de precios del proyecto). */
+export function MoneyInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string; // dígitos crudos
+  onChange: (digits: string) => void;
+  placeholder?: string;
+}) {
+  const display =
+    value === "" ? "" : Number(value).toLocaleString("es-CO", { maximumFractionDigits: 0 });
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={display}
+      onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
+      placeholder={placeholder}
+      className={base}
+    />
+  );
+}
+
+/** Tarjeta seleccionable/clicable (para la grilla de áreas y tipos). */
+export function SelectableCard({
+  title,
+  subtitle,
+  selected = false,
+  onClick,
+}: {
+  title: string;
+  subtitle?: string;
+  selected?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex h-full flex-col rounded-xl border p-4 text-left shadow-sm transition-colors ${
+        selected
+          ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10"
+          : "border-slate-200 bg-white hover:border-indigo-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
+      }`}
+    >
+      <span className="font-medium text-slate-800 dark:text-slate-100">{title}</span>
+      {subtitle && (
+        <span className="mt-1 text-xs text-slate-500 dark:text-slate-400">{subtitle}</span>
+      )}
+    </button>
+  );
+}
