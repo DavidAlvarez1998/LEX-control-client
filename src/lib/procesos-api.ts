@@ -103,7 +103,52 @@ export type ProcesoDetalle = {
   partes: ParteDetalle[];
   historial: { etapaKey: string; createdAt: string; nota: string | null }[];
   responsable: { id: string; nombre: string } | null;
+  documentos: DocumentoProceso[];
 };
+
+// --- Documentos del expediente ---
+export type DocumentoProceso = {
+  id: string;
+  nombre: string;
+  url: string | null; // adjunto (enlace)
+  contenido: string | null; // borrador generado (editable)
+  generadoDePlantilla: string | null;
+  createdAt: string;
+};
+
+export type PlantillaItem = { id: string; nombre: string };
+
+export function getPlantillasDeProceso(id: string): Promise<PlantillaItem[]> {
+  return api.get<PlantillaItem[]>(`/procesos/${id}/plantillas`);
+}
+
+export function generarDocumento(
+  id: string,
+  plantillaId: string,
+  nombre?: string,
+): Promise<DocumentoProceso> {
+  return api.post<DocumentoProceso>(`/procesos/${id}/documentos/generar`, { plantillaId, nombre });
+}
+
+export function adjuntarDocumento(
+  id: string,
+  nombre: string,
+  url: string,
+): Promise<DocumentoProceso> {
+  return api.post<DocumentoProceso>(`/procesos/${id}/documentos`, { nombre, url });
+}
+
+export function editarDocumento(
+  id: string,
+  docId: string,
+  body: { nombre?: string; contenido?: string },
+): Promise<DocumentoProceso> {
+  return api.patch<DocumentoProceso>(`/procesos/${id}/documentos/${docId}`, body);
+}
+
+export function eliminarDocumento(id: string, docId: string): Promise<void> {
+  return api.del<void>(`/procesos/${id}/documentos/${docId}`);
+}
 
 export function getProceso(id: string): Promise<ProcesoDetalle> {
   return api.get<ProcesoDetalle>(`/procesos/${id}`);

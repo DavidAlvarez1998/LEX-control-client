@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, Card, PageHeader } from "@/components/ui";
+import { DocumentosProceso } from "@/components/documentos-proceso";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, type EtapaDef } from "@/lib/procesos";
@@ -153,9 +154,7 @@ export default function ExpedientePage() {
 
           <Card>
             <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Documentos</h3>
-            <p className="text-sm text-slate-400">
-              Adjuntar archivos y generar documentos desde plantillas — próximamente (Fase 4).
-            </p>
+            <DocumentosProceso procesoId={proceso.id} inicial={proceso.documentos ?? []} />
           </Card>
         </div>
       </div>
