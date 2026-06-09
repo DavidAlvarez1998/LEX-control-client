@@ -4,6 +4,7 @@
 import { api } from "./api";
 import type {
   AreaPractica,
+  CampoEsquema,
   CuantiaTipo,
   EstadoProceso,
   EtapaDef,
@@ -97,6 +98,7 @@ export type ProcesoDetalle = {
   tipoProceso: {
     id: string;
     nombre: string;
+    esquemaFormulario: CampoEsquema[];
     etapas: EtapaDef[];
     jurisdiccion: Jurisdiccion;
     areas: { area: { slug: string; nombre: string } }[];
@@ -194,6 +196,15 @@ export function moverEtapa(
 /** Ejecuta la acción crearDerivado de la etapa actual (p. ej. DdP → tutela). */
 export function escalarProceso(id: string): Promise<ProcesoDetalle> {
   return api.post<ProcesoDetalle>(`/procesos/${id}/derivar`, {});
+}
+
+/** Edita el formulario dinámico del proceso (validado contra el esquema; permite
+ *  guardar incompleto — los requeridos se exigen al avanzar de etapa). */
+export function actualizarDatos(
+  id: string,
+  datos: Record<string, unknown>,
+): Promise<ProcesoDetalle> {
+  return api.patch<ProcesoDetalle>(`/procesos/${id}`, { datos });
 }
 
 // --- Vencimientos (semáforo) ---

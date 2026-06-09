@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { DocumentosProceso } from "@/components/documentos-proceso";
+import { DatosProceso } from "@/components/datos-proceso";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, evaluarCondicion, type EtapaDef } from "@/lib/procesos";
@@ -214,6 +215,18 @@ export default function ExpedientePage() {
                 <li className="text-slate-400">Sin partes registradas.</li>
               )}
             </ul>
+          </Card>
+
+          <Card>
+            <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Formulario del proceso
+            </h3>
+            <DatosProceso
+              procesoId={proceso.id}
+              esquema={proceso.tipoProceso.esquemaFormulario ?? []}
+              datos={proceso.datos}
+              onSaved={(datos) => setProceso((p) => (p ? { ...p, datos } : p))}
+            />
           </Card>
 
           <Card>
