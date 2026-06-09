@@ -51,7 +51,6 @@ const EMPTY: FormState = {
 
 const TIPO_DOC = ["CC", "CE", "NIT", "TI", "PASAPORTE", "PEP_PPT"];
 const CANAL = ["REFERIDO", "INSTAGRAM", "FACEBOOK", "WHATSAPP", "WEB", "LLAMADA", "OTRO"];
-const TIPO_CASO = ["CIVIL", "LABORAL", "PENAL", "ADMINISTRATIVO", "DISCIPLINARIO", "CONSTITUCIONAL", "FAMILIA", "COMERCIAL", "TRANSITO", "AMBIENTAL", "OTRO"];
 const VIABILIDAD = ["VIABLE", "NO_VIABLE", "EN_ESTUDIO"];
 
 const ESTADO_STYLES: Record<Estado, string> = {
@@ -67,6 +66,8 @@ export default function ClientesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  // "Tipo de caso" = áreas de práctica reales (nombres), no una lista fija.
+  const [areasCaso, setAreasCaso] = useState<string[]>([]);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -108,6 +109,15 @@ export default function ClientesPage() {
 
   useEffect(() => {
     cargar();
+  }, []);
+
+  // Carga las áreas de práctica reales (GET /catalogo/areas ya devuelve solo las
+  // activas) para poblar el campo "Tipo de caso", en sync con el catálogo.
+  useEffect(() => {
+    api
+      .get<{ nombre: string }[]>("/catalogo/areas")
+      .then((a) => setAreasCaso(a.map((x) => x.nombre)))
+      .catch(() => {});
   }, []);
 
   function abrirCrear() {
@@ -295,7 +305,12 @@ export default function ClientesPage() {
                 <Input value={form.ciudad} onChange={(v) => setForm({ ...form, ciudad: v })} placeholder="Ciudad" />
               </Field>
               <Field label="Tipo de caso">
-                <Select value={form.tipoCaso} onChange={(v) => setForm({ ...form, tipoCaso: v })} opciones={TIPO_CASO} />
+                {/* Áreas de práctica reales; conserva un valor legado si no está en la lista. */}
+                <Select
+                  value={form.tipoCaso}
+                  onChange={(v) => setForm({ ...form, tipoCaso: v })}
+                  opciones={form.tipoCaso && !areasCaso.includes(form.tipoCaso) ? [form.tipoCaso, ...areasCaso] : areasCaso}
+                />
               </Field>
               <Field label="Viabilidad">
                 <Select value={form.viabilidad} onChange={(v) => setForm({ ...form, viabilidad: v })} opciones={VIABILIDAD} placeholder="—" />
