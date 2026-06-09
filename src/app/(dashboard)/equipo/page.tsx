@@ -2,12 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { Button, Card, EmptyState, PageHeader, PlusIcon } from "@/components/ui";
-import { Checkbox, Field, Input } from "@/components/form-ui";
+import { Field, Input } from "@/components/form-ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { api, ApiError } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 
 type Estado = "ACTIVO" | "PENDIENTE" | "INACTIVO";
+
+type Rol = "ADMINISTRADOR" | "JURIDICO" | "CONTABLE" | "COMERCIAL";
+
+// Orden y etiquetas de los roles de empresa (mismo enum que la API).
+const ROLES: { rol: Rol; label: string; desc: string }[] = [
+  { rol: "ADMINISTRADOR", label: "Administrador", desc: "Gestiona al equipo y todo el despacho" },
+  { rol: "JURIDICO", label: "Jurídico", desc: "Lleva los procesos / expedientes" },
+  { rol: "COMERCIAL", label: "Comercial", desc: "Embudo de ventas (prospectos, cotización, contrato)" },
+  { rol: "CONTABLE", label: "Contable", desc: "Finanzas (ingresos, egresos, cartera, facturación)" },
+];
+const ROL_LABEL: Record<Rol, string> = Object.fromEntries(
+  ROLES.map((r) => [r.rol, r.label]),
+) as Record<Rol, string>;
+
+type Cupo = { rol: Rol; cap: number | null; usados: number };
 
 type Miembro = {
   id: string;
@@ -16,16 +31,17 @@ type Miembro = {
   esAdminEmpresa: boolean;
   activo: boolean;
   estado: Estado;
+  roles: Rol[];
   createdAt: string;
 };
 
 type FormState = {
   email: string;
   nombre: string;
-  esAdminEmpresa: boolean;
+  roles: Rol[];
 };
 
-const EMPTY_FORM: FormState = { email: "", nombre: "", esAdminEmpresa: false };
+const EMPTY_FORM: FormState = { email: "", nombre: "", roles: ["JURIDICO"] };
 
 const ESTADO_STYLES: Record<Estado, string> = {
   ACTIVO: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
@@ -33,19 +49,41 @@ const ESTADO_STYLES: Record<Estado, string> = {
   INACTIVO: "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400",
 };
 
+/** Texto de disponibilidad de una silla según el cupo del plan. */
+function cupoHint(c: Cupo | undefined): string {
+  if (!c || c.cap === 0) return "no incluido en el plan";
+  if (c.cap === null) return "ilimitado";
+  return `${c.usados}/${c.cap} usado${c.cap === 1 ? "" : "s"}`;
+}
+
+/** ¿Hay silla libre para AÑADIR este rol? (no aplica a roles ya asignados). */
+function haySilla(c: Cupo | undefined): boolean {
+  if (!c) return false;
+  if (c.cap === null) return true; // ilimitado
+  return c.usados < c.cap;
+}
+
 export default function EquipoPage() {
   const [esAdmin, setEsAdmin] = useState<boolean | null>(null);
   const [miId, setMiId] = useState<string | null>(null);
 
   const [miembros, setMiembros] = useState<Miembro[]>([]);
+  const [cupos, setCupos] = useState<Record<Rol, Cupo>>({} as Record<Rol, Cupo>);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
+  // Modal de creación.
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Modal de edición de roles.
+  const [editar, setEditar] = useState<Miembro | null>(null);
+  const [editRoles, setEditRoles] = useState<Rol[]>([]);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Enlace de activación a compartir manualmente (no hay envío por email aún).
   const [link, setLink] = useState<{ url: string; nombre: string } | null>(null);
@@ -85,8 +123,12 @@ export default function EquipoPage() {
     setLoading(true);
     setError(null);
     try {
-      const ms = await api.get<Miembro[]>("/mi-empresa/usuarios");
+      const [ms, cs] = await Promise.all([
+        api.get<Miembro[]>("/mi-empresa/usuarios"),
+        api.get<Cupo[]>("/mi-empresa/cupos"),
+      ]);
       setMiembros(ms);
+      setCupos(Object.fromEntries(cs.map((c) => [c.rol, c])) as Record<Rol, Cupo>);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar");
     } finally {
@@ -104,11 +146,16 @@ export default function EquipoPage() {
     setFormOpen(true);
   }
 
+  function toggleRol(roles: Rol[], rol: Rol): Rol[] {
+    return roles.includes(rol) ? roles.filter((r) => r !== rol) : [...roles, rol];
+  }
+
   async function crear() {
     setFormError(null);
     const faltan: string[] = [];
     if (!form.nombre.trim()) faltan.push("Nombre");
     if (!form.email.trim()) faltan.push("Correo");
+    if (form.roles.length === 0) faltan.push("Roles");
     if (faltan.length) {
       setFormError(`Completa los campos obligatorios: ${faltan.join(", ")}`);
       return;
@@ -121,7 +168,7 @@ export default function EquipoPage() {
       }>("/mi-empresa/usuarios", {
         email: form.email.trim(),
         nombre: form.nombre.trim(),
-        esAdminEmpresa: form.esAdminEmpresa,
+        roles: form.roles,
       });
       setFormOpen(false);
       await cargar();
@@ -134,6 +181,36 @@ export default function EquipoPage() {
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  function abrirEditarRoles(m: Miembro) {
+    setEditar(m);
+    setEditRoles(m.roles);
+    setEditError(null);
+  }
+
+  async function guardarRoles() {
+    if (!editar) return;
+    if (editRoles.length === 0) {
+      setEditError("Selecciona al menos un rol");
+      return;
+    }
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      await api.patch(`/mi-empresa/usuarios/${editar.id}`, { roles: editRoles });
+      setEditar(null);
+      await cargar();
+      setAviso(`Roles de "${editar.nombre}" actualizados.`);
+    } catch (err) {
+      setEditError(
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : "Error al actualizar los roles",
+      );
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -223,6 +300,64 @@ export default function EquipoPage() {
     );
   }
 
+  // Selector de roles (checkboxes) reutilizado por crear y editar. `actuales` son
+  // los roles que el miembro ya tiene (siempre des-marcables aunque la silla esté
+  // llena); un rol no asignado solo se puede marcar si hay silla libre.
+  function SelectorRoles({
+    seleccionados,
+    actuales,
+    bloquearAdministrador,
+    onToggle,
+  }: {
+    seleccionados: Rol[];
+    actuales: Rol[];
+    bloquearAdministrador: boolean;
+    onToggle: (rol: Rol) => void;
+  }) {
+    return (
+      <div className="space-y-2">
+        {ROLES.map(({ rol, label, desc }) => {
+          const c = cupos[rol];
+          const marcado = seleccionados.includes(rol);
+          const yaLoTiene = actuales.includes(rol);
+          const lockSelf = bloquearAdministrador && rol === "ADMINISTRADOR" && marcado;
+          // Deshabilitado si: no lo tiene y no hay silla, o es el auto-admin bloqueado.
+          const disabled = lockSelf || (!yaLoTiene && !marcado && !haySilla(c));
+          return (
+            <label
+              key={rol}
+              className={`flex items-start gap-3 rounded-lg border p-3 ${
+                disabled
+                  ? "cursor-not-allowed border-slate-100 dark:border-slate-800 opacity-60"
+                  : "cursor-pointer border-slate-200 dark:border-slate-700"
+              } ${marcado ? "bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-700" : ""}`}
+            >
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-indigo-600"
+                checked={marcado}
+                disabled={disabled}
+                onChange={() => onToggle(rol)}
+              />
+              <span className="flex-1">
+                <span className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{label}</span>
+                  <span className="text-xs text-slate-400">{cupoHint(c)}</span>
+                </span>
+                <span className="block text-xs text-slate-500 dark:text-slate-400">{desc}</span>
+                {lockSelf && (
+                  <span className="block text-xs text-amber-600 dark:text-amber-400">
+                    No puedes quitarte tu propio rol Administrador.
+                  </span>
+                )}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader
@@ -269,7 +404,7 @@ export default function EquipoPage() {
             <thead className="border-b border-slate-200 dark:border-slate-800 text-left text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="px-5 py-3 font-medium">Nombre</th>
-                <th className="px-5 py-3 font-medium">Acceso</th>
+                <th className="px-5 py-3 font-medium">Roles</th>
                 <th className="px-5 py-3 font-medium">Estado</th>
                 <th className="px-5 py-3" />
               </tr>
@@ -287,9 +422,20 @@ export default function EquipoPage() {
                     <div className="text-xs text-slate-500 dark:text-slate-400">{m.email}</div>
                   </td>
                   <td className="px-5 py-3">
-                    <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300">
-                      {m.esAdminEmpresa ? "Administrador" : "Usuario"}
-                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {m.roles.length === 0 ? (
+                        <span className="text-xs text-slate-400">Sin roles</span>
+                      ) : (
+                        m.roles.map((r) => (
+                          <span
+                            key={r}
+                            className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300"
+                          >
+                            {ROL_LABEL[r] ?? r}
+                          </span>
+                        ))
+                      )}
+                    </div>
                   </td>
                   <td className="px-5 py-3">
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${ESTADO_STYLES[m.estado]}`}>
@@ -297,6 +443,12 @@ export default function EquipoPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => abrirEditarRoles(m)}
+                      className="mr-4 font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500"
+                    >
+                      Editar roles
+                    </button>
                     {m.estado === "PENDIENTE" ? (
                       <button
                         onClick={() => reenviarEnlace(m)}
@@ -364,11 +516,17 @@ export default function EquipoPage() {
                 />
               </Field>
 
-              <Checkbox
-                checked={form.esAdminEmpresa}
-                onChange={(v) => setForm({ ...form, esAdminEmpresa: v })}
-                label="Administrador de la empresa (puede gestionar al equipo)"
-              />
+              <div>
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Roles<span className="ml-0.5 text-red-500">*</span>
+                </span>
+                <SelectorRoles
+                  seleccionados={form.roles}
+                  actuales={[]}
+                  bloquearAdministrador={false}
+                  onToggle={(rol) => setForm({ ...form, roles: toggleRol(form.roles, rol) })}
+                />
+              </div>
             </div>
 
             {formError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{formError}</p>}
@@ -379,6 +537,40 @@ export default function EquipoPage() {
               </Button>
               <Button onClick={crear} disabled={saving}>
                 {saving ? "Creando…" : "Crear y generar enlace"}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {editar && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !editSaving) setEditar(null);
+          }}
+        >
+          <Card className="w-full max-w-md">
+            <h3 className="mb-1 text-lg font-semibold text-slate-800 dark:text-slate-100">
+              Editar roles
+            </h3>
+            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">{editar.nombre}</p>
+
+            <SelectorRoles
+              seleccionados={editRoles}
+              actuales={editar.roles}
+              bloquearAdministrador={editar.id === miId}
+              onToggle={(rol) => setEditRoles(toggleRol(editRoles, rol))}
+            />
+
+            {editError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{editError}</p>}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setEditar(null)} disabled={editSaving}>
+                Cancelar
+              </Button>
+              <Button onClick={guardarRoles} disabled={editSaving}>
+                {editSaving ? "Guardando…" : "Guardar roles"}
               </Button>
             </div>
           </Card>
