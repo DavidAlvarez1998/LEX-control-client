@@ -6,7 +6,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui";
-import { AdminEmpresaGuard } from "@/components/admin-empresa-guard";
+import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
+import { getUser } from "@/lib/auth";
 import { ResumenTab } from "@/components/contable/resumen";
 import { IngresosTab } from "@/components/contable/ingresos";
 import { EgresosTab } from "@/components/contable/egresos";
@@ -31,6 +32,11 @@ export default function ContablePage() {
   const periodo = periodoActual();
 
   const cargarLookups = useCallback(async () => {
+    // La pantalla es para admin de empresa o rol CONTABLE (RolEmpresaGuard
+    // redirige al resto). No pidas datos si el usuario no tiene acceso: el API
+    // responde 403 y la página reventaría antes de que el guard redirija.
+    const u = getUser();
+    if (!u?.esAdminEmpresa && !(u?.roles ?? []).includes("CONTABLE")) return;
     const [cl, pr, cu] = await Promise.all([contableApi.clientes(), contableApi.procesos(), contableApi.cuentas()]);
     setClientes(cl); setProcesos(pr); setCuentas(cu);
   }, []);
@@ -50,7 +56,7 @@ export default function ContablePage() {
   }), [clientes, procesos, cuentas]);
 
   return (
-    <AdminEmpresaGuard>
+    <RolEmpresaGuard roles={["CONTABLE"]}>
       <div>
         <PageHeader title="Contable" subtitle={`Gestión financiera del despacho · ${periodo}`} />
 
@@ -79,6 +85,6 @@ export default function ContablePage() {
         {tab === "Cuentas" && <CuentasTab onCuentasChange={recargarCuentas} />}
         {tab === "Cartera" && <CarteraTab lookups={lookups} />}
       </div>
-    </AdminEmpresaGuard>
+    </RolEmpresaGuard>
   );
 }

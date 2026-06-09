@@ -23,6 +23,20 @@ export function Sidebar() {
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
+  // Visibilidad de un ítem: los `adminOnly` solo para el admin de empresa; los
+  // que declaran `roles` para el admin o quien tenga alguno de esos roles; el
+  // resto (sin restricción) para todos.
+  const puedeVer = (item: (typeof NAV_ITEMS)[number]): boolean => {
+    if (item.adminOnly) return !!user?.esAdminEmpresa;
+    if (item.roles) {
+      return (
+        !!user?.esAdminEmpresa ||
+        (user?.roles ?? []).some((r) => item.roles!.includes(r))
+      );
+    }
+    return true;
+  };
+
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-900 text-slate-100">
       {/* Marca → inicio */}
@@ -44,7 +58,7 @@ export function Sidebar() {
 
       {/* Navegación */}
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {NAV_ITEMS.filter((item) => !item.adminOnly || user?.esAdminEmpresa).map((item) => {
+        {NAV_ITEMS.filter(puedeVer).map((item) => {
           const active = isActive(item.href);
           return (
             <Link

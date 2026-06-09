@@ -6,6 +6,7 @@ import { Button, Card, EmptyState, PageHeader, PlusIcon } from "@/components/ui"
 import { Field, Input, Select, Textarea } from "@/components/form-ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { api, ApiError } from "@/lib/api";
+import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
 type Estado = "PROSPECTO" | "CLIENTE" | "DESCARTADO";
 
@@ -178,7 +179,8 @@ export default function ClientesPage() {
   }
 
   return (
-    <div>
+    <RolEmpresaGuard roles={["COMERCIAL"]}>
+      <div>
       <PageHeader
         title="Clientes"
         subtitle="Prospectos y clientes de tu despacho."
@@ -330,6 +332,7 @@ export default function ClientesPage() {
         onConfirm={() => confirm?.onConfirm()}
         onCancel={() => setConfirm(null)}
       />
-    </div>
+      </div>
+    </RolEmpresaGuard>
   );
 }

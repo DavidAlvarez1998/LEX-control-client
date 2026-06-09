@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, Card, EmptyState, Modal, PageHeader, PlusIcon } from "@/components/ui";
 import { Field, Input, MoneyInput, NumberInput, Select } from "@/components/form-ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { AdminEmpresaGuard } from "@/components/admin-empresa-guard";
+import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 import { api } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 
@@ -244,7 +244,7 @@ export default function FacturacionPage() {
   }
 
   return (
-    <AdminEmpresaGuard>
+    <RolEmpresaGuard roles={["CONTABLE"]}>
       <div>
         <PageHeader
           title="Facturación"
@@ -474,6 +474,6 @@ export default function FacturacionPage() {
           onCancel={() => setConfirm(null)}
         />
       </div>
-    </AdminEmpresaGuard>
+    </RolEmpresaGuard>
   );
 }

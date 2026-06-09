@@ -7,6 +7,7 @@ export type AuthUser = {
   email: string;
   rol: string;
   esAdminEmpresa?: boolean; // true = administra su propia empresa
+  roles?: string[]; // roles de empresa (RolEmpresa): JURIDICO/COMERCIAL/CONTABLE/ADMINISTRADOR
   empresa?: string | null; // nombre de la empresa a la que pertenece
 };
 

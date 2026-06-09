@@ -11,6 +11,7 @@ import {
   type EstadoProceso,
 } from "@/lib/procesos";
 import { getAreas, listProcesos, type ProcesoListItem } from "@/lib/procesos-api";
+import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
 // Mapa label → enum para los filtros (los Select muestran etiquetas legibles).
 const ESTADO_POR_LABEL = Object.fromEntries(
@@ -46,7 +47,8 @@ export default function ProcesosPage() {
   );
 
   return (
-    <div>
+    <RolEmpresaGuard roles={["JURIDICO"]}>
+      <div>
       <PageHeader
         title="Procesos"
         subtitle="Procesos legales de tu despacho."
@@ -137,7 +139,8 @@ export default function ProcesosPage() {
           </table>
         </Card>
       )}
-    </div>
+      </div>
+    </RolEmpresaGuard>
   );
 }
 

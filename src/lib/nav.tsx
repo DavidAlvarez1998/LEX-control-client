@@ -5,6 +5,9 @@ export type NavItem = {
   label: string;
   icon: ReactNode;
   adminOnly?: boolean; // solo visible para el admin de la empresa (esAdminEmpresa)
+  // Roles de empresa (RolEmpresa) que ven el ítem. El admin de empresa los ve
+  // todos. Sin `roles` ni `adminOnly` ⇒ visible para todos (ítems base).
+  roles?: string[];
 };
 
 const ic = "h-5 w-5 shrink-0";
@@ -24,6 +27,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     href: "/clientes",
     label: "Clientes",
+    roles: ["COMERCIAL"],
     icon: (
       <svg className={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -35,6 +39,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     href: "/procesos",
     label: "Procesos",
+    roles: ["JURIDICO"],
     icon: (
       <svg className={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 3v4a1 1 0 0 0 1 1h4" />
@@ -56,6 +61,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     href: "/contable",
     label: "Contable",
+    roles: ["CONTABLE"],
     icon: (
       <svg className={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 3v18h18" />
@@ -66,7 +72,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     href: "/facturacion",
     label: "Facturación",
-    adminOnly: true,
+    roles: ["CONTABLE"],
     icon: (
       <svg className={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M6 2h9l3 3v17l-3-1.5L12 22l-3-1.5L6 22Z" />
