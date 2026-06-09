@@ -4,15 +4,20 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/nav";
-import { clearSession, getUser, type AuthUser } from "@/lib/auth";
+import { USER_CHANGED_EVENT, clearSession, getUser, type AuthUser } from "@/lib/auth";
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
 
+  // Re-lee el usuario al montar y cada vez que cambia (refresco de roles desde
+  // /auth/me), para que los ítems del menú reflejen los permisos actuales.
   useEffect(() => {
-    setUser(getUser());
+    const read = () => setUser(getUser());
+    read();
+    window.addEventListener(USER_CHANGED_EVENT, read);
+    return () => window.removeEventListener(USER_CHANGED_EVENT, read);
   }, []);
 
   function logout() {

@@ -25,3 +25,40 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* ── Barra de scroll redondeada, acorde al tema (claro/oscuro) ───────────────
+   Firefox usa scrollbar-width/-color; WebKit (Chrome/Edge/Safari) los
+   ::-webkit-scrollbar-*. El thumb lleva borde transparente + background-clip
+   para que parezca más delgado y con aire alrededor. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+html.dark * {
+  scrollbar-color: #475569 transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+html.dark *::-webkit-scrollbar-thumb {
+  background-color: #475569;
+}
+html.dark *::-webkit-scrollbar-thumb:hover {
+  background-color: #64748b;
+}

@@ -81,13 +81,15 @@ export const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/soporte",
-    label: "Soporte",
+    href: "/contratos",
+    label: "Contratos",
+    adminOnly: true,
     icon: (
       <svg className={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4" />
-        <line x1="12" y1="17" x2="12" y2="17.01" />
+        <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+        <path d="M5 3h9l5 5v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+        <path d="M9 12h6M9 16h4" />
+        <circle cx="8" cy="9" r="1" />
       </svg>
     ),
   },

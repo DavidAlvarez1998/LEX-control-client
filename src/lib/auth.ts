@@ -14,6 +14,10 @@ export type AuthUser = {
 const TOKEN_KEY = "lex_client_token";
 const USER_KEY = "lex_client_user";
 
+// Se dispara cuando el usuario cacheado cambia (p. ej. al refrescar roles desde
+// /auth/me). Sidebar y porteros lo escuchan para re-renderizar sin re-login.
+export const USER_CHANGED_EVENT = "lex:user-changed";
+
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem(TOKEN_KEY);
@@ -33,6 +37,19 @@ export function getUser(): AuthUser | null {
 export function setSession(token: string, user: AuthUser): void {
   window.localStorage.setItem(TOKEN_KEY, token);
   window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+/**
+ * Reemplaza SOLO el usuario cacheado (conserva el token) y notifica a los
+ * componentes suscritos. Se usa al refrescar la sesión desde /auth/me. No hace
+ * nada si los datos no cambiaron, para evitar re-renders en cada navegación.
+ */
+export function updateUser(user: AuthUser): void {
+  if (typeof window === "undefined") return;
+  const next = JSON.stringify(user);
+  if (window.localStorage.getItem(USER_KEY) === next) return;
+  window.localStorage.setItem(USER_KEY, next);
+  window.dispatchEvent(new Event(USER_CHANGED_EVENT));
 }
 
 export function clearSession(): void {

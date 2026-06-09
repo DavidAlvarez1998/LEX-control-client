@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getUser } from "@/lib/auth";
+import { usePathname, useRouter } from "next/navigation";
+import { USER_CHANGED_EVENT, getUser } from "@/lib/auth";
 
 /**
  * Restringe una pantalla al administrador de la empresa (`esAdminEmpresa`).
@@ -15,15 +15,20 @@ import { getUser } from "@/lib/auth";
  */
 export function AdminEmpresaGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [estado, setEstado] = useState<"verificando" | "ok">("verificando");
 
+  // Reevalúa al montar, al navegar y cuando se refrescan los roles (/auth/me):
+  // si el usuario deja de ser admin de empresa estando aquí, se le rebota.
   useEffect(() => {
-    if (getUser()?.esAdminEmpresa) {
-      setEstado("ok");
-    } else {
-      router.replace("/"); // sin permiso → al inicio, no se renderiza el contenido
-    }
-  }, [router]);
+    const check = () => {
+      if (getUser()?.esAdminEmpresa) setEstado("ok");
+      else router.replace("/"); // sin permiso → al inicio, no se renderiza el contenido
+    };
+    check();
+    window.addEventListener(USER_CHANGED_EVENT, check);
+    return () => window.removeEventListener(USER_CHANGED_EVENT, check);
+  }, [router, pathname]);
 
   if (estado !== "ok") {
     return (

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getUser } from "@/lib/auth";
+import { usePathname, useRouter } from "next/navigation";
+import { USER_CHANGED_EVENT, getUser } from "@/lib/auth";
 
 /**
  * Restringe una pantalla a quien tenga alguno de los `roles` de empresa
@@ -19,16 +19,24 @@ export function RolEmpresaGuard({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [estado, setEstado] = useState<"verificando" | "ok">("verificando");
 
+  // Reevalúa al montar, al navegar y cuando se refrescan los roles (/auth/me):
+  // si el usuario pierde el acceso estando en la vista, se le rebota al inicio.
   useEffect(() => {
-    const u = getUser();
-    const permitido =
-      !!u?.esAdminEmpresa || (u?.roles ?? []).some((r) => roles.includes(r));
-    if (permitido) setEstado("ok");
-    else router.replace("/");
+    const check = () => {
+      const u = getUser();
+      const permitido =
+        !!u?.esAdminEmpresa || (u?.roles ?? []).some((r) => roles.includes(r));
+      if (permitido) setEstado("ok");
+      else router.replace("/");
+    };
+    check();
+    window.addEventListener(USER_CHANGED_EVENT, check);
+    return () => window.removeEventListener(USER_CHANGED_EVENT, check);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+  }, [router, pathname]);
 
   if (estado !== "ok") {
     return (
