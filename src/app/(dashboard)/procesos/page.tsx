@@ -12,6 +12,7 @@ import {
 } from "@/lib/procesos";
 import { getAreas, listProcesos, type ProcesoListItem } from "@/lib/procesos-api";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
+import { VencimientosBanner } from "@/components/vencimientos-banner";
 
 // Mapa label → enum para los filtros (los Select muestran etiquetas legibles).
 const ESTADO_POR_LABEL = Object.fromEntries(
@@ -60,6 +61,8 @@ export default function ProcesosPage() {
           </Link>
         }
       />
+
+      <VencimientosBanner />
 
       <div className="mb-4 flex flex-wrap gap-3">
         <div className="w-56">

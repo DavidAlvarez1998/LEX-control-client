@@ -92,6 +92,7 @@ export type ProcesoDetalle = {
   etapaActual: string;
   estado: EstadoProceso;
   proximaAudiencia: string | null;
+  fechaLimite: string | null;
   casoRelacionadoId: string | null;
   tipoProceso: {
     id: string;
@@ -188,4 +189,31 @@ export function moverEtapa(
   nota?: string,
 ): Promise<ProcesoDetalle> {
   return api.patch<ProcesoDetalle>(`/procesos/${id}/etapa`, { etapaKey, nota });
+}
+
+/** Ejecuta la acción crearDerivado de la etapa actual (p. ej. DdP → tutela). */
+export function escalarProceso(id: string): Promise<ProcesoDetalle> {
+  return api.post<ProcesoDetalle>(`/procesos/${id}/derivar`, {});
+}
+
+// --- Vencimientos (semáforo) ---
+export type VencimientoItem = {
+  id: string;
+  codigoInterno: string;
+  radicado: string | null;
+  titulo: string;
+  etapaActual: string;
+  estado: EstadoProceso;
+  fechaLimite: string | null;
+  semaforo: "vencido" | "por_vencer" | "al_dia";
+};
+
+export type Vencimientos = {
+  vencido: VencimientoItem[];
+  por_vencer: VencimientoItem[];
+  al_dia: VencimientoItem[];
+};
+
+export function getVencimientos(): Promise<Vencimientos> {
+  return api.get<Vencimientos>("/procesos/vencimientos");
 }

@@ -7,13 +7,15 @@ import { Button, Card, PageHeader } from "@/components/ui";
 import { DocumentosProceso } from "@/components/documentos-proceso";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
-import { ESTADO_LABEL, JURISDICCION_LABEL, type EtapaDef } from "@/lib/procesos";
-import { getProceso, moverEtapa, type ProcesoDetalle } from "@/lib/procesos-api";
+import { ESTADO_LABEL, JURISDICCION_LABEL, evaluarCondicion, type EtapaDef } from "@/lib/procesos";
+import { escalarProceso, getProceso, moverEtapa, type ProcesoDetalle } from "@/lib/procesos-api";
 
 export default function ExpedientePage() {
   const { id } = useParams<{ id: string }>();
   const [proceso, setProceso] = useState<ProcesoDetalle | null | undefined>(undefined);
-  const [bloqueo, setBloqueo] = useState<{ etapa: string; faltantes: string[] } | null>(null);
+  const [bloqueo, setBloqueo] = useState<{ etapa: string; faltantes: string[]; motivo?: string } | null>(null);
+  const [derivado, setDerivado] = useState<{ id: string; nuevo: boolean } | null>(null);
+  const [escalando, setEscalando] = useState(false);
 
   useEffect(() => {
     getProceso(id)
@@ -37,6 +39,8 @@ export default function ExpedientePage() {
 
   const etapas = (proceso.tipoProceso.etapas ?? []).slice().sort((a, b) => a.orden - b.orden);
   const idxActual = etapas.findIndex((e) => e.key === proceso.etapaActual);
+  const etapaActualDef = etapas.find((e) => e.key === proceso.etapaActual);
+  const accionDerivar = etapaActualDef?.accion?.tipo === "crearDerivado" ? etapaActualDef.accion : null;
 
   async function irAEtapa(key: string) {
     try {
@@ -46,8 +50,26 @@ export default function ExpedientePage() {
     } catch (e) {
       if (e instanceof ApiError && e.status === 400) {
         const faltantes = (e.issues as { faltantes?: string[] })?.faltantes ?? [];
-        setBloqueo({ etapa: key, faltantes });
+        const documentosFaltantes = (e.issues as { documentosFaltantes?: string[] })?.documentosFaltantes ?? [];
+        setBloqueo({ etapa: key, faltantes: [...faltantes, ...documentosFaltantes] });
+      } else if (e instanceof ApiError && e.status === 422) {
+        setBloqueo({ etapa: key, faltantes: [], motivo: "Esta etapa no está disponible con los datos actuales del proceso." });
       }
+    }
+  }
+
+  async function escalar() {
+    setEscalando(true);
+    try {
+      const nuevo = await escalarProceso(proceso!.id);
+      setDerivado({ id: nuevo.id, nuevo: true });
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        const procesoId = (e.issues as { procesoId?: string })?.procesoId;
+        if (procesoId) setDerivado({ id: procesoId, nuevo: false });
+      }
+    } finally {
+      setEscalando(false);
     }
   }
 
@@ -63,6 +85,18 @@ export default function ExpedientePage() {
         }
       />
 
+      {proceso.casoRelacionadoId && (
+        <div className="mb-4 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+          Este proceso deriva de un caso base.{" "}
+          <Link
+            href={`/procesos/${proceso.casoRelacionadoId}`}
+            className="font-medium text-indigo-600 hover:underline"
+          >
+            Ver caso relacionado →
+          </Link>
+        </div>
+      )}
+
       <Card className="mb-5">
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
           <Dato label="Código interno" value={proceso.codigoInterno} />
@@ -71,6 +105,7 @@ export default function ExpedientePage() {
           <Dato label="Despacho / juzgado" value={proceso.despachoJuzgado ?? "—"} />
           <Dato label="Cuantía" value={proceso.cuantiaValor ? `$${formatMoney(proceso.cuantiaValor)}` : "—"} />
           <Dato label="Próxima audiencia" value={fecha(proceso.proximaAudiencia)} />
+          <DatoVencimiento iso={proceso.fechaLimite} />
         </div>
       </Card>
 
@@ -83,14 +118,18 @@ export default function ExpedientePage() {
             {etapas.map((e: EtapaDef, i: number) => {
               const done = i < idxActual;
               const current = i === idxActual;
+              // Ramas por valor: si la etapa tiene `disponibleSi` y no se cumple,
+              // se muestra atenuada y no es clicable.
+              const disponible = !e.disponibleSi || evaluarCondicion(e.disponibleSi, proceso!.datos);
               return (
                 <li key={e.key}>
                   <button
                     type="button"
+                    disabled={!disponible}
                     onClick={() => irAEtapa(e.key)}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${
-                      current ? "bg-indigo-50 dark:bg-indigo-500/10" : ""
-                    }`}
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                      disponible ? "hover:bg-slate-50 dark:hover:bg-slate-800" : "cursor-not-allowed opacity-40"
+                    } ${current ? "bg-indigo-50 dark:bg-indigo-500/10" : ""}`}
                   >
                     <span
                       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
@@ -108,12 +147,14 @@ export default function ExpedientePage() {
                       {e.terminal && <span className="ml-2 text-xs text-slate-400">(final)</span>}
                     </span>
                     {e.reglas?.plazoDias && (
-                      <span className="ml-auto text-xs text-slate-400">{e.reglas.plazoDias} días</span>
+                      <span className="ml-auto text-xs text-slate-400">
+                        {e.reglas.plazoDias} días{e.reglas.plazoTipoDias === "habiles" ? " háb." : ""}
+                      </span>
                     )}
                   </button>
                   {bloqueo?.etapa === e.key && (
                     <div className="ml-9 mt-1 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
-                      No puedes avanzar a esta etapa. Faltan: {bloqueo.faltantes.join(", ")}.
+                      {bloqueo.motivo ?? `No puedes avanzar a esta etapa. Faltan: ${bloqueo.faltantes.join(", ")}.`}
                     </div>
                   )}
                 </li>
@@ -123,6 +164,29 @@ export default function ExpedientePage() {
           <p className="mt-3 text-xs text-slate-400">
             Haz clic en una etapa para mover el proceso. Las etapas con reglas se bloquean si faltan datos.
           </p>
+
+          {accionDerivar && (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                Acción disponible: escalar a {accionDerivar.tipoDestinoNombre}
+              </p>
+              <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300/80">
+                Crea un proceso de {accionDerivar.tipoDestinoNombre} ligado a este como caso base.
+              </p>
+              {derivado ? (
+                <Link
+                  href={`/procesos/${derivado.id}`}
+                  className="mt-2 inline-block text-sm font-medium text-indigo-600 hover:underline"
+                >
+                  {derivado.nuevo ? "✓ Creado — abrir expediente →" : "Ya existía — abrir expediente →"}
+                </Link>
+              ) : (
+                <Button className="mt-2" onClick={escalar} disabled={escalando}>
+                  {escalando ? "Creando…" : `Crear ${accionDerivar.tipoDestinoNombre}`}
+                </Button>
+              )}
+            </div>
+          )}
         </Card>
 
         <div className="space-y-5">
@@ -173,4 +237,30 @@ function Dato({ label, value }: { label: string; value: string }) {
 
 function fecha(iso: string | null): string {
   return iso ? iso.slice(0, 10) : "—";
+}
+
+// Celda de "Vencimiento" con semáforo: rojo si venció, ámbar si vence en ≤3 días.
+function DatoVencimiento({ iso }: { iso: string | null | undefined }) {
+  let value = "—";
+  let clase = "text-slate-700 dark:text-slate-200";
+  if (iso) {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const f = new Date(`${iso.slice(0, 10)}T00:00:00`);
+    const dias = Math.round((f.getTime() - hoy.getTime()) / 86_400_000);
+    value = iso.slice(0, 10);
+    if (dias < 0) {
+      value += " (vencido)";
+      clase = "font-semibold text-red-600";
+    } else if (dias <= 3) {
+      value += " (por vencer)";
+      clase = "font-semibold text-amber-600";
+    }
+  }
+  return (
+    <div>
+      <div className="text-xs text-slate-400">Vencimiento</div>
+      <div className={`mt-0.5 font-medium ${clase}`}>{value}</div>
+    </div>
+  );
 }

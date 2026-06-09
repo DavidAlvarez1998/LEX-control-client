@@ -31,6 +31,9 @@ export type CampoTipo =
   | "select"
   | "multiselect";
 
+// Condición de igualdad sobre otro campo (mostrarSi / requeridoSi / disponibleSi).
+export type Condicion = { campo: string; igualA: string | string[] };
+
 export type CampoEsquema = {
   key: string;
   label: string;
@@ -38,6 +41,8 @@ export type CampoEsquema = {
   requerido: boolean;
   opciones?: string[]; // requerido para select | multiselect
   ayuda?: string;
+  mostrarSi?: Condicion; // oculto salvo que la condición se cumpla
+  requeridoSi?: Condicion; // requerido (además) cuando la condición se cumple
 };
 
 // --- Flujo / etapas ---
@@ -45,7 +50,13 @@ export type ReglasEtapa = {
   camposRequeridos?: string[];
   documentosRequeridos?: string[];
   plazoDias?: number;
+  requeridosSi?: { si: Condicion; camposRequeridos?: string[]; documentosRequeridos?: string[] }[];
+  plazoDesdeCampo?: string;
+  plazoTipoDias?: "habiles" | "calendario";
+  plazoDiasPorValorDe?: { campo: string; mapa: Record<string, number> };
 };
+
+export type AccionEtapa = { tipo: "crearDerivado"; tipoDestinoNombre: string };
 
 export type EtapaDef = {
   key: string;
@@ -54,6 +65,8 @@ export type EtapaDef = {
   terminal?: boolean;
   resultado?: string;
   reglas?: ReglasEtapa;
+  disponibleSi?: Condicion; // la etapa solo se ofrece como destino si se cumple
+  accion?: AccionEtapa; // acción al entrar (p. ej. crear proceso derivado)
 };
 
 // --- Catálogo: tipo de proceso ---
@@ -129,24 +142,50 @@ export type Proceso = {
   etapaActual: string;
   estado: EstadoProceso;
   proximaAudiencia?: string;
+  fechaLimite?: string | null; // vencimiento del término de la etapa actual
   partes: ParteProceso[];
   historial: { etapaKey: string; nota?: string; fecha: string }[];
   createdAt: string;
 };
 
+// --- Condiciones (mismo evaluador que el server; el server es la fuente de verdad) ---
+
+/** Evalúa una condición de igualdad. `String()` para que los boolean comparen
+ *  con `igualA: "true"`. */
+export function evaluarCondicion(cond: Condicion, datos: Record<string, unknown>): boolean {
+  const actual = String(datos[cond.campo] ?? "");
+  return Array.isArray(cond.igualA) ? cond.igualA.includes(actual) : actual === cond.igualA;
+}
+
+/** ¿El campo es visible dado el estado actual de `datos`? */
+export function campoVisible(campo: CampoEsquema, datos: Record<string, unknown>): boolean {
+  return !campo.mostrarSi || evaluarCondicion(campo.mostrarSi, datos);
+}
+
+/** ¿El campo es efectivamente requerido? Requerido (fijo o condicional) y visible. */
+export function campoEfectivamenteRequerido(
+  campo: CampoEsquema,
+  datos: Record<string, unknown>,
+): boolean {
+  if (!campoVisible(campo, datos)) return false;
+  return campo.requerido || (campo.requeridoSi != null && evaluarCondicion(campo.requeridoSi, datos));
+}
+
 // --- Validación del formulario dinámico (misma lógica que usará el server) ---
 export type ResultadoValidacion = { ok: boolean; faltantes: string[] };
 
-/** Verifica que los campos requeridos del esquema estén presentes en `datos`. */
+/** Verifica que los campos requeridos y visibles del esquema estén en `datos`.
+ *  Ignora por completo los campos ocultos (mostrarSi no se cumple). */
 export function validarDatos(
   esquema: CampoEsquema[],
   datos: Record<string, unknown>,
 ): ResultadoValidacion {
   const faltantes: string[] = [];
   for (const campo of esquema) {
-    if (!campo.requerido) continue;
+    if (!campoVisible(campo, datos)) continue;
     // Un boolean siempre tiene valor (true/false); no se exige.
     if (campo.tipo === "boolean") continue;
+    if (!campoEfectivamenteRequerido(campo, datos)) continue;
     const v = datos[campo.key];
     const vacio =
       v === undefined ||
