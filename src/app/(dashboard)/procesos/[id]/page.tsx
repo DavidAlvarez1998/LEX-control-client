@@ -103,6 +103,8 @@ export default function ExpedientePage() {
           <Dato label="Código interno" value={proceso.codigoInterno} />
           <Dato label="Radicado" value={proceso.radicado ?? "Sin radicar"} />
           <Dato label="Estado" value={ESTADO_LABEL[proceso.estado]} />
+          <Dato label="Cliente" value={proceso.cliente?.nombre ?? "—"} />
+          <Dato label="Abogado responsable" value={proceso.responsable?.nombre ?? "Sin asignar"} />
           <Dato label="Despacho / juzgado" value={proceso.despachoJuzgado ?? "—"} />
           <Dato label="Cuantía" value={proceso.cuantiaValor ? `$${formatMoney(proceso.cuantiaValor)}` : "—"} />
           <Dato label="Próxima audiencia" value={fecha(proceso.proximaAudiencia)} />

@@ -30,6 +30,27 @@ export function getTipo(id: string): Promise<TipoProceso> {
   return api.get<TipoProceso>(`/catalogo/tipos-proceso/${id}`);
 }
 
+// --- Clientes y equipo (para asignar dueño y abogado al crear un proceso) ---
+export type ClienteOption = {
+  id: string;
+  nombre: string;
+  estado: string;
+  tipoDocumento: TipoDocumento | null;
+  numeroDocumento: string | null;
+};
+
+/** Clientes del despacho (CRM): para elegir el dueño del proceso. */
+export function listClientes(): Promise<ClienteOption[]> {
+  return api.get<ClienteOption[]>("/clientes");
+}
+
+export type MiembroOption = { id: string; nombre: string; roles: string[]; activo: boolean };
+
+/** Equipo del despacho con sus roles: para elegir el abogado responsable. */
+export function listMiembros(): Promise<MiembroOption[]> {
+  return api.get<MiembroOption[]>("/mi-empresa/usuarios");
+}
+
 // --- Lista de procesos ---
 export type ProcesoListItem = {
   id: string;
@@ -106,6 +127,7 @@ export type ProcesoDetalle = {
   partes: ParteDetalle[];
   historial: { etapaKey: string; createdAt: string; nota: string | null }[];
   responsable: { id: string; nombre: string } | null;
+  cliente: { id: string; nombre: string; estado: string } | null;
   documentos: DocumentoProceso[];
 };
 
@@ -168,6 +190,23 @@ export type CrearProcesoBody = {
   cuantiaTipo?: CuantiaTipo;
   cuantiaValor?: string;
   casoRelacionadoId?: string;
+  responsableId?: string; // abogado responsable del caso
+  // Cliente (CRM) dueño del proceso: o existente (clienteId) o nuevo inline.
+  // `rol` = rol procesal que juega nuestro cliente (DEMANDANTE, ACCIONANTE…).
+  cliente?: {
+    clienteId?: string;
+    nuevo?: {
+      nombre: string;
+      tipoPersona?: TipoPersona;
+      tipoDocumento?: TipoDocumento;
+      numeroDocumento?: string;
+      telefono?: string;
+      email?: string;
+      ciudad?: string;
+    };
+    rol: RolParte;
+    rolEtiqueta?: string;
+  };
   partes: {
     litigante: {
       tipoPersona: TipoPersona;
