@@ -17,6 +17,7 @@ export const TIPO_MOV_CAJA = ["SALIDA", "REPOSICION"] as const;
 export const CATEGORIA_CAJA = ["TRANSPORTE", "PAPELERIA", "MENSAJERIA", "ALIMENTACION", "OTRO"] as const;
 export const TIPO_SERVICIO_FIJO = ["AGUA", "LUZ", "GAS", "INTERNET", "TELEFONO", "ARRIENDO", "SOFTWARE", "MANTENIMIENTO", "VIGILANCIA", "OTRO"] as const;
 export const ESTADO_SERVICIO = ["PAGADO", "PENDIENTE", "VENCIDO"] as const;
+export const FRECUENCIA_SERVICIO = ["MENSUAL", "ANUAL"] as const;
 export const TIPO_CUENTA = ["AHORROS", "CORRIENTE", "CAJA"] as const;
 export const ESTADO_CUENTA = ["ACTIVA", "INACTIVA", "CONCILIACION_PENDIENTE"] as const;
 
@@ -63,11 +64,21 @@ export type CajaDetalle = CajaMenor & { saldoActual: number; movimientos: Movimi
 export type ServicioFijo = {
   id: string; periodo: string; tipoServicio: string; proveedor: string; valorFacturado: string;
   fechaVencimiento: string | null; fechaPago: string | null; estadoPago: string; cuentaId: string | null;
+  recurrenteId?: string | null;
+  soporteFacturaUrl?: string | null;
+  vencido?: boolean; // derivado por la API: fechaVencimiento < ahora y no PAGADO
+};
+
+export type ServicioFijoRecurrente = {
+  id: string; tipoServicio: string; proveedor: string; valorEstimado: string;
+  frecuencia: string; diaPago: number; mesPago: number | null; cuentaId: string | null;
+  activo: boolean; observaciones: string | null;
 };
 
 export type Cuenta = {
   id: string; entidadBancaria: string; tipoCuenta: string; numeroCuenta: string | null;
   nombreBolsa: string; saldoInicial: string; estadoCuenta: string; createdAt: string;
+  saldoActual?: number; // derivado por la API también en el listado
 };
 export type CuentaDetalle = Cuenta & { saldoActual: number };
 
@@ -119,10 +130,16 @@ export const contableApi = {
   crearServicioFijo: (body: Record<string, unknown>) => api.post<ServicioFijo>("/contable/servicios-fijos", body),
   editarServicioFijo: (id: string, body: Record<string, unknown>) => api.patch<ServicioFijo>(`/contable/servicios-fijos/${id}`, body),
 
+  serviciosFijosRecurrentes: () => api.get<ServicioFijoRecurrente[]>("/contable/servicios-fijos-recurrentes"),
+  crearServicioFijoRecurrente: (body: Record<string, unknown>) => api.post<ServicioFijoRecurrente>("/contable/servicios-fijos-recurrentes", body),
+  editarServicioFijoRecurrente: (id: string, body: Record<string, unknown>) => api.patch<ServicioFijoRecurrente>(`/contable/servicios-fijos-recurrentes/${id}`, body),
+  generarServiciosFijos: (periodo: string) => api.post<{ periodo: string; candidatas: number; generadas: number; omitidas: number }>("/contable/servicios-fijos-recurrentes/generar", { periodo }),
+
   cuentas: () => api.get<Cuenta[]>("/contable/cuentas"),
   crearCuenta: (body: Record<string, unknown>) => api.post<Cuenta>("/contable/cuentas", body),
   cuenta: (id: string) => api.get<CuentaDetalle>(`/contable/cuentas/${id}`),
   editarCuenta: (id: string, body: Record<string, unknown>) => api.patch<Cuenta>(`/contable/cuentas/${id}`, body),
+  borrarCuenta: (id: string) => api.del<void>(`/contable/cuentas/${id}`),
 
   cartera: () => api.get<CarteraRow[]>("/contable/cartera"),
   abrirCartera: (body: Record<string, unknown>) => api.post<CarteraRow>("/contable/cartera", body),

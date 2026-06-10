@@ -11,6 +11,7 @@ import {
   type EstadoProceso,
 } from "@/lib/procesos";
 import { getAreas, listProcesos, type ProcesoListItem } from "@/lib/procesos-api";
+import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 import { VencimientosBanner } from "@/components/vencimientos-banner";
 
@@ -47,18 +48,25 @@ export default function ProcesosPage() {
     [areas],
   );
 
+  // El COMERCIAL ve los procesos de sus clientes en SOLO LECTURA; crear/editar es
+  // de JURIDICO (o admin de empresa). La API es la autoridad real (403 en escritura).
+  const u = getUser();
+  const puedeEditar = !!u?.esAdminEmpresa || (u?.roles ?? []).includes("JURIDICO");
+
   return (
-    <RolEmpresaGuard roles={["JURIDICO"]}>
+    <RolEmpresaGuard roles={["JURIDICO", "COMERCIAL"]}>
       <div>
       <PageHeader
         title="Procesos"
-        subtitle="Procesos legales de tu despacho."
+        subtitle={puedeEditar ? "Procesos legales de tu despacho." : "Procesos de tus clientes (solo lectura)."}
         action={
-          <Link href="/procesos/nuevo">
-            <Button>
-              <PlusIcon /> Nuevo proceso
-            </Button>
-          </Link>
+          puedeEditar ? (
+            <Link href="/procesos/nuevo">
+              <Button>
+                <PlusIcon /> Nuevo proceso
+              </Button>
+            </Link>
+          ) : undefined
         }
       />
 
@@ -90,13 +98,15 @@ export default function ProcesosPage() {
       ) : items.length === 0 ? (
         <EmptyState
           title="No hay procesos"
-          description="Crea tu primer proceso para empezar a gestionar un proceso legal."
+          description={puedeEditar ? "Crea tu primer proceso para empezar a gestionar un proceso legal." : "Aún no hay procesos de tus clientes."}
           action={
-            <Link href="/procesos/nuevo">
-              <Button>
-                <PlusIcon /> Nuevo proceso
-              </Button>
-            </Link>
+            puedeEditar ? (
+              <Link href="/procesos/nuevo">
+                <Button>
+                  <PlusIcon /> Nuevo proceso
+                </Button>
+              </Link>
+            ) : undefined
           }
         />
       ) : (

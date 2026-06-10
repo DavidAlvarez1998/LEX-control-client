@@ -16,11 +16,13 @@ export function DatosProceso({
   esquema,
   datos,
   onSaved,
+  readOnly = false,
 }: {
   procesoId: string;
   esquema: CampoEsquema[];
   datos: Record<string, unknown>;
   onSaved: (datos: Record<string, unknown>) => void;
+  readOnly?: boolean;
 }) {
   const [editando, setEditando] = useState(false);
   const [borrador, setBorrador] = useState<Record<string, unknown>>(datos);
@@ -45,25 +47,27 @@ export function DatosProceso({
     const visibles = esquema.filter((c) => campoVisible(c, datos));
     return (
       <div>
-        <dl className="space-y-2 text-sm">
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
           {visibles.map((c) => (
-            <div key={c.key} className="flex gap-2">
-              <dt className="w-44 shrink-0 text-slate-400">{c.label}</dt>
-              <dd className="text-slate-700 dark:text-slate-200">{formatValor(datos[c.key])}</dd>
+            <div key={c.key}>
+              <dt className="text-xs text-slate-400">{c.label}</dt>
+              <dd className="mt-0.5 text-slate-700 dark:text-slate-200">{formatValor(datos[c.key])}</dd>
             </div>
           ))}
           {visibles.length === 0 && <p className="text-slate-400">Sin datos aún.</p>}
         </dl>
-        <Button
-          variant="ghost"
-          className="mt-3"
-          onClick={() => {
-            setBorrador(datos);
-            setEditando(true);
-          }}
-        >
-          Editar datos
-        </Button>
+        {!readOnly && (
+          <Button
+            variant="ghost"
+            className="mt-3"
+            onClick={() => {
+              setBorrador(datos);
+              setEditando(true);
+            }}
+          >
+            Editar datos
+          </Button>
+        )}
       </div>
     );
   }
@@ -74,6 +78,7 @@ export function DatosProceso({
         esquema={esquema}
         datos={borrador}
         onChange={(k, v) => setBorrador((d) => ({ ...d, [k]: v }))}
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2"
       />
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
       <div className="mt-4 flex gap-2">

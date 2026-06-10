@@ -78,8 +78,9 @@ export default function FacturacionPage() {
   const [pagoMetodo, setPagoMetodo] = useState("TRANSFERENCIA");
 
   // Confirmaciones (emitir / anular)
-  const [confirm, setConfirm] = useState<{ title: string; message: string; confirmText: string; danger: boolean; onConfirm: () => Promise<void> } | null>(null);
+  const [confirm, setConfirm] = useState<{ title: string; message: string; confirmText: string; danger: boolean; input?: { label: string; placeholder?: string; required?: boolean }; onConfirm: (motivo: string) => Promise<void> } | null>(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmInput, setConfirmInput] = useState("");
 
   async function cargar() {
     setLoading(true);
@@ -157,13 +158,16 @@ export default function FacturacionPage() {
 
   async function ejecutarConfirm() {
     if (!confirm) return;
+    if (confirm.input?.required && !confirmInput.trim()) return;
     setConfirmBusy(true);
     setError(null);
     try {
-      await confirm.onConfirm();
+      await confirm.onConfirm(confirmInput.trim());
       setConfirm(null);
+      setConfirmInput("");
     } catch (err) {
       setConfirm(null);
+      setConfirmInput("");
       setError(err instanceof Error ? err.message : "Error");
     } finally {
       setConfirmBusy(false);
@@ -186,15 +190,15 @@ export default function FacturacionPage() {
   }
 
   function pedirAnular(f: Factura) {
-    const motivo = window.prompt("Motivo de la anulación:");
-    if (motivo === null || !motivo.trim()) return;
+    setConfirmInput("");
     setConfirm({
       title: "Anular factura",
       message: `Se anulará la factura ${f.numero ?? ""}. Esta acción no se puede deshacer.`,
-      confirmText: "Anular",
+      confirmText: "Anular factura",
       danger: true,
-      onConfirm: async () => {
-        await api.post(`/facturacion/facturas/${f.id}/anular`, { motivo: motivo.trim() });
+      input: { label: "Motivo de la anulación", placeholder: "Ej: error en el valor facturado", required: true },
+      onConfirm: async (motivo) => {
+        await api.post(`/facturacion/facturas/${f.id}/anular`, { motivo });
         await cargar();
         await abrirDetalle(f.id);
         setAviso("Factura anulada.");
@@ -202,17 +206,19 @@ export default function FacturacionPage() {
     });
   }
 
-  async function eliminarBorrador(f: Factura) {
-    if (!window.confirm(`¿Eliminar el borrador de "${f.cliente?.nombre ?? ""}"?`)) return;
-    setError(null);
-    try {
-      await api.del(`/facturacion/facturas/${f.id}`);
-      setDetalle(null);
-      await cargar();
-      setAviso("Borrador eliminado.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar");
-    }
+  function eliminarBorrador(f: Factura) {
+    setConfirm({
+      title: "Eliminar borrador",
+      message: `Se eliminará el borrador de factura de "${f.cliente?.nombre ?? "—"}". Esta acción no se puede deshacer.`,
+      confirmText: "Eliminar borrador",
+      danger: true,
+      onConfirm: async () => {
+        await api.del(`/facturacion/facturas/${f.id}`);
+        setDetalle(null);
+        await cargar();
+        setAviso("Borrador eliminado.");
+      },
+    });
   }
 
   function abrirPago() {
@@ -470,8 +476,14 @@ export default function FacturacionPage() {
           confirmText={confirm?.confirmText}
           danger={confirm?.danger}
           busy={confirmBusy}
+          input={confirm?.input}
+          inputValue={confirmInput}
+          onInputChange={setConfirmInput}
           onConfirm={ejecutarConfirm}
-          onCancel={() => setConfirm(null)}
+          onCancel={() => {
+            setConfirm(null);
+            setConfirmInput("");
+          }}
         />
       </div>
     </RolEmpresaGuard>

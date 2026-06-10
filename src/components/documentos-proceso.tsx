@@ -21,9 +21,11 @@ import {
 export function DocumentosProceso({
   procesoId,
   inicial,
+  readOnly = false,
 }: {
   procesoId: string;
   inicial: DocumentoProceso[];
+  readOnly?: boolean;
 }) {
   const [docs, setDocs] = useState<DocumentoProceso[]>(inicial);
   const [plantillas, setPlantillas] = useState<PlantillaItem[]>([]);
@@ -108,7 +110,7 @@ export function DocumentosProceso({
                     Abrir
                   </a>
                 )}
-                {doc.contenido != null && (
+                {!readOnly && doc.contenido != null && (
                   <button
                     type="button"
                     onClick={() => {
@@ -120,13 +122,15 @@ export function DocumentosProceso({
                     Editar
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => eliminar(doc.id)}
-                  className="text-xs font-medium text-red-600 hover:underline"
-                >
-                  Eliminar
-                </button>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => eliminar(doc.id)}
+                    className="text-xs font-medium text-red-600 hover:underline"
+                  >
+                    Eliminar
+                  </button>
+                )}
               </div>
             </div>
 
@@ -150,6 +154,8 @@ export function DocumentosProceso({
 
       {error && <p className="text-xs text-red-600">{error}</p>}
 
+      {readOnly ? null : (
+        <>
       {/* Generar desde plantilla */}
       <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
         <Field label="Generar desde plantilla">
@@ -190,6 +196,8 @@ export function DocumentosProceso({
           </Button>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

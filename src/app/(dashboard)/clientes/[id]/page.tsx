@@ -8,6 +8,7 @@ import { Field, Input, MoneyInput, Select, Textarea } from "@/components/form-ui
 import { api } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
+import { comercialApi, listComerciales, type CarteraResumen, type ComisionDespacho, type MiembroMin } from "@/lib/comercial-api";
 
 type Cliente = {
   id: string; nombre: string; estado: string; email: string | null;
@@ -102,6 +103,8 @@ export default function ClienteDetallePage() {
       <SeguimientoSection clienteId={id} seguimientos={seguimientos} onChange={cargar} />
       <CotizacionSection clienteId={id} cotizaciones={cotizaciones} onChange={cargar} />
       <ContratoSection clienteId={id} contratos={contratos} solicitudes={solicitudes} esAdmin={!!getUser()?.esAdminEmpresa} onChange={cargar} />
+      <CarteraSection clienteId={id} />
+      <ComisionSection clienteId={id} esAdmin={!!getUser()?.esAdminEmpresa} />
     </div>
   );
 }
@@ -449,4 +452,147 @@ function Estado({ v }: { v: string }) {
     : v === "ENVIADO" ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
     : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400";
   return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{v}</span>;
+}
+
+// Resumen de cobro/cartera del cliente (solo lectura). Disponible con el módulo
+// comercial; deriva pagado/saldo de los ingresos. Ver comercial-rol-portal.
+function CarteraSection({ clienteId }: { clienteId: string }) {
+  const [filas, setFilas] = useState<CarteraResumen[] | null>(null);
+  useEffect(() => {
+    comercialApi.carteraCliente(clienteId).then(setFilas).catch(() => setFilas([]));
+  }, [clienteId]);
+
+  if (!filas || filas.length === 0) return null; // sin plan de cobro aún → no ocupa espacio
+  return (
+    <Card>
+      <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Estado de cobro</h3>
+      <div className="space-y-3">
+        {filas.map((c) => (
+          <div key={c.id} className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
+            <Dato label="Total acordado" value={c.valorTotalAcordado != null ? `$${formatMoney(Number(c.valorTotalAcordado))}` : "—"} />
+            <Dato label="Pagado" value={`$${formatMoney(c.valorPagado)}`} />
+            <Dato label="Saldo" value={c.saldoPendiente != null ? `$${formatMoney(c.saldoPendiente)}` : "—"} />
+            <Dato label="Próximo pago" value={c.fechaProximoPago ? c.fechaProximoPago.slice(0, 10) : "—"} />
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+const COMISION_ESTADO_CLS: Record<string, string> = {
+  PENDIENTE: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+  PAGADA: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+  ANULADA: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
+};
+
+// Comisiones internas del despacho. El ADMINISTRADOR las registra/edita; el
+// COMERCIAL solo ve las suyas (la API ya las acota). Ver comercial-rol-portal.
+function ComisionSection({ clienteId, esAdmin }: { clienteId: string; esAdmin: boolean }) {
+  const [comisiones, setComisiones] = useState<ComisionDespacho[] | null>(null);
+  const [comerciales, setComerciales] = useState<MiembroMin[]>([]);
+  const [open, setOpen] = useState(false);
+  const [comercialId, setComercialId] = useState("");
+  const [base, setBase] = useState("");
+  const [porcentaje, setPorcentaje] = useState("");
+  const [monto, setMonto] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const cargar = useCallback(() => {
+    comercialApi.comisiones({ clienteId }).then(setComisiones).catch(() => setComisiones([]));
+  }, [clienteId]);
+  useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => {
+    if (esAdmin) listComerciales().then((m) => setComerciales(m.filter((x) => x.roles.includes("COMERCIAL")))).catch(() => {});
+  }, [esAdmin]);
+
+  async function crear() {
+    setErr(null);
+    if (!comercialId) return setErr("Elige el comercial.");
+    if (!monto.trim()) return setErr("Indica el monto.");
+    setBusy(true);
+    try {
+      await comercialApi.crearComision({
+        clienteId, comercialId,
+        baseCalculo: Number(base || monto),
+        porcentaje: porcentaje.trim() ? Number(porcentaje) : undefined,
+        monto: Number(monto),
+      });
+      setComercialId(""); setBase(""); setPorcentaje(""); setMonto(""); setOpen(false);
+      cargar();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Error al registrar");
+    } finally { setBusy(false); }
+  }
+
+  async function cambiarEstado(id: string, estado: string) {
+    await comercialApi.editarComision(id, { estado }).catch(() => {});
+    cargar();
+  }
+
+  if (comisiones === null) return null;
+  // El comercial sin comisiones no necesita ver una tarjeta vacía.
+  if (!esAdmin && comisiones.length === 0) return null;
+
+  return (
+    <Card>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Comisiones</h3>
+        {esAdmin && <Button variant="ghost" onClick={() => { setErr(null); setOpen((v) => !v); }}>{open ? "Cerrar" : "Registrar comisión"}</Button>}
+      </div>
+
+      {esAdmin && open && (
+        <div className="mb-4 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 p-3 sm:grid-cols-2">
+          <Field label="Comercial" requerido>
+            <select value={comercialId} onChange={(e) => setComercialId(e.target.value)} className={inputClsLocal}>
+              <option value="">Selecciona…</option>
+              {comerciales.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+            </select>
+          </Field>
+          <Field label="Base de cálculo"><MoneyInput value={base} onChange={setBase} placeholder="Valor acordado" /></Field>
+          <Field label="Porcentaje (%)"><input value={porcentaje} onChange={(e) => setPorcentaje(e.target.value)} className={inputClsLocal} placeholder="Opcional" inputMode="decimal" /></Field>
+          <Field label="Monto" requerido><MoneyInput value={monto} onChange={setMonto} placeholder="0" /></Field>
+          {err && <p className="text-sm text-red-600 dark:text-red-400 sm:col-span-2">{err}</p>}
+          <div className="flex justify-end sm:col-span-2">
+            <Button onClick={crear} disabled={busy}>{busy ? "Guardando…" : "Registrar"}</Button>
+          </div>
+        </div>
+      )}
+
+      {comisiones.length === 0 ? (
+        <p className="text-sm text-slate-400 dark:text-slate-500">Sin comisiones registradas.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <tbody>
+            {comisiones.map((c) => (
+              <tr key={c.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                <td className="py-2 font-medium text-slate-700 dark:text-slate-200">${formatMoney(Number(c.monto))}</td>
+                <td className="py-2 text-slate-500 dark:text-slate-400">{c.porcentaje != null ? `${Number(c.porcentaje)}% de $${formatMoney(Number(c.baseCalculo))}` : "monto fijo"}</td>
+                <td className="py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${COMISION_ESTADO_CLS[c.estado]}`}>{c.estado}</span></td>
+                {esAdmin && (
+                  <td className="py-2 text-right text-xs font-medium">
+                    {c.estado !== "PAGADA" && <button onClick={() => cambiarEstado(c.id, "PAGADA")} className="mr-3 text-emerald-600 dark:text-emerald-400 hover:underline">Marcar pagada</button>}
+                    {c.estado !== "ANULADA" && <button onClick={() => cambiarEstado(c.id, "ANULADA")} className="text-red-600 dark:text-red-400 hover:underline">Anular</button>}
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Card>
+  );
+}
+
+const inputClsLocal =
+  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
+
+function Dato({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs text-slate-400 dark:text-slate-500">{label}</div>
+      <div className="mt-0.5 font-medium text-slate-700 dark:text-slate-200">{value}</div>
+    </div>
+  );
 }

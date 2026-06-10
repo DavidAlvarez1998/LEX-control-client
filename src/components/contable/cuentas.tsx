@@ -1,12 +1,14 @@
 "use client";
 
 // Pestaña Cuentas / bolsas: cuentas bancarias y cajas-bolsa. El saldo actual es
-// DERIVADO por la API (saldoInicial + ingresos PAGADO − egresos PAGADO) y se
-// consulta al ver el detalle. Lista + crear + editar + ver saldo.
+// DERIVADO por la API (saldoInicial + ingresos PAGADO − egresos/servicios fijos/
+// nómina PAGADO) y viene tanto en el listado como en el detalle. Lista + crear +
+// editar + ver saldo.
 
 import { useState } from "react";
 import { Button, Modal, PlusIcon } from "@/components/ui";
 import { Field, Input, MoneyInput, Select, Textarea } from "@/components/form-ui";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge, Banda, SectionCard, Tabla, humaniza, money, useCargar } from "./bits";
 import { ApiError } from "@/lib/api";
 import {
@@ -66,6 +68,25 @@ export function CuentasTab({ onCuentasChange }: { onCuentasChange: () => void })
 
   async function verSaldo(c: Cuenta) { setDetalle(await contableApi.cuenta(c.id)); }
 
+  // Borrado (bloqueado en el back si la cuenta tiene movimientos → guía a INACTIVA).
+  const [aBorrar, setABorrar] = useState<Cuenta | null>(null);
+  const [borrando, setBorrando] = useState(false);
+  const [borrarError, setBorrarError] = useState<string | null>(null);
+  async function confirmarBorrado() {
+    if (!aBorrar) return;
+    setBorrando(true); setBorrarError(null);
+    try {
+      await contableApi.borrarCuenta(aBorrar.id);
+      setABorrar(null);
+      await recargar();
+      onCuentasChange();
+    } catch (err) {
+      setBorrarError(err instanceof ApiError || err instanceof Error ? err.message : "No se pudo borrar.");
+    } finally {
+      setBorrando(false);
+    }
+  }
+
   if (loading) return <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>;
 
   return (
@@ -80,11 +101,15 @@ export function CuentasTab({ onCuentasChange }: { onCuentasChange: () => void })
             { h: "Entidad", cell: (c) => c.entidadBancaria },
             { h: "Tipo", cell: (c) => humaniza(c.tipoCuenta) },
             { h: "Saldo inicial", cell: (c) => money(c.saldoInicial) },
+            { h: "Saldo actual", cell: (c) => (
+              <span className="font-medium text-slate-800 dark:text-slate-100">{c.saldoActual != null ? money(c.saldoActual) : "—"}</span>
+            ) },
             { h: "Estado", cell: (c) => <Badge>{c.estadoCuenta}</Badge> },
             { h: "", right: true, cell: (c) => (
               <span className="flex justify-end gap-3 text-xs">
                 <button onClick={() => verSaldo(c)} className="font-medium text-emerald-600 dark:text-emerald-400 hover:underline">Ver saldo</button>
                 <button onClick={() => abrirEdicion(c)} className="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">Editar</button>
+                <button onClick={() => { setBorrarError(null); setABorrar(c); }} className="font-medium text-rose-600 dark:text-rose-400 hover:underline">Eliminar</button>
               </span>
             ) },
           ]}
@@ -127,10 +152,21 @@ export function CuentasTab({ onCuentasChange }: { onCuentasChange: () => void })
               <span className="text-slate-500 dark:text-slate-400">Saldo actual (derivado): </span>
               <span className="font-semibold text-slate-800 dark:text-slate-100">{money(detalle.saldoActual)}</span>
             </div>
-            <p className="text-xs text-slate-400 dark:text-slate-500">= saldo inicial + ingresos PAGADO − egresos PAGADO asociados a esta cuenta.</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">= saldo inicial + ingresos PAGADO − (egresos + servicios fijos + nómina) PAGADO asociados a esta cuenta.</p>
           </div>
         )}
       </Modal>
+
+      <ConfirmDialog
+        open={!!aBorrar}
+        title="Eliminar cuenta / bolsa"
+        message={borrarError ?? `¿Eliminar "${aBorrar?.nombreBolsa}"? Si tiene movimientos asociados no se podrá borrar; en ese caso desactívala (estado INACTIVA).`}
+        confirmText="Eliminar"
+        danger
+        busy={borrando}
+        onConfirm={confirmarBorrado}
+        onCancel={() => setABorrar(null)}
+      />
     </div>
   );
 }

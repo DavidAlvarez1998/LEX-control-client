@@ -9,7 +9,9 @@ import { DatosProceso } from "@/components/datos-proceso";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, evaluarCondicion, type EtapaDef } from "@/lib/procesos";
-import { escalarProceso, getProceso, moverEtapa, type ProcesoDetalle } from "@/lib/procesos-api";
+import { actualizarProceso, escalarProceso, getProceso, moverEtapa, type ProcesoDetalle } from "@/lib/procesos-api";
+import { getUser } from "@/lib/auth";
+import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
 export default function ExpedientePage() {
   const { id } = useParams<{ id: string }>();
@@ -74,8 +76,14 @@ export default function ExpedientePage() {
     }
   }
 
+  // El COMERCIAL ve el expediente en SOLO LECTURA (su cliente); editar es de
+  // JURIDICO/admin. La API ya rechaza (403) cualquier escritura no autorizada.
+  const u = getUser();
+  const puedeEditar = !!u?.esAdminEmpresa || (u?.roles ?? []).includes("JURIDICO");
+
   return (
-    <div className="mx-auto max-w-4xl">
+    <RolEmpresaGuard roles={["JURIDICO", "COMERCIAL"]}>
+    <div className="mx-auto max-w-6xl">
       <PageHeader
         title={proceso.titulo}
         subtitle={`${proceso.tipoProceso.nombre} · ${JURISDICCION_LABEL[proceso.jurisdiccion]}`}
@@ -101,7 +109,7 @@ export default function ExpedientePage() {
       <Card className="mb-5">
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
           <Dato label="Código interno" value={proceso.codigoInterno} />
-          <Dato label="Radicado" value={proceso.radicado ?? "Sin radicar"} />
+          <RadicadoDato procesoId={proceso.id} valor={proceso.radicado} onSaved={setProceso} readOnly={!puedeEditar} />
           <Dato label="Estado" value={ESTADO_LABEL[proceso.estado]} />
           <Dato label="Cliente" value={proceso.cliente?.nombre ?? "—"} />
           <Dato label="Abogado responsable" value={proceso.responsable?.nombre ?? "Sin asignar"} />
@@ -110,6 +118,19 @@ export default function ExpedientePage() {
           <Dato label="Próxima audiencia" value={fecha(proceso.proximaAudiencia)} />
           <DatoVencimiento iso={proceso.fechaLimite} />
         </div>
+      </Card>
+
+      <Card className="mb-5">
+        <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
+          Formulario del proceso
+        </h3>
+        <DatosProceso
+          procesoId={proceso.id}
+          esquema={proceso.tipoProceso.esquemaFormulario ?? []}
+          datos={proceso.datos}
+          onSaved={(datos) => setProceso((p) => (p ? { ...p, datos } : p))}
+          readOnly={!puedeEditar}
+        />
       </Card>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -128,10 +149,10 @@ export default function ExpedientePage() {
                 <li key={e.key}>
                   <button
                     type="button"
-                    disabled={!disponible}
+                    disabled={!disponible || !puedeEditar}
                     onClick={() => irAEtapa(e.key)}
                     className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      disponible ? "hover:bg-slate-50 dark:hover:bg-slate-800" : "cursor-not-allowed opacity-40"
+                      !puedeEditar ? "cursor-default" : disponible ? "hover:bg-slate-50 dark:hover:bg-slate-800" : "cursor-not-allowed opacity-40"
                     } ${current ? "bg-indigo-50 dark:bg-indigo-500/10" : ""}`}
                   >
                     <span
@@ -164,11 +185,13 @@ export default function ExpedientePage() {
               );
             })}
           </ol>
-          <p className="mt-3 text-xs text-slate-400">
-            Haz clic en una etapa para mover el proceso. Las etapas con reglas se bloquean si faltan datos.
-          </p>
+          {puedeEditar && (
+            <p className="mt-3 text-xs text-slate-400">
+              Haz clic en una etapa para mover el proceso. Las etapas con reglas se bloquean si faltan datos.
+            </p>
+          )}
 
-          {accionDerivar && (
+          {puedeEditar && accionDerivar && (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
               <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
                 Acción disponible: escalar a {accionDerivar.tipoDestinoNombre}
@@ -220,24 +243,13 @@ export default function ExpedientePage() {
           </Card>
 
           <Card>
-            <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Formulario del proceso
-            </h3>
-            <DatosProceso
-              procesoId={proceso.id}
-              esquema={proceso.tipoProceso.esquemaFormulario ?? []}
-              datos={proceso.datos}
-              onSaved={(datos) => setProceso((p) => (p ? { ...p, datos } : p))}
-            />
-          </Card>
-
-          <Card>
             <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Documentos</h3>
-            <DocumentosProceso procesoId={proceso.id} inicial={proceso.documentos ?? []} />
+            <DocumentosProceso procesoId={proceso.id} inicial={proceso.documentos ?? []} readOnly={!puedeEditar} />
           </Card>
         </div>
       </div>
     </div>
+    </RolEmpresaGuard>
   );
 }
 
@@ -246,6 +258,94 @@ function Dato({ label, value }: { label: string; value: string }) {
     <div>
       <div className="text-xs text-slate-400">{label}</div>
       <div className="mt-0.5 font-medium text-slate-700 dark:text-slate-200">{value}</div>
+    </div>
+  );
+}
+
+// Radicado editable in-situ: escribe en la columna canónica `proceso.radicado`
+// (la que leen facturación y contable), no en el JSON del formulario.
+function RadicadoDato({
+  procesoId,
+  valor,
+  onSaved,
+  readOnly = false,
+}: {
+  procesoId: string;
+  valor: string | null;
+  onSaved: (p: ProcesoDetalle) => void;
+  readOnly?: boolean;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [texto, setTexto] = useState(valor ?? "");
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardar() {
+    setGuardando(true);
+    try {
+      const actualizado = await actualizarProceso(procesoId, {
+        radicado: texto.trim() || null,
+      });
+      onSaved(actualizado);
+      setEditando(false);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="text-xs text-slate-400">Radicado</div>
+      {editando ? (
+        <div className="mt-0.5 flex items-center gap-1.5">
+          <input
+            autoFocus
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") guardar();
+              if (e.key === "Escape") {
+                setTexto(valor ?? "");
+                setEditando(false);
+              }
+            }}
+            placeholder="23 dígitos del juzgado"
+            className="w-full min-w-0 rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <button
+            onClick={guardar}
+            disabled={guardando}
+            className="shrink-0 text-xs font-medium text-indigo-600 hover:underline disabled:opacity-50"
+          >
+            {guardando ? "…" : "Guardar"}
+          </button>
+          <button
+            onClick={() => {
+              setTexto(valor ?? "");
+              setEditando(false);
+            }}
+            className="shrink-0 text-xs text-slate-400 hover:text-slate-600"
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <div className="mt-0.5 flex items-center gap-2">
+          <span className={`font-medium ${valor ? "text-slate-700 dark:text-slate-200" : "text-slate-400"}`}>
+            {valor ?? "Sin radicar"}
+          </span>
+          {!readOnly && (
+            <button
+              onClick={() => {
+                setTexto(valor ?? "");
+                setEditando(true);
+              }}
+              className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+            >
+              editar
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

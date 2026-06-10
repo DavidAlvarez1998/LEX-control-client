@@ -246,6 +246,15 @@ export function actualizarDatos(
   return api.patch<ProcesoDetalle>(`/procesos/${id}`, { datos });
 }
 
+/** Edita atributos estructurales del proceso (p. ej. el radicado real — la
+ *  columna canónica que usan facturación y contable, no un campo del formulario). */
+export function actualizarProceso(
+  id: string,
+  body: { radicado?: string | null },
+): Promise<ProcesoDetalle> {
+  return api.patch<ProcesoDetalle>(`/procesos/${id}`, body);
+}
+
 // --- Vencimientos (semáforo) ---
 export type VencimientoItem = {
   id: string;

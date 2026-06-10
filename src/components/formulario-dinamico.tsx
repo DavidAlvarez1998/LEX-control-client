@@ -21,14 +21,16 @@ export function FormularioDinamico({
   datos,
   onChange,
   errores = [],
+  className = "space-y-4",
 }: {
   esquema: CampoEsquema[];
   datos: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
   errores?: string[]; // keys con error
+  className?: string; // contenedor: por defecto una columna; el detalle pasa un grid
 }) {
   return (
-    <div className="space-y-4">
+    <div className={className}>
       {esquema.map((campo) => {
         // Campos ocultos (mostrarSi no se cumple) no se renderizan.
         if (!campoVisible(campo, datos)) return null;

@@ -7,6 +7,7 @@ import { Field, Input, Select, Textarea } from "@/components/form-ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { api, ApiError } from "@/lib/api";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
+import { getUser } from "@/lib/auth";
 
 type Estado = "PROSPECTO" | "CLIENTE" | "DESCARTADO";
 
@@ -95,11 +96,20 @@ export default function ClientesPage() {
     }
   }
 
-  async function cargar() {
+  // Vista "Míos" vs "Todos": siempre ves toda la cartera del despacho; el filtro
+  // solo cambia el enfoque inicial (responsable comercial o abogado responsable
+  // de algún proceso). No es un muro. Default por rol: un abogado (JURIDICO)
+  // arranca en "Todos" (cobertura + chequeo de conflictos de interés); los demás
+  // roles arrancan en "Míos" (su propio pipeline).
+  const [mios, setMios] = useState(() => !(getUser()?.roles ?? []).includes("JURIDICO"));
+
+  async function cargar(soloMios = mios) {
     setLoading(true);
     setError(null);
     try {
-      setClientes(await api.get<Cliente[]>("/clientes"));
+      setClientes(
+        await api.get<Cliente[]>(`/clientes${soloMios ? "?mios=true" : ""}`),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar");
     } finally {
@@ -107,8 +117,14 @@ export default function ClientesPage() {
     }
   }
 
+  function cambiarVista(soloMios: boolean) {
+    setMios(soloMios);
+    cargar(soloMios);
+  }
+
   useEffect(() => {
     cargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Carga las áreas de práctica reales (GET /catalogo/areas ya devuelve solo las
@@ -189,7 +205,7 @@ export default function ClientesPage() {
   }
 
   return (
-    <RolEmpresaGuard roles={["COMERCIAL"]}>
+    <RolEmpresaGuard roles={["COMERCIAL", "JURIDICO"]}>
       <div>
       <PageHeader
         title="Clientes"
@@ -205,7 +221,7 @@ export default function ClientesPage() {
       {error && (
         <Card className="mb-4 border-red-200 bg-red-50 dark:bg-red-950/40 text-sm text-red-700 dark:text-red-300">
           {error}{" "}
-          <button onClick={cargar} className="font-medium underline">reintentar</button>
+          <button onClick={() => cargar()} className="font-medium underline">reintentar</button>
         </Card>
       )}
       {aviso && (
@@ -214,12 +230,35 @@ export default function ClientesPage() {
         </Card>
       )}
 
+      <div className="mb-4 inline-flex rounded-lg border border-slate-200 p-0.5 text-sm dark:border-slate-800">
+        {[
+          { v: true, label: "Míos" },
+          { v: false, label: "Todos" },
+        ].map((o) => (
+          <button
+            key={o.label}
+            onClick={() => cambiarVista(o.v)}
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              mios === o.v
+                ? "bg-indigo-600 text-white"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <Card className="text-sm text-slate-500 dark:text-slate-400">Cargando…</Card>
       ) : clientes.length === 0 ? (
         <EmptyState
-          title="Sin clientes todavía"
-          description="Crea el primer prospecto. Podrás hacerle seguimiento y convertirlo en cliente."
+          title={mios ? "No llevas clientes todavía" : "Sin clientes todavía"}
+          description={
+            mios
+              ? "Aquí ves los clientes que llevas tú. Cambia a “Todos” para ver la cartera del despacho, o crea un prospecto."
+              : "Crea el primer prospecto. Podrás hacerle seguimiento y convertirlo en cliente."
+          }
           action={<Button onClick={abrirCrear}><PlusIcon />Nuevo prospecto</Button>}
         />
       ) : (
