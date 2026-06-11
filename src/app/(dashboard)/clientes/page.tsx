@@ -27,6 +27,8 @@ type Cliente = {
   resumenCaso: string | null;
   observaciones: string | null;
   fechaIngreso: string;
+  responsableComercialId: string | null;
+  responsableComercial: { id: string; nombre: string } | null;
 };
 
 type FormState = {
@@ -72,6 +74,7 @@ export default function ClientesPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [editDueño, setEditDueño] = useState<string | null>(null); // responsable si edito el de otro
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -138,6 +141,7 @@ export default function ClientesPage() {
 
   function abrirCrear() {
     setEditId(null);
+    setEditDueño(null);
     setForm(EMPTY);
     setFormError(null);
     setFormOpen(true);
@@ -145,6 +149,7 @@ export default function ClientesPage() {
 
   function abrirEditar(c: Cliente) {
     setEditId(c.id);
+    setEditDueño(deOtro(c));
     setForm({
       nombre: c.nombre, tipoPersona: c.tipoPersona,
       tipoDocumento: c.tipoDocumento ?? "", numeroDocumento: c.numeroDocumento ?? "",
@@ -184,10 +189,18 @@ export default function ClientesPage() {
     }
   }
 
+  // "De otro": tiene responsable asignado y NO soy yo. No bloquea (estándar bufete:
+  // cobertura + conflictos), solo avisa de quién es para que la acción no sea ciega.
+  const deOtro = (c: Cliente) =>
+    c.responsableComercial && c.responsableComercial.id !== getUser()?.id
+      ? c.responsableComercial.nombre
+      : null;
+
   function pedirConvertir(c: Cliente) {
+    const dueño = deOtro(c);
     setConfirm({
       title: "Convertir en cliente",
-      message: `Se convertirá a "${c.nombre}" en CLIENTE y se vinculará su expediente (litigante). ¿Continuar?`,
+      message: `${dueño ? `Este prospecto es de ${dueño}. ` : ""}Se convertirá a "${c.nombre}" en CLIENTE y se vinculará su expediente (litigante). ¿Continuar?`,
       confirmText: "Convertir",
       danger: false,
       onConfirm: () => ejecutar(() => api.post(`/clientes/${c.id}/convertir`, {}), `${c.nombre} ahora es CLIENTE.`),
@@ -282,6 +295,9 @@ export default function ClientesPage() {
                       {c.nombre}
                     </Link>
                     {c.email && <div className="text-xs text-slate-500 dark:text-slate-400">{c.email}</div>}
+                    {c.responsableComercial && (
+                      <div className="text-xs text-slate-400 dark:text-slate-500">Responsable: {c.responsableComercial.nombre}</div>
+                    )}
                   </td>
                   <td className="px-5 py-3 text-slate-600 dark:text-slate-300">
                     {c.numeroDocumento ? `${c.tipoDocumento ?? ""} ${c.numeroDocumento}` : "—"}
@@ -316,6 +332,11 @@ export default function ClientesPage() {
             <h3 className="mb-4 text-lg font-semibold text-slate-800 dark:text-slate-100">
               {editId ? "Editar cliente" : "Nuevo prospecto"}
             </h3>
+            {editId && editDueño && (
+              <p className="-mt-2 mb-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                Este cliente es de <b>{editDueño}</b>. Puedes editarlo (cobertura del despacho), pero ten en cuenta que no es tuyo.
+              </p>
+            )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Field label="Nombre" requerido>

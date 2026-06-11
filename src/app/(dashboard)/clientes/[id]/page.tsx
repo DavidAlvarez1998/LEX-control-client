@@ -14,6 +14,7 @@ type Cliente = {
   id: string; nombre: string; estado: string; email: string | null;
   telefono: string | null; tipoDocumento: string | null; numeroDocumento: string | null;
   ciudad: string | null; tipoCaso: string | null; viabilidad: string | null; resumenCaso: string | null;
+  responsableComercial: { id: string; nombre: string } | null;
 };
 type Fase = { id: string; fase: string; fechaInicioFase: string; fechaCierreFase: string | null; motivoPerdida: string | null };
 type Seguimiento = { id: string; tipoGestion: string; motivoContacto: string | null; resultado: string | null; proximaTarea: string | null; fechaProximaTarea: string | null; estadoSeguimiento: string; fechaContacto: string };
@@ -92,6 +93,12 @@ export default function ClienteDetallePage() {
               {cliente.numeroDocumento ? `${cliente.tipoDocumento ?? ""} ${cliente.numeroDocumento} · ` : ""}
               {cliente.email ?? "sin correo"} · {cliente.telefono ?? "sin teléfono"}
             </p>
+            {cliente.responsableComercial && (
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                Responsable: {cliente.responsableComercial.nombre}
+                {cliente.responsableComercial.id === getUser()?.id ? " (tú)" : ""}
+              </p>
+            )}
             {cliente.resumenCaso && <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">{cliente.resumenCaso}</p>}
           </div>
           <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-3 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300">
