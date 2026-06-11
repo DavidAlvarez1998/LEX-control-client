@@ -50,6 +50,14 @@ export type Nomina = {
   valorNetoPagar: string; estadoPago: string; fechaPago: string | null; cuentaId: string | null;
 };
 
+// Proyección mínima de un Contrato (HR) para prellenar la nómina. NO es el
+// contrato completo: solo lo necesario para pagar (segregación de funciones).
+export type Empleable = {
+  contratoId: string; usuarioId: string | null; nombre: string;
+  cargo: string | null; honorarios: string | null; tipoContrato: string | null;
+  fechaInicio: string | null; estado: string; // ACTIVO | FINALIZADO | SUSPENDIDO
+};
+
 export type CajaMenor = {
   id: string; nombre: string; montoInicial: string; estado: string;
   responsableId: string | null; observaciones: string | null; createdAt: string;
@@ -117,6 +125,7 @@ export const contableApi = {
   editarEgreso: (id: string, body: Record<string, unknown>) => api.patch<Egreso>(`/contable/egresos/${id}`, body),
 
   nominas: () => api.get<Nomina[]>("/contable/nominas"),
+  empleables: () => api.get<Empleable[]>("/contable/nominas/empleables"),
   crearNomina: (body: Record<string, unknown>) => api.post<Nomina>("/contable/nominas", body),
   editarNomina: (id: string, body: Record<string, unknown>) => api.patch<Nomina>(`/contable/nominas/${id}`, body),
 
