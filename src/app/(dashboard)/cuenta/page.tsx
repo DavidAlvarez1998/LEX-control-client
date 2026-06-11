@@ -23,7 +23,7 @@ type MiEmpresa = {
   email: string | null;
   telefono: string | null;
   activo: boolean;
-  servicios: ServicioContratado[];
+  servicios?: ServicioContratado[]; // solo presente para el admin de empresa
 };
 
 const money = (v: string) => `$${formatMoney(v)}`;
@@ -105,13 +105,13 @@ export default function CuentaPage() {
         </Card>
       </div>
 
-      {/* Servicios contratados por la empresa. */}
-      {!loading && !error && empresa && (
+      {/* Servicios contratados por la empresa. SOLO el administrador de empresa. */}
+      {!loading && !error && empresa && user?.esAdminEmpresa && (
         <Card className="mt-4 p-0">
           <div className="border-b border-slate-200 dark:border-slate-800 px-5 py-3">
             <h3 className="font-medium text-slate-800 dark:text-slate-100">Servicios contratados</h3>
           </div>
-          {empresa.servicios.length === 0 ? (
+          {(empresa.servicios ?? []).length === 0 ? (
             <p className="px-5 py-6 text-sm text-slate-500 dark:text-slate-400">
               Tu empresa aún no tiene servicios contratados.
             </p>
@@ -126,7 +126,7 @@ export default function CuentaPage() {
                 </tr>
               </thead>
               <tbody>
-                {empresa.servicios.map((s) => (
+                {(empresa.servicios ?? []).map((s) => (
                   <tr
                     key={s.id}
                     className="border-t border-slate-100 dark:border-slate-800 last:border-0"
