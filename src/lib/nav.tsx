@@ -39,7 +39,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     href: "/agenda",
     label: "Agenda",
-    roles: ["COMERCIAL"],
+    // Sin `roles`: la agenda está disponible para TODO usuario del despacho.
     icon: (
       <svg className={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="4" width="18" height="18" rx="2" />

@@ -18,6 +18,14 @@ const inputCls =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
 
 const humaniza = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, " ");
+
+// Rol legible del creador de una actividad (para la vista del admin de empresa).
+const ROL_LABEL: Record<string, string> = { COMERCIAL: "Comercial", JURIDICO: "Jurídico", CONTABLE: "Contable" };
+function rolLegible(rp: { roles: string[]; esAdminEmpresa: boolean } | null): string {
+  if (!rp) return "—";
+  if (rp.roles.length) return rp.roles.map((r) => ROL_LABEL[r] ?? humaniza(r)).join(", ");
+  return rp.esAdminEmpresa ? "Admin" : "Usuario";
+}
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 const toKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -79,7 +87,8 @@ export function AgendaComercialView() {
     } finally { setLoading(false); }
   }, [inicioMes, finMes, comercialId, esAdmin]);
   useEffect(() => { cargar(); }, [cargar]);
-  useEffect(() => { if (esAdmin) listComerciales().then((m) => setComerciales(m.filter((x) => x.roles.includes("COMERCIAL")))).catch(() => {}); }, [esAdmin]);
+  // La agenda es de todos: el admin filtra/asigna por CUALQUIER miembro activo del despacho.
+  useEffect(() => { if (esAdmin) listComerciales().then((m) => setComerciales(m.filter((x) => x.activo))).catch(() => {}); }, [esAdmin]);
 
   const porDia = useMemo(() => {
     const map = new Map<string, AgendaItem[]>();
@@ -119,7 +128,7 @@ export function AgendaComercialView() {
         <Button variant="ghost" onClick={() => setCursor(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); })}>Hoy</Button>
         {esAdmin && (
           <select value={comercialId} onChange={(e) => setComercialId(e.target.value)} className="ml-auto rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
-            <option value="">Todos los comerciales</option>
+            <option value="">Todos los miembros</option>
             {comerciales.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
           </select>
         )}
@@ -152,7 +161,7 @@ export function AgendaComercialView() {
                       a.completada ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 line-through"
                       : pasado ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300"
                       : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"}`}>
-                      {horaDe(a.fechaProximaTarea)} {a.cliente.nombre}{mostrarComercial && comNombre(a.comercialId) ? ` · ${comNombre(a.comercialId)}` : ""}
+                      {horaDe(a.fechaProximaTarea)} {a.cliente?.nombre ?? a.titulo ?? humaniza(a.tipoGestion)}{mostrarComercial && comNombre(a.comercialId) ? ` · ${comNombre(a.comercialId)}` : ""}
                     </div>
                   ))}
                   {acts.length > 3 && <div className="px-1 text-[11px] text-slate-400">+{acts.length - 3} más</div>}
@@ -199,9 +208,10 @@ function DiaModal({ dia, actividades, clientes, esAdmin, comerciales, onClose, o
   const [query, setQuery] = useState("");
   const activos = useMemo(() => clientes.filter((c) => c.estado !== "DESCARTADO"), [clientes]);
   const sel = useMemo(() => clientes.find((c) => c.id === clienteId) ?? null, [clientes, clienteId]);
+  // El cliente es OPCIONAL: no se pre-lista. Solo aparecen resultados al escribir.
   const matches = useMemo(() => {
     const t = query.trim().toLowerCase();
-    if (!t) return activos.slice(0, 8);
+    if (!t) return [];
     return activos.filter((c) =>
       c.nombre.toLowerCase().includes(t) || (c.telefono ?? "").toLowerCase().includes(t),
     ).slice(0, 8);
@@ -209,7 +219,6 @@ function DiaModal({ dia, actividades, clientes, esAdmin, comerciales, onClose, o
 
   async function agendar() {
     setErr(null);
-    if (!clienteId) { setErr("Elige el cliente."); return; }
     setBusy(true);
     try {
       const h24 = (h12 % 12) + (mer === "PM" ? 12 : 0);
@@ -247,28 +256,30 @@ function DiaModal({ dia, actividades, clientes, esAdmin, comerciales, onClose, o
       {(actividades.length === 0 || mostrarForm) && (
       <div className="rounded-lg bg-slate-50 dark:bg-slate-900/60 p-3 space-y-2">
         <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Agendar actividad</p>
-        <Field label="Cliente" requerido>
+        <Field label="Cliente (opcional)">
           {sel ? (
             <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2">
               <span className="truncate text-slate-800 dark:text-slate-100"><b>{sel.nombre}</b></span>
-              <button type="button" onClick={() => { setClienteId(""); setQuery(""); }} className="shrink-0 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline">Cambiar</button>
+              <button type="button" onClick={() => { setClienteId(""); setQuery(""); }} className="shrink-0 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline">Quitar</button>
             </div>
           ) : (
             <>
-              <input value={query} onChange={(e) => setQuery(e.target.value)} className={inputCls} placeholder="Buscar por nombre o teléfono…" />
-              <ul className="mt-1 max-h-44 overflow-auto rounded-lg border border-slate-200 dark:border-slate-800">
-                {matches.length === 0 ? (
-                  <li className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">Sin resultados</li>
-                ) : matches.map((c) => (
-                  <li key={c.id}>
-                    <button type="button" onClick={() => { setClienteId(c.id); setQuery(""); }}
-                      className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
-                      <span className="font-medium text-slate-800 dark:text-slate-100">{c.nombre}</span>
-                      {c.telefono && <span className="text-slate-500 dark:text-slate-400"> · {c.telefono}</span>}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <input value={query} onChange={(e) => setQuery(e.target.value)} className={inputCls} placeholder="Escribe para buscar un cliente… (opcional)" />
+              {query.trim() && (
+                <ul className="mt-1 max-h-44 overflow-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                  {matches.length === 0 ? (
+                    <li className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">Sin resultados</li>
+                  ) : matches.map((c) => (
+                    <li key={c.id}>
+                      <button type="button" onClick={() => { setClienteId(c.id); setQuery(""); }}
+                        className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
+                        <span className="font-medium text-slate-800 dark:text-slate-100">{c.nombre}</span>
+                        {c.telefono && <span className="text-slate-500 dark:text-slate-400"> · {c.telefono}</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </>
           )}
         </Field>
@@ -314,11 +325,10 @@ function DiaModal({ dia, actividades, clientes, esAdmin, comerciales, onClose, o
             </select>
           </Field>
         )}
-        {activos.length === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">No hay clientes activos. Crea uno en Clientes.</p>}
         {err && <p className="text-sm text-red-600 dark:text-red-400">{err}</p>}
         <div className="flex justify-end gap-2">
           {actividades.length > 0 && <Button variant="ghost" onClick={() => { setMostrarForm(false); setErr(null); }} disabled={busy}>Volver</Button>}
-          <Button onClick={agendar} disabled={busy || !activos.length}>{busy ? "…" : "Agendar"}</Button>
+          <Button onClick={agendar} disabled={busy}>{busy ? "…" : "Agendar"}</Button>
         </div>
       </div>
       )}
@@ -423,11 +433,14 @@ function ActivityRow({ a, esAdmin, onChange }: { a: AgendaItem; esAdmin?: boolea
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <p className={`truncate font-medium text-slate-800 dark:text-slate-100 ${inactiva ? "line-through" : ""}`}>{a.cliente.nombre}</p>
+          <p className={`truncate font-medium text-slate-800 dark:text-slate-100 ${inactiva ? "line-through" : ""}`}>{a.cliente?.nombre ?? "Actividad"}</p>
           <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">{horaDe(a.fechaProximaTarea)}{vencida && " · vencida"}</span>
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400">{humaniza(a.tipoGestion)}</p>
-        {a.cliente.telefono && (
+        {esAdmin && a.registradoPor && (
+          <p className="text-xs text-slate-400 dark:text-slate-500">Creado por {a.registradoPor.nombre} · {rolLegible(a.registradoPor)}</p>
+        )}
+        {a.cliente?.telefono && (
           <a href={waLink(a.cliente.telefono)} target="_blank" rel="noopener noreferrer"
             className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline">
             <WhatsAppIcon /> {a.cliente.telefono}

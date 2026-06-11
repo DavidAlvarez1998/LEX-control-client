@@ -20,7 +20,9 @@ export type AgendaItem = {
   canceladaEn: string | null;
   motivoCancelacion: string | null;
   comercialId: string | null;
-  cliente: ClienteMin;
+  cliente: ClienteMin | null; // opcional: la agenda ya no exige cliente
+  // Quién creó la actividad (para la vista del admin de empresa).
+  registradoPor: { nombre: string; roles: string[]; esAdminEmpresa: boolean } | null;
 };
 
 export type Agenda = { desde: string; hasta: string; items: AgendaItem[]; vencidas: AgendaItem[] };
@@ -61,9 +63,9 @@ export const comercialApi = {
   agenda: (q: { desde?: string; hasta?: string; comercialId?: string; incluirCompletadas?: boolean }) =>
     api.get<Agenda>(`/comercial/agenda${qs(q)}`),
   addSeguimiento: (
-    clienteId: string,
+    clienteId: string | undefined,
     body: { tipoGestion: string; titulo?: string; motivoContacto?: string; fechaProximaTarea?: string; comercialId?: string },
-  ) => api.post<AgendaItem>("/comercial/seguimientos", { clienteId, ...body }),
+  ) => api.post<AgendaItem>("/comercial/seguimientos", { ...(clienteId ? { clienteId } : {}), ...body }),
   editarSeguimiento: (id: string, body: Record<string, unknown>) =>
     api.patch<AgendaItem>(`/comercial/seguimientos/${id}`, body),
   completarSeguimiento: (id: string, body: { resultado?: string }) =>
