@@ -3,14 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, Card, Modal, PageHeader } from "@/components/ui";
-import { Field, Input, MoneyInput, Select, SelectableCard } from "@/components/form-ui";
+import { BuscadorSelect, Field, Input, MoneyInput, Select, SelectableCard } from "@/components/form-ui";
 import { FormularioDinamico } from "@/components/formulario-dinamico";
+import { VencimientoHint } from "@/components/vencimiento-hint";
 import { getUser, type AuthUser } from "@/lib/auth";
 import {
+  etiquetasPlazoOpciones,
   JURISDICCION_LABEL,
   validarDatos,
-  type AreaPractica,
   type CuantiaTipo,
+  type Jurisdiccion,
   type ParteProceso,
   type RolParte,
   type TipoDocumento,
@@ -19,10 +21,10 @@ import {
 } from "@/lib/procesos";
 import {
   crearProceso,
-  getAreas,
   getTipos,
   listClientes,
   listMiembros,
+  subirArchivoProceso,
   type ClienteOption,
   type CrearProcesoBody,
   type MiembroOption,
@@ -69,10 +71,14 @@ export default function NuevoProcesoPage() {
   const esAdmin = !!yo?.esAdminEmpresa || roles.includes("ADMINISTRADOR");
   const esAbogado = roles.includes("JURIDICO");
 
-  const [areas, setAreas] = useState<AreaPractica[]>([]);
-  const [areaSlug, setAreaSlug] = useState("");
+  // El catálogo se trae completo una vez y se agrupa por jurisdicción (6 fijas),
+  // igual que el portal admin. El área de práctica queda como metadata/filtro.
   const [tipos, setTipos] = useState<TipoProceso[] | null>(null);
+  const [jurisdiccion, setJurisdiccion] = useState<Jurisdiccion | "">("");
   const [tipo, setTipo] = useState<TipoProceso | null>(null);
+
+  // Poder: se elige aquí si el formulario marca requierePoder=Sí y se sube al crear.
+  const [poderFile, setPoderFile] = useState<File | null>(null);
 
   const [titulo, setTitulo] = useState("");
   const [datos, setDatos] = useState<Record<string, unknown>>({});
@@ -105,21 +111,16 @@ export default function NuevoProcesoPage() {
 
   useEffect(() => {
     setYo(getUser());
-    getAreas().then((a) => setAreas(a.filter((x) => x.activo))).catch(() => {});
+    getTipos().then(setTipos).catch(() => setTipos([]));
     listClientes().then(setClientes).catch(() => {});
   }, []);
 
   // Equipo solo para el admin (asigna abogado); un abogado se autoasigna.
+  // Por defecto el responsable es uno mismo (el admin o el creador), editable.
   useEffect(() => {
     if (esAdmin) listMiembros().then(setAbogados).catch(() => {});
-    if (yo && !esAdmin) setResponsableId(yo.id);
+    if (yo) setResponsableId((prev) => prev || yo.id);
   }, [esAdmin, yo]);
-
-  useEffect(() => {
-    if (!areaSlug) return;
-    setTipos(null);
-    getTipos(areaSlug).then(setTipos).catch(() => setTipos([]));
-  }, [areaSlug]);
 
   function setCampo(key: string, value: unknown) {
     setDatos((d) => ({ ...d, [key]: value }));
@@ -151,11 +152,18 @@ export default function NuevoProcesoPage() {
     setModalCliente(false);
   }
 
-  // Abogados del despacho (rol JURIDICO) elegibles como responsables.
-  const abogadosElegibles = abogados.filter((m) => m.activo && m.roles.includes("JURIDICO"));
+  // Elegibles como responsable: abogados del despacho (rol JURIDICO) + el propio
+  // admin (para poder quedar él por defecto aunque no tenga el rol JURIDICO).
+  const abogadosElegibles = abogados.filter(
+    (m) => m.activo && (m.roles.includes("JURIDICO") || m.id === yo?.id),
+  );
 
   async function guardar() {
     if (!tipo) return;
+    // En no-judiciales (DdP) el cliente es el "peticionario": no hay rol procesal →
+    // se guarda "OTRO" con etiqueta "Peticionario". En judiciales, el rol elegido.
+    const rolCliente: RolParte = tipo.esJudicial ? clienteRol : "OTRO";
+    const etiquetaCliente = tipo.esJudicial ? undefined : "Peticionario";
     const tituloOk = titulo.trim().length > 0;
     setTituloError(!tituloOk);
     const hayCliente = !!clienteId || !!clienteNuevo;
@@ -182,8 +190,8 @@ export default function NuevoProcesoPage() {
         despachoJuzgado: despachoJuzgado.trim() || undefined,
         responsableId: (esAdmin ? responsableId : yo?.id) || undefined,
         cliente: clienteNuevo
-          ? { nuevo: clienteNuevo, rol: clienteRol }
-          : { clienteId, rol: clienteRol },
+          ? { nuevo: clienteNuevo, rol: rolCliente, rolEtiqueta: etiquetaCliente }
+          : { clienteId, rol: rolCliente, rolEtiqueta: etiquetaCliente },
         partes: partes
           .filter((p) => p.litigante.nombre.trim().length > 0)
           .map((p) => ({
@@ -199,6 +207,15 @@ export default function NuevoProcesoPage() {
           })),
       };
       const creado = await crearProceso(body);
+      // El poder solo se puede vincular una vez existe el proceso: se sube ahora.
+      // Si falla la subida, el proceso ya quedó creado y se puede reintentar en su ficha.
+      if (poderFile) {
+        try {
+          await subirArchivoProceso(creado.id, poderFile, "poder.pdf");
+        } catch {
+          /* reintenta en la ficha del proceso */
+        }
+      }
       router.push(`/procesos/${creado.id}`);
     } catch (e) {
       setApiError(e instanceof Error ? e.message : "No se pudo crear el proceso");
@@ -206,47 +223,57 @@ export default function NuevoProcesoPage() {
     }
   }
 
-  // --- Paso 1: área ---
-  if (!areaSlug) {
+  // --- Paso 1: jurisdicción (6 fijas; solo las que tienen tipos en el catálogo) ---
+  if (!jurisdiccion) {
+    const conteo = (tipos ?? []).reduce<Record<string, number>>((acc, t) => {
+      acc[t.jurisdiccion] = (acc[t.jurisdiccion] ?? 0) + 1;
+      return acc;
+    }, {});
+    const jurisdicciones = (Object.keys(JURISDICCION_LABEL) as Jurisdiccion[]).filter((j) => conteo[j]);
     return (
       <div>
-        <PageHeader title="Nuevo proceso" subtitle="Paso 1 de 3 · Elige el área de práctica." />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {areas.map((a) => (
-            <SelectableCard
-              key={a.slug}
-              title={a.nombre}
-              subtitle={JURISDICCION_LABEL[a.jurisdiccion]}
-              onClick={() => setAreaSlug(a.slug)}
-            />
-          ))}
-        </div>
+        <PageHeader title="Nuevo proceso" subtitle="Paso 1 de 3 · Elige la jurisdicción." />
+        {tipos === null ? (
+          <Card className="text-sm text-slate-500">Cargando catálogo…</Card>
+        ) : jurisdicciones.length === 0 ? (
+          <Card className="text-sm text-slate-500">No hay tipos de proceso en el catálogo todavía.</Card>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {jurisdicciones.map((j) => (
+              <SelectableCard
+                key={j}
+                title={JURISDICCION_LABEL[j]}
+                subtitle={`${conteo[j]} tipo${conteo[j] === 1 ? "" : "s"}`}
+                onClick={() => setJurisdiccion(j)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     );
   }
 
-  // --- Paso 2: tipo de proceso ---
+  // --- Paso 2: tipo de proceso (filtrado por la jurisdicción elegida) ---
   if (!tipo) {
+    const tiposJur = (tipos ?? []).filter((t) => t.jurisdiccion === jurisdiccion);
     return (
       <div>
         <PageHeader
           title="Nuevo proceso"
-          subtitle="Paso 2 de 3 · Elige el tipo de proceso."
+          subtitle={`Paso 2 de 3 · ${JURISDICCION_LABEL[jurisdiccion]}`}
           action={
-            <Button variant="ghost" onClick={() => setAreaSlug("")}>
-              ← Cambiar área
+            <Button variant="ghost" onClick={() => setJurisdiccion("")}>
+              ← Cambiar jurisdicción
             </Button>
           }
         />
-        {tipos === null ? (
-          <Card className="text-sm text-slate-500">Cargando tipos…</Card>
-        ) : tipos.length === 0 ? (
+        {tiposJur.length === 0 ? (
           <Card className="text-sm text-slate-500">
-            No hay tipos de proceso para esta área todavía.
+            No hay tipos de proceso en esta jurisdicción todavía.
           </Card>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {tipos.map((t) => (
+            {tiposJur.map((t) => (
               <SelectableCard
                 key={t.id}
                 title={t.nombre}
@@ -302,14 +329,18 @@ export default function NuevoProcesoPage() {
                   Cambiar
                 </button>
               </div>
-              <Field label="Rol procesal del cliente">
-                <Select
-                  value={clienteRol}
-                  onChange={(v) => setClienteRol(v as RolParte)}
-                  opciones={ROLES}
-                  placeholder="Rol"
-                />
-              </Field>
+              {/* El rol procesal solo aplica a procesos judiciales; en un DdP el
+                  cliente es el peticionario (sin rol de parte). */}
+              {tipo.esJudicial && (
+                <Field label="Rol procesal del cliente">
+                  <Select
+                    value={clienteRol}
+                    onChange={(v) => setClienteRol(v as RolParte)}
+                    opciones={ROLES}
+                    placeholder="Rol"
+                  />
+                </Field>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
@@ -355,18 +386,12 @@ export default function NuevoProcesoPage() {
           </h3>
           {esAdmin ? (
             <Field label="Asignar abogado" error={responsableError ? "Obligatorio" : undefined}>
-              <select
+              <BuscadorSelect
+                opciones={abogadosElegibles.map((m) => ({ id: m.id, nombre: m.nombre }))}
                 value={responsableId}
-                onChange={(e) => setResponsableId(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
-              >
-                <option value="">Selecciona un abogado…</option>
-                {abogadosElegibles.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.nombre}
-                  </option>
-                ))}
-              </select>
+                onChange={setResponsableId}
+                placeholder="Buscar abogado por nombre…"
+              />
             </Field>
           ) : (
             <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -385,29 +410,59 @@ export default function NuevoProcesoPage() {
             datos={datos}
             onChange={setCampo}
             errores={errores}
+            // Decora las opciones que definen plazo (p. ej. tipo de petición → "(15 días hábiles)").
+            etiquetasOpcion={etiquetasPlazoOpciones(tipo.etapas)}
+            // Slots: vencimiento en vivo tras la fecha de radicación + uploader del
+            // poder tras el check "¿Requiere poder?".
+            slotDespuesDe={{
+              fechaRadicacion: <VencimientoHint tipoProcesoId={tipo.id} datos={datos} />,
+              requierePoder: Boolean(datos.requierePoder) ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">Poder</p>
+                  <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300/80">
+                    Adjunta el poder. Se guardará vinculado al proceso al crearlo.
+                  </p>
+                  <input
+                    type="file"
+                    onChange={(e) => setPoderFile(e.target.files?.[0] ?? null)}
+                    className="mt-2 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 dark:text-slate-300 dark:file:bg-indigo-500/10 dark:file:text-indigo-300"
+                  />
+                  {poderFile && (
+                    <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">✓ {poderFile.name}</p>
+                  )}
+                </div>
+              ) : null,
+            }}
           />
         </Card>
 
-        <Card>
-          <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Datos judiciales <span className="font-normal text-slate-400">(opcional)</span>
-          </h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Radicado (23 dígitos)">
-              <Input value={radicado} onChange={setRadicado} placeholder="Aún sin radicar" />
-            </Field>
-            <Field label="Despacho / juzgado">
-              <Input value={despachoJuzgado} onChange={setDespachoJuzgado} placeholder="Ej. Juzgado 5º Civil del Circuito" />
-            </Field>
-            <Field label="Cuantía">
-              <Select value={cuantiaLabel} onChange={setCuantiaLabel} opciones={CUANTIAS.map((c) => c.label)} />
-            </Field>
-            <Field label="Valor de la cuantía (COP)">
-              <MoneyInput value={cuantiaValor} onChange={setCuantiaValor} placeholder="0" />
-            </Field>
-          </div>
-        </Card>
+        {/* Datos judiciales: solo para procesos que van ante un juez (no en trámites
+            ante entidad como el derecho de petición). */}
+        {tipo.esJudicial && (
+          <Card>
+            <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Datos judiciales <span className="font-normal text-slate-400">(opcional)</span>
+            </h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Radicado (23 dígitos)">
+                <Input value={radicado} onChange={setRadicado} placeholder="Aún sin radicar" />
+              </Field>
+              <Field label="Despacho / juzgado">
+                <Input value={despachoJuzgado} onChange={setDespachoJuzgado} placeholder="Ej. Juzgado 5º Civil del Circuito" />
+              </Field>
+              <Field label="Cuantía">
+                <Select value={cuantiaLabel} onChange={setCuantiaLabel} opciones={CUANTIAS.map((c) => c.label)} />
+              </Field>
+              <Field label="Valor de la cuantía (COP)">
+                <MoneyInput value={cuantiaValor} onChange={setCuantiaValor} placeholder="0" />
+              </Field>
+            </div>
+          </Card>
+        )}
 
+        {/* Partes (litigantes con rol procesal) solo para procesos judiciales;
+            un trámite ante una entidad (DdP) no tiene contraparte. */}
+        {tipo.esJudicial && (
         <Card>
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -482,6 +537,7 @@ export default function NuevoProcesoPage() {
             </div>
           )}
         </Card>
+        )}
 
         {(errores.length > 0 || tituloError) && (
           <Card className="border-red-200 bg-red-50 text-sm text-red-700">

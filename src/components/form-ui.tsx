@@ -5,7 +5,7 @@
 // usa <FormularioDinamico> y las pantallas de procesos. Regla del proyecto:
 // todo campo requerido marca su label con un asterisco rojo (*).
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 const base =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
@@ -105,11 +105,14 @@ export function Select({
   onChange,
   opciones,
   placeholder = "Selecciona…",
+  etiquetas,
 }: {
   value: string;
   onChange: (v: string) => void;
   opciones: string[];
   placeholder?: string;
+  // Etiqueta a MOSTRAR por valor (el value guardado no cambia). Opcional.
+  etiquetas?: Record<string, string>;
 }) {
   return (
     <select
@@ -120,10 +123,64 @@ export function Select({
       <option value="">{placeholder}</option>
       {opciones.map((o) => (
         <option key={o} value={o}>
-          {o}
+          {etiquetas?.[o] ?? o}
         </option>
       ))}
     </select>
+  );
+}
+
+/**
+ * Select con BÚSQUEDA por nombre (combobox). `value` = id seleccionado; en el
+ * input se muestra el nombre. Al enfocar/escribir filtra las opciones por nombre.
+ */
+export function BuscadorSelect({
+  opciones,
+  value,
+  onChange,
+  placeholder = "Buscar por nombre…",
+}: {
+  opciones: { id: string; nombre: string }[];
+  value: string;
+  onChange: (id: string) => void;
+  placeholder?: string;
+}) {
+  const [q, setQ] = useState("");
+  const [abierto, setAbierto] = useState(false);
+  const sel = opciones.find((o) => o.id === value);
+  const filtro = q.trim().toLowerCase();
+  const filtradas = filtro ? opciones.filter((o) => o.nombre.toLowerCase().includes(filtro)) : opciones;
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={abierto ? q : sel?.nombre ?? ""}
+        placeholder={placeholder}
+        onChange={(e) => { setQ(e.target.value); setAbierto(true); }}
+        onFocus={() => { setQ(""); setAbierto(true); }}
+        onBlur={() => setTimeout(() => setAbierto(false), 150)}
+        className={base}
+      />
+      {abierto && (
+        <ul className="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+          {filtradas.length === 0 ? (
+            <li className="px-3 py-2 text-sm text-slate-400">Sin resultados</li>
+          ) : (
+            filtradas.map((o) => (
+              <li key={o.id}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); onChange(o.id); setAbierto(false); }}
+                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10 ${o.id === value ? "font-medium text-indigo-600 dark:text-indigo-400" : "text-slate-700 dark:text-slate-200"}`}
+                >
+                  {o.nombre}
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
   );
 }
 

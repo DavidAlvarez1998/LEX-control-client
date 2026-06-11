@@ -4,6 +4,7 @@
 // su esquema (lista de campos). Un solo componente sirve para todos los tipos de
 // proceso de todas las áreas. Ver lib/procesos.ts (CampoEsquema).
 
+import { Fragment, type ReactNode } from "react";
 import type { CampoEsquema } from "@/lib/procesos";
 import { campoEfectivamenteRequerido, campoVisible } from "@/lib/procesos";
 import {
@@ -22,12 +23,20 @@ export function FormularioDinamico({
   onChange,
   errores = [],
   className = "space-y-4",
+  slotDespuesDe,
+  etiquetasOpcion,
 }: {
   esquema: CampoEsquema[];
   datos: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
   errores?: string[]; // keys con error
   className?: string; // contenedor: por defecto una columna; el detalle pasa un grid
+  // Contenido extra a insertar JUSTO DESPUÉS de un campo (por su key). P. ej. el
+  // uploader del poder tras "requierePoder". Mantiene el componente genérico.
+  slotDespuesDe?: Partial<Record<string, ReactNode>>;
+  // Etiquetas de opción a MOSTRAR por campo (value→label), p. ej. el tipo de
+  // petición con su plazo. El valor guardado no cambia.
+  etiquetasOpcion?: Record<string, Record<string, string>>;
 }) {
   return (
     <div className={className}>
@@ -70,6 +79,7 @@ export function FormularioDinamico({
                 value={(v as string) ?? ""}
                 onChange={(x) => onChange(campo.key, x)}
                 opciones={campo.opciones ?? []}
+                etiquetas={etiquetasOpcion?.[campo.key]}
               />
             );
             break;
@@ -89,25 +99,29 @@ export function FormularioDinamico({
         }
 
         // El checkbox ya trae su propio label; el resto usa <Field>.
-        if (campo.tipo === "boolean") {
-          return (
-            <div key={campo.key} className="pt-1">
+        const elemento =
+          campo.tipo === "boolean" ? (
+            <div className="pt-1">
               <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
                 {campo.label}
                 {requerido && <span className="ml-0.5 text-red-500">*</span>}
               </span>
               {control}
             </div>
+          ) : (
+            <Field label={campo.label} requerido={requerido} error={error}>
+              {control}
+              {campo.ayuda && (
+                <span className="mt-1 block text-xs text-slate-400">{campo.ayuda}</span>
+              )}
+            </Field>
           );
-        }
 
         return (
-          <Field key={campo.key} label={campo.label} requerido={requerido} error={error}>
-            {control}
-            {campo.ayuda && (
-              <span className="mt-1 block text-xs text-slate-400">{campo.ayuda}</span>
-            )}
-          </Field>
+          <Fragment key={campo.key}>
+            {elemento}
+            {slotDespuesDe?.[campo.key]}
+          </Fragment>
         );
       })}
     </div>

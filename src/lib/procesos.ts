@@ -56,7 +56,12 @@ export type ReglasEtapa = {
   plazoDiasPorValorDe?: { campo: string; mapa: Record<string, number> };
 };
 
-export type AccionEtapa = { tipo: "crearDerivado"; tipoDestinoNombre: string };
+export type AccionEtapa = {
+  tipo: "crearDerivado";
+  tipoDestinoNombre: string;
+  copiarDatos?: string[];
+  copiarCliente?: boolean;
+};
 
 export type EtapaDef = {
   key: string;
@@ -75,6 +80,7 @@ export type TipoProceso = {
   nombre: string;
   descripcion?: string;
   jurisdiccion: Jurisdiccion;
+  esJudicial: boolean; // true = va ante un juez (radicado 23díg/juzgado/cuantía); false = trámite ante entidad (DdP)
   areaSlugs: string[]; // etiquetas de área de práctica
   esquemaFormulario: CampoEsquema[];
   etapas: EtapaDef[];
@@ -169,6 +175,26 @@ export function campoEfectivamenteRequerido(
 ): boolean {
   if (!campoVisible(campo, datos)) return false;
   return campo.requerido || (campo.requeridoSi != null && evaluarCondicion(campo.requeridoSi, datos));
+}
+
+/**
+ * Etiquetas de opción decoradas con el plazo, para los selects que determinan un
+ * vencimiento por valor (p. ej. "Tipo de petición" → "General (15 días hábiles)").
+ * Devuelve `{ [fieldKey]: { [valor]: etiqueta } }`. El VALOR guardado NO cambia
+ * (la etiqueta es solo para mostrar). Se deriva de `plazoDiasPorValorDe` de las etapas.
+ */
+export function etiquetasPlazoOpciones(etapas: EtapaDef[]): Record<string, Record<string, string>> {
+  const out: Record<string, Record<string, string>> = {};
+  for (const e of etapas) {
+    const p = e.reglas?.plazoDiasPorValorDe;
+    if (!p) continue;
+    const unidad = e.reglas?.plazoTipoDias === "calendario" ? "días calendario" : "días hábiles";
+    out[p.campo] = { ...(out[p.campo] ?? {}) };
+    for (const [valor, dias] of Object.entries(p.mapa)) {
+      out[p.campo][valor] = `${valor} (${dias} ${unidad})`;
+    }
+  }
+  return out;
 }
 
 // --- Validación del formulario dinámico (misma lógica que usará el server) ---

@@ -1,7 +1,7 @@
 // Cliente de la API de Procesos. Reemplaza el mock de localStorage por llamadas
 // reales a lex-control-api (Express, :4000). Mantiene el contrato de procesos.ts.
 
-import { api } from "./api";
+import { api, uploadFile } from "./api";
 import type {
   AreaPractica,
   CampoEsquema,
@@ -119,6 +119,7 @@ export type ProcesoDetalle = {
   tipoProceso: {
     id: string;
     nombre: string;
+    esJudicial: boolean;
     esquemaFormulario: CampoEsquema[];
     etapas: EtapaDef[];
     jurisdiccion: Jurisdiccion;
@@ -163,6 +164,28 @@ export function adjuntarDocumento(
   return api.post<DocumentoProceso>(`/procesos/${id}/documentos`, { nombre, url });
 }
 
+/** Calcula (sin crear nada) la fecha de vencimiento que tendría un proceso de este
+ *  tipo con estos datos — para mostrarla en vivo en el formulario. */
+export function calcularVencimiento(
+  tipoProcesoId: string,
+  datos: Record<string, unknown>,
+): Promise<{ fechaLimite: string | null; dias: number | null; tipoDias: "habiles" | "calendario" | null; etapaKey: string | null }> {
+  return api.post(`/procesos/calcular-vencimiento`, { tipoProcesoId, datos });
+}
+
+/** Sube un archivo real (multipart) al expediente; el binario va a tecnovapp y en
+ *  BD queda su ruta. `nombre` fija el nombre del documento (p. ej. "poder.pdf"). */
+export function subirArchivoProceso(
+  id: string,
+  file: File,
+  nombre?: string,
+): Promise<DocumentoProceso> {
+  const fd = new FormData();
+  fd.append("file", file);
+  if (nombre) fd.append("nombre", nombre);
+  return uploadFile<DocumentoProceso>(`/procesos/${id}/documentos/subir`, fd);
+}
+
 export function editarDocumento(
   id: string,
   docId: string,
@@ -177,6 +200,25 @@ export function eliminarDocumento(id: string, docId: string): Promise<void> {
 
 export function getProceso(id: string): Promise<ProcesoDetalle> {
   return api.get<ProcesoDetalle>(`/procesos/${id}`);
+}
+
+/** Un proceso de la cadena del caso (DdP → DdP reiteración → Tutela). */
+export type CasoNodo = {
+  id: string;
+  codigoInterno: string;
+  titulo: string;
+  tipoProcesoNombre: string;
+  esJudicial: boolean;
+  estado: EstadoProceso;
+  etapaActual: string;
+  fechaLimite: string | null;
+  casoRelacionadoId: string | null;
+  createdAt: string;
+};
+
+/** Cadena completa del caso (raíz → hojas) al que pertenece el proceso. */
+export function getCasoChain(id: string): Promise<CasoNodo[]> {
+  return api.get<CasoNodo[]>(`/procesos/${id}/caso`);
 }
 
 // --- Crear / mover etapa ---

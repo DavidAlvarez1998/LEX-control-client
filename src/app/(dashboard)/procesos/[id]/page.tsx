@@ -6,10 +6,12 @@ import { useEffect, useState } from "react";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { DocumentosProceso } from "@/components/documentos-proceso";
 import { DatosProceso } from "@/components/datos-proceso";
+import { PoderProceso } from "@/components/poder-proceso";
+import { CasoChain } from "@/components/caso-chain";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, evaluarCondicion, type EtapaDef } from "@/lib/procesos";
-import { actualizarProceso, escalarProceso, getProceso, moverEtapa, type ProcesoDetalle } from "@/lib/procesos-api";
+import { actualizarProceso, escalarProceso, getCasoChain, getProceso, moverEtapa, type CasoNodo, type ProcesoDetalle } from "@/lib/procesos-api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
@@ -19,11 +21,15 @@ export default function ExpedientePage() {
   const [bloqueo, setBloqueo] = useState<{ etapa: string; faltantes: string[]; motivo?: string } | null>(null);
   const [derivado, setDerivado] = useState<{ id: string; nuevo: boolean } | null>(null);
   const [escalando, setEscalando] = useState(false);
+  const [caso, setCaso] = useState<CasoNodo[]>([]);
 
+  const cargarCaso = () => getCasoChain(id).then(setCaso).catch(() => setCaso([]));
   useEffect(() => {
     getProceso(id)
       .then(setProceso)
       .catch(() => setProceso(null));
+    cargarCaso();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   if (proceso === undefined) {
@@ -66,6 +72,7 @@ export default function ExpedientePage() {
     try {
       const nuevo = await escalarProceso(proceso!.id);
       setDerivado({ id: nuevo.id, nuevo: true });
+      cargarCaso(); // refresca la barra de caso con el nuevo proceso
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
         const procesoId = (e.issues as { procesoId?: string })?.procesoId;
@@ -94,7 +101,12 @@ export default function ExpedientePage() {
         }
       />
 
-      {proceso.casoRelacionadoId && (
+      {/* Barra de caso: la cadena DdP → DdP reiteración → Tutela como un solo caso.
+          Reemplaza el viejo enlace "Ver caso relacionado" (solo aparece si hay >1). */}
+      <CasoChain nodos={caso} actualId={proceso.id} />
+
+      {/* Fallback: si por algo no cargó la cadena pero sí hay caso base, enlace simple. */}
+      {caso.length < 2 && proceso.casoRelacionadoId && (
         <div className="mb-4 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
           Este proceso deriva de un caso base.{" "}
           <Link
@@ -109,13 +121,22 @@ export default function ExpedientePage() {
       <Card className="mb-5">
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
           <Dato label="Código interno" value={proceso.codigoInterno} />
-          <RadicadoDato procesoId={proceso.id} valor={proceso.radicado} onSaved={setProceso} readOnly={!puedeEditar} />
+          {/* Datos judiciales: solo para procesos que van ante un juez. */}
+          {proceso.tipoProceso.esJudicial && (
+            <RadicadoDato procesoId={proceso.id} valor={proceso.radicado} onSaved={setProceso} readOnly={!puedeEditar} />
+          )}
           <Dato label="Estado" value={ESTADO_LABEL[proceso.estado]} />
           <Dato label="Cliente" value={proceso.cliente?.nombre ?? "—"} />
           <Dato label="Abogado responsable" value={proceso.responsable?.nombre ?? "Sin asignar"} />
-          <Dato label="Despacho / juzgado" value={proceso.despachoJuzgado ?? "—"} />
-          <Dato label="Cuantía" value={proceso.cuantiaValor ? `$${formatMoney(proceso.cuantiaValor)}` : "—"} />
-          <Dato label="Próxima audiencia" value={fecha(proceso.proximaAudiencia)} />
+          {proceso.tipoProceso.esJudicial && (
+            <Dato label="Despacho / juzgado" value={proceso.despachoJuzgado ?? "—"} />
+          )}
+          {proceso.tipoProceso.esJudicial && (
+            <Dato label="Cuantía" value={proceso.cuantiaValor ? `$${formatMoney(proceso.cuantiaValor)}` : "—"} />
+          )}
+          {proceso.tipoProceso.esJudicial && (
+            <Dato label="Próxima audiencia" value={fecha(proceso.proximaAudiencia)} />
+          )}
           <DatoVencimiento iso={proceso.fechaLimite} />
         </div>
       </Card>
@@ -132,6 +153,19 @@ export default function ExpedientePage() {
           readOnly={!puedeEditar}
         />
       </Card>
+
+      {/* Poder: aparece cuando el formulario marca requierePoder=Sí. Subir el
+          archivo (queda como "poder.pdf") satisface la regla que bloquea avanzar. */}
+      {Boolean(proceso.datos?.requierePoder) && (
+        <div className="mb-5">
+          <PoderProceso
+            procesoId={proceso.id}
+            documentos={proceso.documentos ?? []}
+            onChange={(documentos) => setProceso((p) => (p ? { ...p, documentos } : p))}
+            readOnly={!puedeEditar}
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-2">
