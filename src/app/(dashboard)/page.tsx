@@ -71,17 +71,28 @@ export default function InicioPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <h3 className="font-medium text-slate-800 dark:text-slate-100">Pendientes</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-slate-800 dark:text-slate-100">Pendientes</h3>
+            <Link href="/seguimiento" className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">Para hoy →</Link>
+          </div>
           {!alertas ? (
             <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">{loading ? "Cargando…" : "Sin pendientes (o el módulo comercial no está contratado)."}</p>
           ) : (
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-3 space-y-1">
               {ALERTAS_LABEL.map(([k, label]) => {
                 const n = alertas[k]?.length ?? 0;
-                return (
-                  <li key={k} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600 dark:text-slate-300">{label}</span>
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${n > 0 ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" : "bg-slate-100 text-slate-400 dark:bg-slate-800"}`}>{n}</span>
+                const destino = ["tareaVencida", "citaHoy", "prospectoSinSeguimiento"].includes(k) ? "/seguimiento" : "/clientes";
+                return n > 0 ? (
+                  <li key={k}>
+                    <Link href={destino} className="flex items-center justify-between rounded-md px-1.5 py-1 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
+                      <span className="text-slate-600 dark:text-slate-300">{label}</span>
+                      <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{n}</span>
+                    </Link>
+                  </li>
+                ) : (
+                  <li key={k} className="flex items-center justify-between px-1.5 py-1 text-sm">
+                    <span className="text-slate-400">{label}</span>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-400 dark:bg-slate-800">{n}</span>
                   </li>
                 );
               })}

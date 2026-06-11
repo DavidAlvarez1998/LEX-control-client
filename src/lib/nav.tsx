@@ -37,6 +37,17 @@ export const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    href: "/seguimiento",
+    label: "Seguimiento",
+    roles: ["COMERCIAL", "JURIDICO"],
+    icon: (
+      <svg className={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+        <path d="m9 11 3 3L22 4" />
+      </svg>
+    ),
+  },
+  {
     href: "/agenda",
     label: "Agenda",
     // Sin `roles`: la agenda está disponible para TODO usuario del despacho.

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { DocumentosProceso } from "@/components/documentos-proceso";
 import { DatosProceso } from "@/components/datos-proceso";
-import { PoderProceso } from "@/components/poder-proceso";
+import { DocumentosRequeridos } from "@/components/documentos-requeridos";
 import { CasoChain } from "@/components/caso-chain";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
@@ -154,18 +154,19 @@ export default function ExpedientePage() {
         />
       </Card>
 
-      {/* Poder: aparece cuando el formulario marca requierePoder=Sí. Subir el
-          archivo (queda como "poder.pdf") satisface la regla que bloquea avanzar. */}
-      {Boolean(proceso.datos?.requierePoder) && (
-        <div className="mb-5">
-          <PoderProceso
-            procesoId={proceso.id}
-            documentos={proceso.documentos ?? []}
-            onChange={(documentos) => setProceso((p) => (p ? { ...p, documentos } : p))}
-            readOnly={!puedeEditar}
-          />
-        </div>
-      )}
+      {/* Documentos requeridos por las etapas (peticion.pdf, poder.pdf,
+          reiteracion.pdf…): un botón "Subir" por cada uno, ya con el nombre exacto
+          que pide el gate, para que avanzar de etapa no se bloquee. */}
+      <div className="mb-5">
+        <DocumentosRequeridos
+          procesoId={proceso.id}
+          etapas={proceso.tipoProceso.etapas ?? []}
+          datos={proceso.datos}
+          documentos={proceso.documentos ?? []}
+          onChange={(documentos) => setProceso((p) => (p ? { ...p, documentos } : p))}
+          readOnly={!puedeEditar}
+        />
+      </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-2">

@@ -62,6 +62,7 @@ const ESTADOS: Estado[] = ["ACTIVO", "FINALIZADO", "SUSPENDIDO"];
 const FORMA_PAGO = ["Mensual", "Por caso", "Comisión"];
 const MODALIDAD = ["Presencial", "Remoto", "Híbrido"];
 const UNIDAD = ["DIA", "MES", "AÑO"];
+const UNIDAD_LABEL: Record<string, string> = { DIA: "Días", MES: "Meses", AÑO: "Años" };
 
 const ESTADO_STYLES: Record<Estado, string> = {
   ACTIVO: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
@@ -462,12 +463,19 @@ function ContratosContent() {
             <Field label="Fecha de terminación">
               <Input type="date" value={form.fechaFin ?? ""} onChange={(v) => set("fechaFin", v)} />
             </Field>
-            <Field label="Duración (valor)">
-              <NumberInput value={form.duracionValor ?? ""} onChange={(v) => set("duracionValor", v)} placeholder="Ej. 12" />
-            </Field>
-            <Field label="Duración (unidad)">
-              <Select value={form.duracionUnidad ?? ""} onChange={(v) => set("duracionUnidad", v)} opciones={UNIDAD} />
-            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Duración del contrato">
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <NumberInput value={form.duracionValor ?? ""} onChange={(v) => set("duracionValor", v)} placeholder="Ej. 12" />
+                  </div>
+                  <div className="flex-1">
+                    <Select value={form.duracionUnidad ?? ""} onChange={(v) => set("duracionUnidad", v)} opciones={UNIDAD} etiquetas={UNIDAD_LABEL} placeholder="Unidad…" />
+                  </div>
+                </div>
+                <span className="mt-1 block text-xs text-slate-400">Cuánto dura el contrato (vigencia). Ej.: 12 meses, 1 año.</span>
+              </Field>
+            </div>
           </div>
         )}
 

@@ -5,7 +5,48 @@ import { api } from "./api";
 
 export const TIPO_GESTION = ["LLAMADA", "WHATSAPP", "REUNION", "VIDEOLLAMADA", "CORREO", "OTRO"] as const;
 
+// Resultado tipificado de una gestión (cierra el ciclo del contacto).
+export const DISPOSICION = ["CONTACTADO", "NO_CONTESTA", "INTERESADO", "NO_VIABLE", "OTRO"] as const;
+export type Disposicion = (typeof DISPOSICION)[number];
+export const DISPOSICION_LABEL: Record<Disposicion, string> = {
+  CONTACTADO: "Contactado",
+  NO_CONTESTA: "No contesta",
+  INTERESADO: "Interesado",
+  NO_VIABLE: "No viable",
+  OTRO: "Otro",
+};
+
 export type ClienteMin = { id: string; nombre: string; telefono: string | null };
+
+// Señal derivada por cliente (pipeline) — calculada on-read en la API.
+export type PipelineItem = {
+  id: string;
+  nombre: string;
+  telefono: string | null;
+  estado: string;
+  viabilidad: string | null;
+  canalIngreso: string | null;
+  faseActual: string | null;
+  diasEnFase: number | null;
+  ultimaGestionEn: string | null;
+  diasSinGestion: number | null;
+  ultimaDisposicion: Disposicion | null;
+  proximaTareaEn: string | null;
+  proximaTarea: string | null;
+  tareaVencida: boolean;
+};
+
+// Ítem accionable del cockpit "Para hoy".
+export type HoyItem = {
+  id: string | null;
+  clienteId: string | null;
+  nombre: string | null;
+  telefono: string | null;
+  tipoGestion: string | null;
+  tarea: string | null;
+  fechaProximaTarea: string | null;
+};
+export type HoyBuckets = { vencidas: HoyItem[]; hoy: HoyItem[]; frios: HoyItem[] };
 
 // Un seguimiento comercial visto como ítem de agenda (fechaProximaTarea = el slot).
 export type AgendaItem = {
@@ -64,8 +105,14 @@ export const comercialApi = {
     api.get<Agenda>(`/comercial/agenda${qs(q)}`),
   addSeguimiento: (
     clienteId: string | undefined,
-    body: { tipoGestion: string; titulo?: string; motivoContacto?: string; fechaProximaTarea?: string; comercialId?: string },
+    body: { tipoGestion: string; titulo?: string; motivoContacto?: string; resultado?: string; disposicion?: Disposicion; proximaTarea?: string; fechaProximaTarea?: string; comercialId?: string },
   ) => api.post<AgendaItem>("/comercial/seguimientos", { ...(clienteId ? { clienteId } : {}), ...body }),
+
+  // --- Pipeline (señales derivadas) + cockpit "Para hoy" ---
+  pipeline: (filtros?: { mios?: boolean }) =>
+    api.get<PipelineItem[]>(`/comercial/pipeline${qs({ mios: filtros?.mios })}`),
+  hoy: (filtros?: { mios?: boolean }) =>
+    api.get<HoyBuckets>(`/comercial/hoy${qs({ mios: filtros?.mios })}`),
   editarSeguimiento: (id: string, body: Record<string, unknown>) =>
     api.patch<AgendaItem>(`/comercial/seguimientos/${id}`, body),
   completarSeguimiento: (id: string, body: { resultado?: string }) =>

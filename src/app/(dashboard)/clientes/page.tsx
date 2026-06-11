@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { api, errorMessage } from "@/lib/api";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 import { getUser } from "@/lib/auth";
+import { comercialApi, DISPOSICION_LABEL, type PipelineItem } from "@/lib/comercial-api";
 
 type Estado = "PROSPECTO" | "CLIENTE" | "DESCARTADO";
 
@@ -66,6 +67,7 @@ const bonito = (s: string | null) => (s ? s.replace(/_/g, " ").toLowerCase() : "
 
 export default function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [pipe, setPipe] = useState<Record<string, PipelineItem>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -110,9 +112,12 @@ export default function ClientesPage() {
     setLoading(true);
     setError(null);
     try {
-      setClientes(
-        await api.get<Cliente[]>(`/clientes${soloMios ? "?mios=true" : ""}`),
-      );
+      const [cs, pipeArr] = await Promise.all([
+        api.get<Cliente[]>(`/clientes${soloMios ? "?mios=true" : ""}`),
+        comercialApi.pipeline({ mios: soloMios }).catch(() => [] as PipelineItem[]),
+      ]);
+      setClientes(cs);
+      setPipe(Object.fromEntries(pipeArr.map((p) => [p.id, p])));
     } catch (err) {
       setError(errorMessage(err, "Error al cargar"));
     } finally {
@@ -282,7 +287,7 @@ export default function ClientesPage() {
                 <th className="px-5 py-3 font-medium">Nombre</th>
                 <th className="px-5 py-3 font-medium">Documento</th>
                 <th className="px-5 py-3 font-medium">Canal</th>
-                <th className="px-5 py-3 font-medium">Viabilidad</th>
+                <th className="px-5 py-3 font-medium">Seguimiento</th>
                 <th className="px-5 py-3 font-medium">Estado</th>
                 <th className="px-5 py-3" />
               </tr>
@@ -303,7 +308,26 @@ export default function ClientesPage() {
                     {c.numeroDocumento ? `${c.tipoDocumento ?? ""} ${c.numeroDocumento}` : "—"}
                   </td>
                   <td className="px-5 py-3 capitalize text-slate-600 dark:text-slate-300">{bonito(c.canalIngreso)}</td>
-                  <td className="px-5 py-3 capitalize text-slate-600 dark:text-slate-300">{bonito(c.viabilidad)}</td>
+                  <td className="px-5 py-3 text-xs text-slate-600 dark:text-slate-300">
+                    {(() => {
+                      const s = pipe[c.id];
+                      if (!s) return <span className="text-slate-400">—</span>;
+                      return (
+                        <div className="space-y-0.5">
+                          {s.faseActual && <div className="font-medium capitalize text-slate-700 dark:text-slate-200">{bonito(s.faseActual)}</div>}
+                          <div className={s.diasSinGestion != null && s.diasSinGestion >= 7 ? "text-amber-600 dark:text-amber-400" : ""}>
+                            {s.diasSinGestion == null ? "Sin gestión" : s.diasSinGestion === 0 ? "Hoy" : `Hace ${s.diasSinGestion}d`}
+                            {s.ultimaDisposicion ? ` · ${DISPOSICION_LABEL[s.ultimaDisposicion]}` : ""}
+                          </div>
+                          {s.proximaTareaEn && (
+                            <div className={s.tareaVencida ? "font-medium text-red-600 dark:text-red-400" : "text-slate-400"}>
+                              {s.tareaVencida ? "⚠ Tarea vencida" : `Próx: ${new Date(s.proximaTareaEn).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}`}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </td>
                   <td className="px-5 py-3">
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${ESTADO_STYLES[c.estado]}`}>{c.estado}</span>
                   </td>
