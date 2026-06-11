@@ -10,7 +10,7 @@ import { Button, Modal, PlusIcon } from "@/components/ui";
 import { Field, Input, MoneyInput, Select, Textarea } from "@/components/form-ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge, Banda, SectionCard, Tabla, humaniza, money, useCargar } from "./bits";
-import { ApiError } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 import {
   contableApi, ESTADO_CUENTA, TIPO_CUENTA,
   type Cuenta, type CuentaDetalle,
@@ -60,7 +60,7 @@ export function CuentasTab({ onCuentasChange }: { onCuentasChange: () => void })
       await recargar();
       onCuentasChange();
     } catch (err) {
-      setFormError(err instanceof ApiError || err instanceof Error ? err.message : "Error al guardar.");
+      setFormError(errorMessage(err, "Error al guardar."));
     } finally {
       setSaving(false);
     }
@@ -81,7 +81,7 @@ export function CuentasTab({ onCuentasChange }: { onCuentasChange: () => void })
       await recargar();
       onCuentasChange();
     } catch (err) {
-      setBorrarError(err instanceof ApiError || err instanceof Error ? err.message : "No se pudo borrar.");
+      setBorrarError(errorMessage(err, "No se pudo borrar."));
     } finally {
       setBorrando(false);
     }

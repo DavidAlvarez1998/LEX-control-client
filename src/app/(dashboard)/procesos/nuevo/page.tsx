@@ -6,6 +6,7 @@ import { Button, Card, Modal, PageHeader } from "@/components/ui";
 import { BuscadorSelect, Field, Input, MoneyInput, Select, SelectableCard } from "@/components/form-ui";
 import { FormularioDinamico } from "@/components/formulario-dinamico";
 import { VencimientoHint } from "@/components/vencimiento-hint";
+import { errorMessage } from "@/lib/api";
 import { getUser, type AuthUser } from "@/lib/auth";
 import {
   etiquetasPlazoOpciones,
@@ -218,7 +219,7 @@ export default function NuevoProcesoPage() {
       }
       router.push(`/procesos/${creado.id}`);
     } catch (e) {
-      setApiError(e instanceof Error ? e.message : "No se pudo crear el proceso");
+      setApiError(errorMessage(e, "No se pudo crear el proceso"));
       setGuardando(false);
     }
   }

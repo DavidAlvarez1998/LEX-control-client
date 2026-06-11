@@ -9,7 +9,7 @@ import { useState } from "react";
 import { Button } from "./ui";
 import { ConfirmDialog } from "./confirm-dialog";
 import { Field, Input } from "./form-ui";
-import { api, ApiError, uploadFile } from "@/lib/api";
+import { api, errorMessage, uploadFile } from "@/lib/api";
 
 export type Categoria = "PERSONAL" | "PROFESIONAL" | "CONTRACTUAL" | "FINANCIERO" | "LEGAL";
 
@@ -70,7 +70,7 @@ export function DocumentosContrato({
       setArchivo(null);
       setNombre("");
     } catch (err) {
-      onError(err instanceof ApiError ? err.message : "Error al subir el documento");
+      onError(errorMessage(err, "Error al subir el documento"));
     } finally {
       setSubiendo(false);
     }
@@ -85,7 +85,7 @@ export function DocumentosContrato({
       onChange(docs.filter((d) => d.id !== confirmar.id));
       setConfirmar(null);
     } catch (err) {
-      onError(err instanceof ApiError ? err.message : "Error al eliminar el documento");
+      onError(errorMessage(err, "Error al eliminar el documento"));
     } finally {
       setBorrando(false);
     }

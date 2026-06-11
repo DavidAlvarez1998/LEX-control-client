@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, PageHeader } from "@/components/ui";
 import { DocumentosContrato, type DocumentoContrato } from "@/components/documentos-contrato";
-import { api, ApiError } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 
@@ -51,7 +51,7 @@ export default function CuentaPage() {
       .get<MiEmpresa>("/mi-empresa")
       .then(setEmpresa)
       .catch((e) =>
-        setError(e instanceof Error ? e.message : "Error al cargar tu empresa"),
+        setError(errorMessage(e, "Error al cargar tu empresa")),
       )
       .finally(() => setLoading(false));
   }
@@ -191,7 +191,7 @@ function MisContratos() {
     api
       .get<ContratoMio[]>("/contratos/mio")
       .then(setContratos)
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Error al cargar tu contrato"));
+      .catch((e) => setError(errorMessage(e, "Error al cargar tu contrato")));
   }, []);
 
   // Actualiza los documentos del contrato `id` tras subir/quitar.

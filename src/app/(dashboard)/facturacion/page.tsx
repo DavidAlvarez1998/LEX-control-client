@@ -5,7 +5,7 @@ import { Button, Card, EmptyState, Modal, PageHeader, PlusIcon } from "@/compone
 import { Field, Input, MoneyInput, NumberInput, Select } from "@/components/form-ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
-import { api } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 
 type EstadoPago = "BORRADOR" | "PENDIENTE" | "PARCIAL" | "PAGADA" | "VENCIDA" | "ANULADA";
@@ -93,7 +93,7 @@ export default function FacturacionPage() {
       setFacturas(fs);
       setClientes(cs.map((c) => ({ id: c.id, nombre: c.nombre })));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar");
+      setError(errorMessage(err, "Error al cargar"));
     } finally {
       setLoading(false);
     }
@@ -141,7 +141,7 @@ export default function FacturacionPage() {
       await cargar();
       setAviso("Borrador de factura creado.");
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Error al crear la factura");
+      setFormError(errorMessage(err, "Error al crear la factura"));
     } finally {
       setSaving(false);
     }
@@ -152,7 +152,7 @@ export default function FacturacionPage() {
     try {
       setDetalle(await api.get<Factura>(`/facturacion/facturas/${id}`));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al abrir la factura");
+      setError(errorMessage(err, "Error al abrir la factura"));
     }
   }
 
@@ -168,7 +168,7 @@ export default function FacturacionPage() {
     } catch (err) {
       setConfirm(null);
       setConfirmInput("");
-      setError(err instanceof Error ? err.message : "Error");
+      setError(errorMessage(err, "Error"));
     } finally {
       setConfirmBusy(false);
     }
@@ -243,7 +243,7 @@ export default function FacturacionPage() {
       await abrirDetalle(actualizada.id);
       setAviso("Pago registrado.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al registrar el pago");
+      setError(errorMessage(err, "Error al registrar el pago"));
     } finally {
       setSaving(false);
     }

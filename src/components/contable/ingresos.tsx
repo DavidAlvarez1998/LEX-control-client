@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Button, Modal, PlusIcon } from "@/components/ui";
 import { Field, Input, MoneyInput, Select, Textarea } from "@/components/form-ui";
 import { Badge, Banda, SectionCard, Tabla, fmtFecha, money, useCargar } from "./bits";
-import { ApiError } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 import {
   contableApi, ESTADO_PAGO_INGRESO, METODO_PAGO, TIPO_COBRO,
   type Ingreso, type Lookups,
@@ -46,7 +46,7 @@ export function IngresosTab({ lookups }: { lookups: Lookups }) {
       setForm(vacio);
       await recargar();
     } catch (err) {
-      setFormError(err instanceof ApiError || err instanceof Error ? err.message : "Error al registrar.");
+      setFormError(errorMessage(err, "Error al registrar."));
     } finally {
       setSaving(false);
     }

@@ -7,7 +7,7 @@ import { Button, Modal, PlusIcon } from "@/components/ui";
 import { Field, Input, MoneyInput, Select, Textarea } from "@/components/form-ui";
 import { Badge, Banda, SectionCard, Tabla, fmtFecha, humaniza, money, useCargar } from "./bits";
 import { ProcesoCuenta, SelectCliente } from "./ingresos";
-import { ApiError } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 import {
   contableApi, CATEGORIA_EGRESO, ESTADO_GASTO, METODO_PAGO, TIPO_GASTO,
   type Egreso, type Lookups,
@@ -59,7 +59,7 @@ export function EgresosTab({ lookups }: { lookups: Lookups }) {
       setOpen(false);
       await recargar();
     } catch (err) {
-      setFormError(err instanceof ApiError || err instanceof Error ? err.message : "Error al guardar.");
+      setFormError(errorMessage(err, "Error al guardar."));
     } finally {
       setSaving(false);
     }

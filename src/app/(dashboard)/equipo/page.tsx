@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Button, Card, EmptyState, PageHeader, PlusIcon } from "@/components/ui";
 import { Field, Input } from "@/components/form-ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { api, ApiError } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 
 type Estado = "ACTIVO" | "PENDIENTE" | "INACTIVO";
@@ -107,7 +107,7 @@ export default function EquipoPage() {
       setConfirm(null);
     } catch (err) {
       setConfirm(null);
-      setError(err instanceof Error ? err.message : "Error");
+      setError(errorMessage(err, "Error"));
     } finally {
       setConfirmBusy(false);
     }
@@ -130,7 +130,7 @@ export default function EquipoPage() {
       setMiembros(ms);
       setCupos(Object.fromEntries(cs.map((c) => [c.rol, c])) as Record<Rol, Cupo>);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar");
+      setError(errorMessage(err, "Error al cargar"));
     } finally {
       setLoading(false);
     }
@@ -175,9 +175,7 @@ export default function EquipoPage() {
       setLink({ url: activationUrl, nombre: user.nombre });
     } catch (err) {
       setFormError(
-        err instanceof ApiError || err instanceof Error
-          ? err.message
-          : "Error al crear el usuario",
+        errorMessage(err, "Error al crear el usuario"),
       );
     } finally {
       setSaving(false);
@@ -205,9 +203,7 @@ export default function EquipoPage() {
       setAviso(`Roles de "${editar.nombre}" actualizados.`);
     } catch (err) {
       setEditError(
-        err instanceof ApiError || err instanceof Error
-          ? err.message
-          : "Error al actualizar los roles",
+        errorMessage(err, "Error al actualizar los roles"),
       );
     } finally {
       setEditSaving(false);
@@ -227,7 +223,7 @@ export default function EquipoPage() {
     // Activar no es destructivo → sin confirmación. Desactivar sí pregunta.
     if (!m.activo) {
       aplicarActivo(m).catch((err) =>
-        setError(err instanceof Error ? err.message : "Error al activar el usuario"),
+        setError(errorMessage(err, "Error al activar el usuario")),
       );
       return;
     }

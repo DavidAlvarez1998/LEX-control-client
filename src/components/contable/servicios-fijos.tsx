@@ -10,7 +10,7 @@ import { useState } from "react";
 import { Button, Modal, PlusIcon } from "@/components/ui";
 import { Field, Input, MoneyInput, NumberInput, Select } from "@/components/form-ui";
 import { Badge, Banda, SectionCard, Tabla, fmtFecha, humaniza, money, useCargar } from "./bits";
-import { ApiError } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 import {
   contableApi, ESTADO_SERVICIO, FRECUENCIA_SERVICIO, TIPO_SERVICIO_FIJO,
   periodoActual, type Lookups, type ServicioFijo, type ServicioFijoRecurrente,
@@ -84,7 +84,7 @@ export function ServiciosFijosTab({ lookups }: { lookups: Lookups }) {
       setOpen(false);
       await recargar();
     } catch (err) {
-      setFormError(err instanceof ApiError || err instanceof Error ? err.message : "Error al guardar.");
+      setFormError(errorMessage(err, "Error al guardar."));
     } finally {
       setSaving(false);
     }
@@ -124,7 +124,7 @@ export function ServiciosFijosTab({ lookups }: { lookups: Lookups }) {
       setOpenRec(false);
       await rec.recargar();
     } catch (err) {
-      setFormRecError(err instanceof ApiError || err instanceof Error ? err.message : "Error al guardar.");
+      setFormRecError(errorMessage(err, "Error al guardar."));
     } finally {
       setSavingRec(false);
     }
@@ -143,7 +143,7 @@ export function ServiciosFijosTab({ lookups }: { lookups: Lookups }) {
       setAviso(`Periodo ${r.periodo}: ${r.generadas} generadas · ${r.omitidas} ya existían (de ${r.candidatas} plantillas que aplican).`);
       await recargar();
     } catch (err) {
-      setAviso(err instanceof ApiError || err instanceof Error ? err.message : "Error al generar.");
+      setAviso(errorMessage(err, "Error al generar."));
     } finally {
       setGenerando(false);
     }

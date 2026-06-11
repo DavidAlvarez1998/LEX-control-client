@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui";
-import { ApiError, setPassword } from "@/lib/api";
+import { errorMessage, setPassword } from "@/lib/api";
 import { clearSession } from "@/lib/auth";
 
 const MIN_LEN = 8;
@@ -73,9 +73,7 @@ function ActivarForm() {
       setDone(true);
     } catch (err) {
       setError(
-        err instanceof ApiError || err instanceof Error
-          ? err.message
-          : "No se pudo activar la cuenta.",
+        errorMessage(err, "No se pudo activar la cuenta."),
       );
     } finally {
       setLoading(false);

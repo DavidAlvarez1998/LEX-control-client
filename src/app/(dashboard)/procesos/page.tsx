@@ -11,6 +11,7 @@ import {
   type EstadoProceso,
 } from "@/lib/procesos";
 import { getAreas, listProcesos, type ProcesoListItem } from "@/lib/procesos-api";
+import { errorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 import { VencimientosBanner } from "@/components/vencimientos-banner";
@@ -39,7 +40,7 @@ export default function ProcesosPage() {
     const estado = estadoLabel ? ESTADO_POR_LABEL[estadoLabel] : undefined;
     listProcesos({ area, estado })
       .then((r) => setItems(r.items))
-      .catch((e) => setError(e instanceof Error ? e.message : "Error al cargar"))
+      .catch((e) => setError(errorMessage(e, "Error al cargar")))
       .finally(() => setLoading(false));
   }, [areas, areaNombre, estadoLabel]);
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button, Card, EmptyState, PageHeader, PlusIcon } from "@/components/ui";
 import { Field, Input, Select, Textarea } from "@/components/form-ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { api, ApiError } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 import { getUser } from "@/lib/auth";
 
@@ -93,7 +93,7 @@ export default function ClientesPage() {
       setAviso(ok);
     } catch (err) {
       setConfirm(null);
-      setError(err instanceof Error ? err.message : "Error");
+      setError(errorMessage(err, "Error"));
     } finally {
       setConfirmBusy(false);
     }
@@ -114,7 +114,7 @@ export default function ClientesPage() {
         await api.get<Cliente[]>(`/clientes${soloMios ? "?mios=true" : ""}`),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar");
+      setError(errorMessage(err, "Error al cargar"));
     } finally {
       setLoading(false);
     }
@@ -183,7 +183,7 @@ export default function ClientesPage() {
       await cargar();
       setAviso(editId ? "Cliente actualizado." : "Prospecto creado.");
     } catch (err) {
-      setFormError(err instanceof ApiError || err instanceof Error ? err.message : "Error al guardar");
+      setFormError(errorMessage(err, "Error al guardar"));
     } finally {
       setSaving(false);
     }

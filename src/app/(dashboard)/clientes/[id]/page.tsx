@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Card } from "@/components/ui";
 import { Field, Input, MoneyInput, Select, Textarea } from "@/components/form-ui";
-import { api } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { comercialApi, listComerciales, type CarteraResumen, type ComisionDespacho, type MiembroMin } from "@/lib/comercial-api";
@@ -59,7 +59,7 @@ export default function ClienteDetallePage() {
       setCliente(c); setFases(f); setSeguimientos(s); setCotizaciones(q);
       setContratos(k); setSolicitudes(sol.filter((x) => x.clienteId === id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar");
+      setError(errorMessage(err, "Error al cargar"));
     } finally {
       setLoading(false);
     }
@@ -133,7 +133,7 @@ function FunnelStepper({ clienteId, faseActual, estado, onChange }: { clienteId:
     try {
       await api.post(`/comercial/clientes/${clienteId}/fase`, { fase, ...(fase === "PERDIDO" && motivo ? { motivoPerdida: motivo } : {}) });
       setFase(""); setMotivo(""); onChange();
-    } catch (e) { setErr(e instanceof Error ? e.message : "Error"); }
+    } catch (e) { setErr(errorMessage(e, "Error")); }
     finally { setBusy(false); }
   }
 
@@ -216,7 +216,7 @@ function SeguimientoSection({ clienteId, seguimientos, onChange }: { clienteId: 
       if (fechaProximaTarea) body.fechaProximaTarea = fechaProximaTarea;
       await api.post("/comercial/seguimientos", body);
       setOpen(false); setMotivo(""); setResultado(""); setProxima(""); setFecha(""); onChange();
-    } catch (e) { setErr(e instanceof Error ? e.message : "Error"); }
+    } catch (e) { setErr(errorMessage(e, "Error")); }
     finally { setBusy(false); }
   }
 
@@ -275,7 +275,7 @@ function CotizacionSection({ clienteId, cotizaciones, onChange }: { clienteId: s
     try {
       await api.post("/comercial/cotizaciones", { clienteId, tipoServicio: tipoServicio.trim(), valorCotizado: Number(valor), formaPago });
       setOpen(false); setServicio(""); setValor(""); onChange();
-    } catch (e) { setErr(e instanceof Error ? e.message : "Error"); }
+    } catch (e) { setErr(errorMessage(e, "Error")); }
     finally { setBusy(false); }
   }
 
@@ -331,7 +331,7 @@ function ContratoSection({ clienteId, contratos, solicitudes, esAdmin, onChange 
   const [err, setErr] = useState<string | null>(null);
   const run = async (fn: () => Promise<unknown>) => {
     setErr(null); setBusy(true);
-    try { await fn(); onChange(); } catch (e) { setErr(e instanceof Error ? e.message : "Error"); } finally { setBusy(false); }
+    try { await fn(); onChange(); } catch (e) { setErr(errorMessage(e, "Error")); } finally { setBusy(false); }
   };
 
   // Crear contrato
@@ -529,7 +529,7 @@ function ComisionSection({ clienteId, esAdmin }: { clienteId: string; esAdmin: b
       setComercialId(""); setBase(""); setPorcentaje(""); setMonto(""); setOpen(false);
       cargar();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Error al registrar");
+      setErr(errorMessage(e, "Error al registrar"));
     } finally { setBusy(false); }
   }
 

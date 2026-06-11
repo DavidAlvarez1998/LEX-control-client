@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, EmptyState, PageHeader } from "@/components/ui";
 import { AdminEmpresaGuard } from "@/components/admin-empresa-guard";
-import { api } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 
 type ServicioContratado = {
@@ -40,7 +40,7 @@ function ServiciosContent() {
       .get<MiEmpresa>("/mi-empresa")
       .then((e) => setServicios(e.servicios))
       .catch((err) =>
-        setError(err instanceof Error ? err.message : "Error al cargar tus servicios"),
+        setError(errorMessage(err, "Error al cargar tus servicios")),
       )
       .finally(() => setLoading(false));
   }

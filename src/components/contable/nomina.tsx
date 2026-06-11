@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { Button, Modal, PlusIcon } from "@/components/ui";
 import { Field, Input, MoneyInput, Select } from "@/components/form-ui";
 import { Badge, Banda, SectionCard, Tabla, money, useCargar } from "./bits";
-import { ApiError } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 import {
   contableApi, ESTADO_PAGO_NOMINA, TIPO_VINCULACION,
   periodoActual, type Empleable, type Lookups, type Nomina,
@@ -111,7 +111,7 @@ export function NominaTab({ lookups }: { lookups: Lookups }) {
       setOpen(false);
       await recargar();
     } catch (err) {
-      setFormError(err instanceof ApiError || err instanceof Error ? err.message : "Error al guardar.");
+      setFormError(errorMessage(err, "Error al guardar."));
     } finally {
       setSaving(false);
     }

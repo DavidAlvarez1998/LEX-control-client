@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Card } from "@/components/ui";
+import { errorMessage } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 
 /** Dinero para mostrar: null/"" -> "—", si no "$1.000.000". */
@@ -110,7 +111,7 @@ export function useCargar<T>(fetcher: () => Promise<T>) {
     try {
       setData(await ref.current());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar");
+      setError(errorMessage(err, "Error al cargar"));
     } finally {
       setLoading(false);
     }

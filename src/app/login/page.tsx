@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, ApiError } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { setSession, type AuthUser } from "@/lib/auth";
 
 type LoginResponse = { token: string; user: AuthUser };
@@ -29,9 +29,7 @@ export default function LoginPage() {
       router.replace("/");
     } catch (err) {
       setError(
-        err instanceof ApiError
-          ? err.message
-          : "No se pudo iniciar sesión. Verifica tu conexión.",
+        errorMessage(err, "No se pudo iniciar sesión. Verifica tu conexión."),
       );
     } finally {
       setLoading(false);

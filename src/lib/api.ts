@@ -18,6 +18,35 @@ export class ApiError extends Error {
   }
 }
 
+/** Diccionario opcional para traducir nombres de campo técnicos a etiquetas. */
+type FieldLabels = Record<string, string>;
+
+/** Humaniza una clave camelCase/snake: "nombreEmpresa" -> "Nombre empresa". */
+function humanizaCampo(key: string): string {
+  const s = key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[._]/g, " ").trim();
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+/**
+ * Convierte cualquier error de la API en un mensaje legible para el usuario.
+ * Si trae `issues` de zod (400 "Validation failed"), indica QUÉ campo está mal
+ * en vez del texto genérico. Opcionalmente recibe un mapa de etiquetas por campo.
+ */
+export function errorMessage(err: unknown, fallback = "Ocurrió un error", labels?: FieldLabels): string {
+  if (err instanceof ApiError && Array.isArray(err.issues) && err.issues.length > 0) {
+    const issues = err.issues as { path?: (string | number)[]; message?: string }[];
+    return issues
+      .map((i) => {
+        const key = i.path?.length ? String(i.path[i.path.length - 1]) : "";
+        const campo = key ? labels?.[key] ?? humanizaCampo(key) : "";
+        return campo ? `${campo}: ${i.message ?? "valor inválido"}` : i.message ?? "valor inválido";
+      })
+      .join(" · ");
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
 

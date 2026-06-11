@@ -7,7 +7,7 @@ import { useState } from "react";
 import { Button, Modal, PlusIcon } from "@/components/ui";
 import { Field, Input, MoneyInput, Select, Textarea } from "@/components/form-ui";
 import { Badge, Banda, SectionCard, Tabla, fmtFecha, humaniza, money, useCargar } from "./bits";
-import { ApiError } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 import {
   contableApi, CATEGORIA_CAJA, METODO_PAGO, TIPO_MOV_CAJA,
   type CajaDetalle, type CajaMenor, type Lookups, type Movimiento,
@@ -35,7 +35,7 @@ export function CajaTab({ lookups }: { lookups: Lookups }) {
       setCajaForm({ nombre: "", montoInicial: "", observaciones: "" });
       await recargar();
     } catch (err) {
-      setCajaError(err instanceof ApiError || err instanceof Error ? err.message : "Error al crear.");
+      setCajaError(errorMessage(err, "Error al crear."));
     } finally {
       setSavingCaja(false);
     }
@@ -118,7 +118,7 @@ function DetalleCaja({ detalle, lookups, onClose, onChange }: { detalle: CajaDet
       });
       setForm(movVacio); setAgregar(false); onChange();
     } catch (e) {
-      setErr(e instanceof ApiError || e instanceof Error ? e.message : "Error al registrar.");
+      setErr(errorMessage(e, "Error al registrar."));
     } finally {
       setSaving(false);
     }

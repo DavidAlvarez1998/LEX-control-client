@@ -6,7 +6,7 @@ import { Field, Input, MoneyInput, NumberInput, Select, Textarea } from "@/compo
 import { AdminEmpresaGuard } from "@/components/admin-empresa-guard";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { DocumentosContrato, type DocumentoContrato as Documento } from "@/components/documentos-contrato";
-import { api, ApiError } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 
 // ── Tipos (espejo de la API /contratos) ──────────────────────────────────────
 type Estado = "ACTIVO" | "FINALIZADO" | "SUSPENDIDO";
@@ -184,7 +184,7 @@ function ContratosContent() {
       setReportes(rep);
       setMiembros(eq);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Error al cargar");
+      setError(errorMessage(err, "Error al cargar"));
     } finally {
       setLoading(false);
     }
@@ -228,7 +228,7 @@ function ContratosContent() {
       setAviso(editId ? "Contrato actualizado" : "Contrato creado");
       await cargar();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Error al guardar");
+      setFormError(errorMessage(err, "Error al guardar"));
     } finally {
       setSaving(false);
     }
@@ -243,7 +243,7 @@ function ContratosContent() {
       setAviso("Contrato eliminado");
       await cargar();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Error al eliminar");
+      setError(errorMessage(err, "Error al eliminar"));
       setConfirm(null);
     } finally {
       setConfirmBusy(false);

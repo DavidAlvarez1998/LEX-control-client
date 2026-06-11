@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Button, Modal, PlusIcon } from "@/components/ui";
 import { Field } from "@/components/form-ui";
 import { Badge, Banda, SectionCard, Tabla, fmtFecha, humaniza, money, useCargar } from "./bits";
-import { ApiError } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 import { contableApi, type CarteraRow, type ContratoMin, type Lookups } from "@/lib/contable";
 
 export function CarteraTab({ lookups }: { lookups: Lookups }) {
@@ -39,7 +39,7 @@ export function CarteraTab({ lookups }: { lookups: Lookups }) {
       setOpen(false);
       await recargar();
     } catch (err) {
-      setFormError(err instanceof ApiError || err instanceof Error ? err.message : "Error al abrir cartera.");
+      setFormError(errorMessage(err, "Error al abrir cartera."));
     } finally {
       setSaving(false);
     }

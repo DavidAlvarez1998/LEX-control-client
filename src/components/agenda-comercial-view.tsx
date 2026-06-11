@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Card, Modal, PageHeader } from "@/components/ui";
 import { Field } from "@/components/form-ui";
+import { errorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import {
   comercialApi, listClientesAgenda, listComerciales, TIPO_GESTION,
@@ -83,7 +84,7 @@ export function AgendaComercialView() {
       ]);
       setItems(ag.items); setClientes(cs);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar la agenda.");
+      setError(errorMessage(err, "Error al cargar la agenda."));
     } finally { setLoading(false); }
   }, [inicioMes, finMes, comercialId, esAdmin]);
   useEffect(() => { cargar(); }, [cargar]);
@@ -232,7 +233,7 @@ function DiaModal({ dia, actividades, clientes, esAdmin, comerciales, onClose, o
       setMostrarForm(false);
       await onChange();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Error al agendar.");
+      setErr(errorMessage(e, "Error al agendar."));
     } finally { setBusy(false); }
   }
 
@@ -366,7 +367,7 @@ function ActivityRow({ a, esAdmin, onChange }: { a: AgendaItem; esAdmin?: boolea
         fechaProximaTarea: cuando.toISOString(),
       });
       setMode("view"); await onChange();
-    } catch (e) { setErr(e instanceof Error ? e.message : "Error al guardar."); }
+    } catch (e) { setErr(errorMessage(e, "Error al guardar.")); }
     finally { setBusy(false); }
   }
   async function completar() {
@@ -376,20 +377,20 @@ function ActivityRow({ a, esAdmin, onChange }: { a: AgendaItem; esAdmin?: boolea
       if (a.completada) await comercialApi.editarSeguimiento(a.id, { resultado: r || null });
       else await comercialApi.completarSeguimiento(a.id, r ? { resultado: r } : {});
       setMode("view"); await onChange();
-    } catch (e) { setErr(e instanceof Error ? e.message : "Error."); }
+    } catch (e) { setErr(errorMessage(e, "Error.")); }
     finally { setBusy(false); }
   }
   async function cancelar() {
     if (!motivo.trim()) { setErr("Indica el motivo de la cancelación."); return; }
     setBusy(true); setErr(null);
     try { await comercialApi.cancelarSeguimiento(a.id, motivo.trim()); setMode("view"); await onChange(); }
-    catch (e) { setErr(e instanceof Error ? e.message : "Error."); }
+    catch (e) { setErr(errorMessage(e, "Error.")); }
     finally { setBusy(false); }
   }
   async function reabrir() {
     setBusy(true); setErr(null);
     try { await comercialApi.reabrirSeguimiento(a.id); await onChange(); }
-    catch (e) { setErr(e instanceof Error ? e.message : "Error."); }
+    catch (e) { setErr(errorMessage(e, "Error.")); }
     finally { setBusy(false); }
   }
 

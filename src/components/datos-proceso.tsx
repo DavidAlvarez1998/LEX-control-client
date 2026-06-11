@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { Button } from "./ui";
 import { FormularioDinamico } from "./formulario-dinamico";
-import { ApiError } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 import { campoVisible, type CampoEsquema } from "@/lib/procesos";
 import { actualizarDatos } from "@/lib/procesos-api";
 
@@ -37,7 +37,7 @@ export function DatosProceso({
       onSaved(actualizado.datos);
       setEditando(false);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message ?? "Error al guardar" : "Error al guardar");
+      setError(errorMessage(e, "Error al guardar"));
     } finally {
       setGuardando(false);
     }
