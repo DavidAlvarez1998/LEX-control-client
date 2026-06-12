@@ -195,6 +195,23 @@ function ContratosContent() {
     cargar();
   }, []);
 
+  // Filtro de texto (nombre/cargo/documento), prellenado desde ?q= (búsqueda global).
+  const [filtro, setFiltro] = useState("");
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) setFiltro(q);
+  }, []);
+  const contratosVisibles = (() => {
+    const t = filtro.trim().toLowerCase();
+    if (!t) return contratos;
+    return contratos.filter(
+      (c) =>
+        c.nombreCompleto.toLowerCase().includes(t) ||
+        (c.cargo ?? "").toLowerCase().includes(t) ||
+        (c.numeroDocumento ?? "").toLowerCase().includes(t),
+    );
+  })();
+
   function abrirCrear() {
     setEditId(null);
     setForm(EMPTY);
@@ -286,6 +303,15 @@ function ContratosContent() {
         </div>
       )}
 
+      {!loading && contratos.length > 0 && (
+        <input
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          placeholder="Buscar por nombre, cargo o documento…"
+          className="mb-4 w-full max-w-sm rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+        />
+      )}
+
       {loading ? (
         <Card className="text-sm text-slate-500 dark:text-slate-400">Cargando…</Card>
       ) : contratos.length === 0 ? (
@@ -298,6 +324,10 @@ function ContratosContent() {
             </Button>
           }
         />
+      ) : contratosVisibles.length === 0 ? (
+        <Card className="text-sm text-slate-500 dark:text-slate-400">
+          Ningún contrato coincide con “{filtro}”.
+        </Card>
       ) : (
         <Card className="overflow-x-auto p-0">
           <table className="w-full text-sm">
@@ -313,7 +343,7 @@ function ContratosContent() {
               </tr>
             </thead>
             <tbody>
-              {contratos.map((c) => (
+              {contratosVisibles.map((c) => (
                 <tr key={c.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800/60">
                   <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{c.nombreCompleto}</td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{c.cargo ?? "—"}</td>

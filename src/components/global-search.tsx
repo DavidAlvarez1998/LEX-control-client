@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
 type Resultado = {
-  tipo: "cliente" | "proceso";
+  tipo: "cliente" | "proceso" | "factura" | "usuario" | "contrato";
   id: string;
   titulo: string;
   subtitulo: string | null;
@@ -17,10 +17,25 @@ type Resultado = {
 const TIPO_LABEL: Record<Resultado["tipo"], string> = {
   cliente: "Clientes",
   proceso: "Procesos",
+  factura: "Facturas",
+  usuario: "Equipo",
+  contrato: "Contratos",
 };
 
 function hrefDe(r: Resultado): string {
-  return r.tipo === "cliente" ? `/clientes/${r.id}` : `/procesos/${r.id}`;
+  // Cliente/proceso tienen ficha propia; el resto navega a su lista prefiltrada.
+  switch (r.tipo) {
+    case "cliente":
+      return `/clientes/${r.id}`;
+    case "proceso":
+      return `/procesos/${r.id}`;
+    case "factura":
+      return `/facturacion?q=${encodeURIComponent(r.titulo)}`;
+    case "usuario":
+      return `/equipo?q=${encodeURIComponent(r.titulo)}`;
+    case "contrato":
+      return `/contratos?q=${encodeURIComponent(r.titulo)}`;
+  }
 }
 
 const inputCls =
@@ -103,7 +118,7 @@ export function GlobalSearch() {
         onChange={(e) => setQ(e.target.value)}
         onFocus={() => resultados.length > 0 && setOpen(true)}
         onKeyDown={onKeyDown}
-        placeholder="Buscar cliente, proceso…"
+        placeholder="Buscar cliente, proceso, factura…"
         className={inputCls}
       />
       <svg

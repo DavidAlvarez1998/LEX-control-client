@@ -140,6 +140,20 @@ export default function EquipoPage() {
     if (esAdmin) cargar();
   }, [esAdmin]);
 
+  // Filtro de texto (nombre/email), prellenado desde ?q= (búsqueda global).
+  const [filtro, setFiltro] = useState("");
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) setFiltro(q);
+  }, []);
+  const miembrosVisibles = (() => {
+    const t = filtro.trim().toLowerCase();
+    if (!t) return miembros;
+    return miembros.filter(
+      (m) => m.nombre.toLowerCase().includes(t) || m.email.toLowerCase().includes(t),
+    );
+  })();
+
   function abrirCrear() {
     setForm(EMPTY_FORM);
     setFormError(null);
@@ -381,6 +395,15 @@ export default function EquipoPage() {
         </Card>
       )}
 
+      {!loading && miembros.length > 0 && (
+        <input
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          placeholder="Buscar por nombre o correo…"
+          className="mb-4 w-full max-w-sm rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+        />
+      )}
+
       {loading ? (
         <Card className="text-sm text-slate-500 dark:text-slate-400">Cargando…</Card>
       ) : miembros.length === 0 ? (
@@ -394,6 +417,10 @@ export default function EquipoPage() {
             </Button>
           }
         />
+      ) : miembrosVisibles.length === 0 ? (
+        <Card className="text-sm text-slate-500 dark:text-slate-400">
+          Ningún miembro coincide con “{filtro}”.
+        </Card>
       ) : (
         <Card className="p-0">
           <table className="w-full text-sm">
@@ -406,7 +433,7 @@ export default function EquipoPage() {
               </tr>
             </thead>
             <tbody>
-              {miembros.map((m) => (
+              {miembrosVisibles.map((m) => (
                 <tr key={m.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
                   <td className="px-5 py-3">
                     <div className="font-medium text-slate-800 dark:text-slate-100">

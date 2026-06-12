@@ -100,6 +100,22 @@ export default function FacturacionPage() {
   }
   useEffect(() => { cargar(); }, []);
 
+  // Filtro de texto (número/cliente), prellenado desde ?q= (búsqueda global).
+  const [filtro, setFiltro] = useState("");
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) setFiltro(q);
+  }, []);
+  const facturasVisibles = (() => {
+    const t = filtro.trim().toLowerCase();
+    if (!t) return facturas;
+    return facturas.filter(
+      (f) =>
+        (f.numero ?? "").toLowerCase().includes(t) ||
+        (f.cliente?.nombre ?? "").toLowerCase().includes(t),
+    );
+  })();
+
   // Totales en vivo del borrador.
   const preview = useMemo(() => {
     const subtotal = items.reduce((s, it) => s + (Number(it.cantidad) || 0) * (Number(it.valorUnitario) || 0), 0);
@@ -269,6 +285,15 @@ export default function FacturacionPage() {
           </Card>
         )}
 
+        {!loading && facturas.length > 0 && (
+          <input
+            value={filtro}
+            onChange={(e) => setFiltro(e.target.value)}
+            placeholder="Buscar por número o cliente…"
+            className="mb-4 w-full max-w-sm rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+          />
+        )}
+
         {loading ? (
           <Card className="text-sm text-slate-500 dark:text-slate-400">Cargando…</Card>
         ) : facturas.length === 0 ? (
@@ -277,6 +302,10 @@ export default function FacturacionPage() {
             description="Crea tu primera factura. Quedará como borrador hasta que la emitas."
             action={<Button onClick={abrirCrear}><PlusIcon />Nueva factura</Button>}
           />
+        ) : facturasVisibles.length === 0 ? (
+          <Card className="text-sm text-slate-500 dark:text-slate-400">
+            Ninguna factura coincide con “{filtro}”.
+          </Card>
         ) : (
           <Card className="p-0">
             <table className="w-full text-sm">
@@ -292,7 +321,7 @@ export default function FacturacionPage() {
                 </tr>
               </thead>
               <tbody>
-                {facturas.map((f) => (
+                {facturasVisibles.map((f) => (
                   <tr key={f.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
                     <td className="px-5 py-3 font-medium text-slate-800 dark:text-slate-100">{f.numero ?? "Borrador"}</td>
                     <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{f.cliente?.nombre ?? "—"}</td>
