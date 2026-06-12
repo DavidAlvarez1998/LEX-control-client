@@ -17,6 +17,7 @@ export function DocumentosRequeridos({
   datos,
   documentos,
   onChange,
+  resaltar = false,
   readOnly = false,
 }: {
   procesoId: string;
@@ -24,6 +25,7 @@ export function DocumentosRequeridos({
   datos: Record<string, unknown>;
   documentos: DocumentoProceso[];
   onChange: (docs: DocumentoProceso[]) => void;
+  resaltar?: boolean; // anillo de énfasis cuando una etapa se bloqueó por documentos
   readOnly?: boolean;
 }) {
   const requeridos = documentosRequeridosDeEtapas(etapas, datos);
@@ -48,7 +50,7 @@ export function DocumentosRequeridos({
   }
 
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+    <div className={`rounded-lg border border-amber-200 bg-amber-50 p-4 transition-shadow dark:border-amber-500/30 dark:bg-amber-500/10 ${resaltar ? "ring-2 ring-amber-400 dark:ring-amber-500" : ""}`}>
       <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">Documentos requeridos</h3>
       <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300/80">
         El sistema los exige para avanzar de etapa.

@@ -4,7 +4,7 @@
 // corregir `datos` después de creado (incl. la tutela derivada que nace vacía).
 // Guarda contra PATCH /procesos/:id (validación tolerante: borradores incompletos).
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "./ui";
 import { FormularioDinamico } from "./formulario-dinamico";
 import { VencimientoHint } from "./vencimiento-hint";
@@ -20,6 +20,7 @@ export function DatosProceso({
   onSaved,
   documentos = [],
   onDocSubido,
+  resaltarCampos,
   readOnly = false,
 }: {
   procesoId: string;
@@ -29,6 +30,10 @@ export function DatosProceso({
   onSaved: (datos: Record<string, unknown>) => void;
   documentos?: DocumentoProceso[]; // para saber si el poder ya está adjunto
   onDocSubido?: (doc: DocumentoProceso) => void; // refleja la subida en la ficha
+  // Campos a resaltar como faltantes (al intentar avanzar de etapa): abre el form
+  // en edición y los marca; cada marca se limpia al llenar el campo. Su identidad
+  // cambia en cada intento bloqueado para re-disparar el efecto.
+  resaltarCampos?: { keys: string[]; nonce: number };
   readOnly?: boolean;
 }) {
   const [editando, setEditando] = useState(false);
@@ -37,6 +42,20 @@ export function DatosProceso({
   const [error, setError] = useState<string | null>(null);
   const [subiendoPoder, setSubiendoPoder] = useState(false);
   const [errorPoder, setErrorPoder] = useState<string | null>(null);
+
+  // Al recibir campos a resaltar (etapa bloqueada por datos), abre el form en
+  // edición partiendo de los datos actuales. El nonce re-dispara en cada intento.
+  useEffect(() => {
+    if (resaltarCampos && resaltarCampos.keys.length > 0) {
+      setBorrador(datos);
+      setEditando(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resaltarCampos?.nonce]);
+
+  // Marca solo los que SIGUEN vacíos en el borrador (se limpian al llenarlos).
+  const esVacio = (v: unknown) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
+  const erroresVivos = (resaltarCampos?.keys ?? []).filter((k) => esVacio(borrador[k]));
 
   const poderActual = documentos.find((d) => d.nombre.trim().toLowerCase() === "poder.pdf");
 
@@ -102,6 +121,7 @@ export function DatosProceso({
         esquema={esquema}
         datos={borrador}
         onChange={(k, v) => setBorrador((d) => ({ ...d, [k]: v }))}
+        errores={erroresVivos}
         className="grid grid-cols-1 gap-4 sm:grid-cols-2"
         // Slots: vencimiento en vivo tras la fecha de radicación (igual que en la
         // creación) + uploader del poder bajo el check "¿Requiere poder?". El proceso

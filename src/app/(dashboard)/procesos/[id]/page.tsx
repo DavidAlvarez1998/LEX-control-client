@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { DocumentosProceso } from "@/components/documentos-proceso";
 import { DatosProceso } from "@/components/datos-proceso";
@@ -18,10 +18,15 @@ import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 export default function ExpedientePage() {
   const { id } = useParams<{ id: string }>();
   const [proceso, setProceso] = useState<ProcesoDetalle | null | undefined>(undefined);
-  const [bloqueo, setBloqueo] = useState<{ etapa: string; faltantes: string[]; motivo?: string } | null>(null);
+  const [bloqueo, setBloqueo] = useState<{ etapa: string; faltantes: string[]; documentosFaltantes?: string[]; motivo?: string } | null>(null);
   const [derivado, setDerivado] = useState<{ id: string; nuevo: boolean } | null>(null);
   const [escalando, setEscalando] = useState(false);
   const [caso, setCaso] = useState<CasoNodo[]>([]);
+  // Guía al bloquear una etapa: campos faltantes a marcar en el form (con nonce
+  // para re-disparar) y refs para hacer scroll al form / al panel de documentos.
+  const [resaltarCampos, setResaltarCampos] = useState<{ keys: string[]; nonce: number } | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+  const docsRef = useRef<HTMLDivElement>(null);
 
   const cargarCaso = () => getCasoChain(id).then(setCaso).catch(() => setCaso([]));
   useEffect(() => {
@@ -56,18 +61,25 @@ export default function ExpedientePage() {
       const actualizado = await moverEtapa(proceso!.id, key);
       setProceso(actualizado);
       setBloqueo(null);
+      setResaltarCampos(null);
     } catch (e) {
       if (e instanceof ApiError && e.status === 400) {
         const faltantes = (e.issues as { faltantes?: string[] })?.faltantes ?? [];
         const documentosFaltantes = (e.issues as { documentosFaltantes?: string[] })?.documentosFaltantes ?? [];
-        const todos = [...faltantes, ...documentosFaltantes];
-        // Si no hay lista de faltantes, es otro tipo de 400 (p. ej. proceso archivado):
-        // muestra el mensaje real del server, no el genérico de "faltan requisitos".
-        setBloqueo(
-          todos.length > 0
-            ? { etapa: key, faltantes: todos }
-            : { etapa: key, faltantes: [], motivo: e.message || "No se pudo mover a esta etapa." },
-        );
+        if (faltantes.length === 0 && documentosFaltantes.length === 0) {
+          // Otro tipo de 400 (p. ej. proceso archivado): muestra el mensaje real.
+          setBloqueo({ etapa: key, faltantes: [], motivo: e.message || "No se pudo mover a esta etapa." });
+          return;
+        }
+        // En vez de solo listar, GUÍA: campos → abre y marca el formulario; documentos
+        // → resalta el panel de requeridos. Scroll al destino correspondiente.
+        setBloqueo({ etapa: key, faltantes, documentosFaltantes });
+        if (faltantes.length > 0) {
+          setResaltarCampos({ keys: faltantes, nonce: Date.now() });
+          setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+        } else {
+          setTimeout(() => docsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+        }
       } else if (e instanceof ApiError && e.status === 422) {
         setBloqueo({ etapa: key, faltantes: [], motivo: "Esta etapa no está disponible con los datos actuales del proceso." });
       }
@@ -204,11 +216,17 @@ export default function ExpedientePage() {
                     return v ? <div className={`ml-9 mt-1 text-xs font-medium ${v.cls}`}>⏱ {v.texto}</div> : null;
                   })()}
                   {bloqueo?.etapa === e.key && (
-                    <div className="ml-9 mt-1 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
-                      {bloqueo.motivo ??
-                        (bloqueo.faltantes.length > 0
-                          ? `Para avanzar a esta etapa faltan: ${bloqueo.faltantes.join(", ")}.`
-                          : "No se pudo mover a esta etapa.")}
+                    <div className="ml-9 mt-1 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-500/10 dark:text-red-300">
+                      {bloqueo.motivo ?? (
+                        <>
+                          {bloqueo.faltantes.length > 0 && (
+                            <div>Faltan datos para avanzar: te llevé al formulario y marqué los campos a llenar ↓</div>
+                          )}
+                          {(bloqueo.documentosFaltantes?.length ?? 0) > 0 && (
+                            <div>Faltan documentos: {bloqueo.documentosFaltantes!.join(", ")} — súbelos en «Documentos requeridos» ↓</div>
+                          )}
+                        </>
+                      )}
                     </div>
                   )}
                 </li>
@@ -293,6 +311,7 @@ export default function ExpedientePage() {
         </div>
       </div>
 
+      <div ref={formRef}>
       <Card className="mb-5">
         <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
           Formulario del proceso
@@ -311,20 +330,23 @@ export default function ExpedientePage() {
                 : p,
             )
           }
+          resaltarCampos={resaltarCampos ?? undefined}
           readOnly={!puedeEditar}
         />
       </Card>
+      </div>
 
       {/* Documentos requeridos por las etapas (peticion.pdf, poder.pdf,
           reiteracion.pdf…): un botón "Subir" por cada uno, ya con el nombre exacto
           que pide el gate, para que avanzar de etapa no se bloquee. */}
-      <div>
+      <div ref={docsRef}>
         <DocumentosRequeridos
           procesoId={proceso.id}
           etapas={proceso.tipoProceso.etapas ?? []}
           datos={proceso.datos}
           documentos={proceso.documentos ?? []}
           onChange={(documentos) => setProceso((p) => (p ? { ...p, documentos } : p))}
+          resaltar={(bloqueo?.documentosFaltantes?.length ?? 0) > 0}
           readOnly={!puedeEditar}
         />
       </div>
