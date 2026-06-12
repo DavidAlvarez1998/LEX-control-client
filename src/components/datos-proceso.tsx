@@ -11,6 +11,7 @@ import { FormularioDinamico } from "./formulario-dinamico";
 import { VencimientoHint } from "./vencimiento-hint";
 import { errorMessage } from "@/lib/api";
 import {
+  campoEfectivamenteRequerido,
   campoVisible,
   documentosOpcionalesDeEtapas,
   documentosRequeridosDeEtapas,
@@ -50,6 +51,7 @@ export function DatosProceso({
   const [borrador, setBorrador] = useState<Record<string, unknown>>(datos);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [erroresGuardar, setErroresGuardar] = useState<string[]>([]); // keys marcadas al validar al guardar
 
   // Al intentar avanzar una etapa bloqueada (por datos O documentos), se abre el
   // form en edición partiendo de los datos actuales para que el campo y/o su
@@ -64,7 +66,9 @@ export function DatosProceso({
 
   // Marca solo los que SIGUEN vacíos en el borrador (se limpian al llenarlos).
   const esVacio = (v: unknown) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
-  const erroresVivos = (resaltarCampos?.keys ?? []).filter((k) => esVacio(borrador[k]));
+  // Campos marcados en rojo: los del intento de avance + los del intento de guardar,
+  // pero solo mientras sigan vacíos (se limpian al llenarlos).
+  const erroresVivos = [...new Set([...(resaltarCampos?.keys ?? []), ...erroresGuardar])].filter((k) => esVacio(borrador[k]));
 
   const presente = (nombre: string) =>
     documentos.find((d) => d.nombre.trim().toLowerCase() === nombre.trim().toLowerCase());
@@ -102,6 +106,20 @@ export function DatosProceso({
   };
 
   async function guardar() {
+    // Validar requeridos efectivos (incluye los que activa "¿Contestaron?") + los
+    // documentos requeridos: no se guarda hasta completarlos.
+    const camposFaltan = esquema.filter(
+      (c) => campoVisible(c, borrador) && campoEfectivamenteRequerido(c, borrador) && esVacio(borrador[c.key]),
+    );
+    const docsFaltan = documentosRequeridosDeEtapas(etapas, borrador).filter((n) => !presente(n));
+    if (camposFaltan.length > 0 || docsFaltan.length > 0) {
+      setErroresGuardar(camposFaltan.map((c) => c.key));
+      setError(
+        `Completa antes de guardar: ${[...camposFaltan.map((c) => c.label), ...docsFaltan.map(etiquetaDoc)].join(", ")}.`,
+      );
+      return;
+    }
+    setErroresGuardar([]);
     setGuardando(true);
     setError(null);
     try {
