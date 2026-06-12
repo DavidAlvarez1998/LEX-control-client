@@ -4,7 +4,7 @@
 // su esquema (lista de campos). Un solo componente sirve para todos los tipos de
 // proceso de todas las áreas. Ver lib/procesos.ts (CampoEsquema).
 
-import { Fragment, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import type { CampoEsquema } from "@/lib/procesos";
 import { campoEfectivamenteRequerido, campoVisible } from "@/lib/procesos";
 import {
@@ -127,11 +127,15 @@ export function FormularioDinamico({
             </Field>
           );
 
+        // Campo + su slot van JUNTOS en una sola celda del grid, para que el slot
+        // (uploader del poder, hint de vencimiento…) quede DEBAJO del campo y con el
+        // ancho de su columna — no como otra celda a la derecha ni a fila completa.
+        const slot = slotDespuesDe?.[campo.key];
         return (
-          <Fragment key={campo.key}>
+          <div key={campo.key}>
             {elemento}
-            {slotDespuesDe?.[campo.key]}
-          </Fragment>
+            {slot && <div className="mt-2">{slot}</div>}
+          </div>
         );
       })}
     </div>

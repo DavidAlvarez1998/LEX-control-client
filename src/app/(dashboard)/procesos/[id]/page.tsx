@@ -147,9 +147,18 @@ export default function ExpedientePage() {
         </h3>
         <DatosProceso
           procesoId={proceso.id}
+          tipoProcesoId={proceso.tipoProceso.id}
           esquema={proceso.tipoProceso.esquemaFormulario ?? []}
           datos={proceso.datos}
           onSaved={(datos) => setProceso((p) => (p ? { ...p, datos } : p))}
+          documentos={proceso.documentos ?? []}
+          onDocSubido={(doc) =>
+            setProceso((p) =>
+              p
+                ? { ...p, documentos: [doc, ...(p.documentos ?? []).filter((d) => d.nombre.trim().toLowerCase() !== doc.nombre.trim().toLowerCase())] }
+                : p,
+            )
+          }
           readOnly={!puedeEditar}
         />
       </Card>
