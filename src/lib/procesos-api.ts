@@ -156,6 +156,18 @@ export function generarDocumento(
   return api.post<DocumentoProceso>(`/procesos/${id}/documentos/generar`, { plantillaId, nombre });
 }
 
+/** Renderiza una plantilla SIN persistirla (para "generar y descargar"). */
+export function renderDocumento(
+  id: string,
+  plantillaId: string,
+  nombre?: string,
+): Promise<{ nombre: string; contenido: string }> {
+  return api.post<{ nombre: string; contenido: string }>(
+    `/procesos/${id}/documentos/render`,
+    { plantillaId, nombre },
+  );
+}
+
 export function adjuntarDocumento(
   id: string,
   nombre: string,

@@ -9,9 +9,63 @@ import {
   eliminarDocumento,
   generarDocumento,
   getPlantillasDeProceso,
+  renderDocumento,
   type DocumentoProceso,
   type PlantillaItem,
 } from "@/lib/procesos-api";
+
+const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/**
+ * Descarga el texto como .doc (se abre en Word/Google Docs para firmar y exportar
+ * a PDF). NO se usa `white-space:pre-wrap` porque Word lo ignora y deja el texto
+ * "de corrido": en su lugar cada línea es un <p> y las líneas en blanco un espacio.
+ * Da formato de documento real: márgenes carta, Times 12, cuerpo justificado,
+ * títulos (líneas en MAYÚSCULAS) en negrita, fecha a la derecha, firma centrada.
+ */
+function descargarDoc(nombre: string, contenido: string) {
+  const base = nombre.replace(/\.(doc|docx|pdf|txt)$/i, "").trim() || "documento";
+  const lineas = contenido.replace(/\r/g, "").split("\n");
+  const esTitulo = (l: string) => {
+    const t = l.trim();
+    return t.length > 1 && /[A-ZÁÉÍÓÚÑ]/.test(t) && !/[a-záéíóúñ]/.test(t);
+  };
+  let primeraVista = false; // la 1ª línea con texto (fecha) va a la derecha
+  let firmando = false; // desde la línea de raya, todo va centrado
+  const cuerpo = lineas
+    .map((l) => {
+      const t = l.trim();
+      if (/^_+$/.test(t)) firmando = true;
+      if (t === "") return `<p class="sp">&nbsp;</p>`;
+      const clases: string[] = [];
+      if (!primeraVista) { clases.push("r"); primeraVista = true; }
+      else if (firmando) clases.push("c");
+      if (esTitulo(l)) clases.push("h");
+      return `<p class="${clases.join(" ")}">${esc(l)}</p>`;
+    })
+    .join("");
+  const html =
+    `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>` +
+    `<head><meta charset='utf-8'><title>${esc(base)}</title>` +
+    `<style>` +
+    `@page { size: 21.59cm 27.94cm; margin: 3cm 2.5cm 3cm 3cm; }` +
+    `body { font-family:'Times New Roman',serif; font-size:12pt; color:#000; }` +
+    `p { margin:0; line-height:1.5; text-align:justify; }` +
+    `p.sp { line-height:1; }` +
+    `p.h { font-weight:bold; }` +
+    `p.r { text-align:right; }` +
+    `p.c { text-align:center; }` +
+    `</style></head><body>${cuerpo}</body></html>`;
+  const blob = new Blob(["﻿", html], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${base}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 /**
  * Sección "Documentos" del expediente: lista de documentos (borradores generados
@@ -20,14 +74,17 @@ import {
  */
 export function DocumentosProceso({
   procesoId,
-  inicial,
+  docs,
+  onDocsChange,
   readOnly = false,
 }: {
   procesoId: string;
-  inicial: DocumentoProceso[];
+  // Controlado: la lista vive en la página (misma fuente que el panel "Documentos
+  // requeridos"), así eliminar/agregar/generar aquí se refleja allá al instante.
+  docs: DocumentoProceso[];
+  onDocsChange: (docs: DocumentoProceso[]) => void;
   readOnly?: boolean;
 }) {
-  const [docs, setDocs] = useState<DocumentoProceso[]>(inicial);
   const [plantillas, setPlantillas] = useState<PlantillaItem[]>([]);
   const [plantillaId, setPlantillaId] = useState("");
   const [adjNombre, setAdjNombre] = useState("");
@@ -58,16 +115,24 @@ export function DocumentosProceso({
   const generar = () =>
     correr(async () => {
       const doc = await generarDocumento(procesoId, plantillaId);
-      setDocs((d) => [doc, ...d]);
+      onDocsChange([doc, ...docs]);
       setPlantillaId("");
       setEditId(doc.id);
       setBorrador(doc.contenido ?? "");
     });
 
+  // Genera y descarga el .doc SIN guardarlo en la lista de documentos.
+  const generarYDescargar = () =>
+    correr(async () => {
+      const { nombre, contenido } = await renderDocumento(procesoId, plantillaId);
+      descargarDoc(nombre, contenido);
+      setPlantillaId("");
+    });
+
   const adjuntar = () =>
     correr(async () => {
       const doc = await adjuntarDocumento(procesoId, adjNombre.trim(), adjUrl.trim());
-      setDocs((d) => [doc, ...d]);
+      onDocsChange([doc, ...docs]);
       setAdjNombre("");
       setAdjUrl("");
     });
@@ -75,14 +140,14 @@ export function DocumentosProceso({
   const guardar = () =>
     correr(async () => {
       const doc = await editarDocumento(procesoId, editId!, { contenido: borrador });
-      setDocs((d) => d.map((x) => (x.id === doc.id ? doc : x)));
+      onDocsChange(docs.map((x) => (x.id === doc.id ? doc : x)));
       setEditId(null);
     });
 
   const eliminar = (docId: string) =>
     correr(async () => {
       await eliminarDocumento(procesoId, docId);
-      setDocs((d) => d.filter((x) => x.id !== docId));
+      onDocsChange(docs.filter((x) => x.id !== docId));
       if (editId === docId) setEditId(null);
     });
 
@@ -109,6 +174,15 @@ export function DocumentosProceso({
                   >
                     Abrir
                   </a>
+                )}
+                {doc.contenido != null && (
+                  <button
+                    type="button"
+                    onClick={() => descargarDoc(doc.nombre, doc.contenido ?? "")}
+                    className="text-xs font-medium text-indigo-600 hover:underline"
+                  >
+                    Descargar
+                  </button>
                 )}
                 {!readOnly && doc.contenido != null && (
                   <button
@@ -159,26 +233,32 @@ export function DocumentosProceso({
       {/* Generar desde plantilla */}
       <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
         <Field label="Generar desde plantilla">
-          <div className="flex gap-2">
-            <select
-              value={plantillaId}
-              onChange={(e) => setPlantillaId(e.target.value)}
-              disabled={plantillas.length === 0}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-            >
-              <option value="">
-                {plantillas.length === 0 ? "Este tipo no tiene plantillas" : "Selecciona una plantilla…"}
+          <select
+            value={plantillaId}
+            onChange={(e) => setPlantillaId(e.target.value)}
+            disabled={plantillas.length === 0}
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          >
+            <option value="">
+              {plantillas.length === 0 ? "Este tipo no tiene plantillas" : "Selecciona una plantilla…"}
+            </option>
+            {plantillas.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nombre}
               </option>
-              {plantillas.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre}
-                </option>
-              ))}
-            </select>
-            <Button onClick={generar} disabled={busy || !plantillaId}>
-              Generar
+            ))}
+          </select>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button onClick={generarYDescargar} disabled={busy || !plantillaId}>
+              Generar y descargar
+            </Button>
+            <Button variant="ghost" onClick={generar} disabled={busy || !plantillaId}>
+              Generar borrador editable
             </Button>
           </div>
+          <p className="mt-1 text-xs text-slate-400">
+            «Generar y descargar» baja un .doc para revisar/firmar y subir el firmado; no lo agrega a la lista. «Borrador editable» lo guarda aquí para editarlo.
+          </p>
         </Field>
       </div>
 

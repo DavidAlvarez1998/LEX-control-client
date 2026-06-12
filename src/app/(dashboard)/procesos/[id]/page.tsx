@@ -279,7 +279,12 @@ export default function ExpedientePage() {
 
           <Card>
             <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Documentos</h3>
-            <DocumentosProceso procesoId={proceso.id} inicial={proceso.documentos ?? []} readOnly={!puedeEditar} />
+            <DocumentosProceso
+              procesoId={proceso.id}
+              docs={proceso.documentos ?? []}
+              onDocsChange={(documentos) => setProceso((p) => (p ? { ...p, documentos } : p))}
+              readOnly={!puedeEditar}
+            />
           </Card>
         </div>
       </div>
