@@ -235,13 +235,21 @@ export default function ExpedientePage() {
             </p>
           )}
 
-          {puedeEditar && accionDerivar && (
+          {puedeEditar && accionDerivar && (() => {
+            // Cuando el proceso destino es del MISMO tipo, no es un "escalamiento":
+            // es una continuación del caso (en el DdP, la reiteración por respuesta
+            // parcial). Si es otro tipo, sí es un escalamiento (DdP → tutela).
+            const destino = accionDerivar.tipoDestinoNombre;
+            const esContinuacion = destino === proceso.tipoProceso.nombre;
+            return (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
               <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                Acción disponible: escalar a {accionDerivar.tipoDestinoNombre}
+                Acción disponible: {etapaActualDef?.nombre ?? (esContinuacion ? `continuar el ${destino}` : `escalar a ${destino}`)}
               </p>
               <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300/80">
-                Crea un proceso de {accionDerivar.tipoDestinoNombre} ligado a este como caso base.
+                {esContinuacion
+                  ? `Crea un nuevo ${destino} que reitera este, vinculado como el mismo caso (copia el peticionario y los datos de la solicitud). El proceso actual queda como caso base.`
+                  : `Crea un proceso de ${destino} vinculado a este como parte del mismo caso. El proceso actual queda como caso base.`}
               </p>
               {derivado ? (
                 <Link
@@ -252,11 +260,12 @@ export default function ExpedientePage() {
                 </Link>
               ) : (
                 <Button className="mt-2" onClick={escalar} disabled={escalando}>
-                  {escalando ? "Creando…" : `Crear ${accionDerivar.tipoDestinoNombre}`}
+                  {escalando ? "Creando…" : esContinuacion ? `Crear la reiteración` : `Crear ${destino}`}
                 </Button>
               )}
             </div>
-          )}
+            );
+          })()}
         </Card>
 
         <div className="space-y-5">
