@@ -69,20 +69,25 @@ export function BotonSubirDoc({
         }
       >
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Adjunta el documento <strong className="text-slate-700 dark:text-slate-200">{etiqueta}</strong>.
-          Puede ser cualquier formato (PDF, Word, imagen…); se guardará con el nombre del archivo que elijas.
+          Adjunta el documento: <strong className="text-slate-700 dark:text-slate-200">{etiqueta}</strong>.
+          
         </p>
-        <label className="mt-1 block">
-          <input
-            type="file"
-            disabled={subiendo}
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 dark:text-slate-300 dark:file:bg-indigo-500/10 dark:file:text-indigo-300"
-          />
-        </label>
-        {file && (
-          <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">✓ {file.name}</p>
-        )}
+        {/* Input nativo oculto: botón y textos en español (el nativo muestra
+            "Browse" / "No file selected" en el idioma del navegador). */}
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <label className="cursor-pointer rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300">
+            Elegir archivo
+            <input
+              type="file"
+              className="hidden"
+              disabled={subiendo}
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          <span className={`text-xs ${file ? "font-medium text-emerald-600 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400"}`}>
+            {file ? `✓ ${file.name}` : "Ningún archivo seleccionado"}
+          </span>
+        </div>
         {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
       </Modal>
     </>
