@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Field, Input, Textarea } from "@/components/form-ui";
 import {
   adjuntarDocumento,
@@ -93,6 +94,7 @@ export function DocumentosProceso({
   const [borrador, setBorrador] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aBorrar, setABorrar] = useState<DocumentoProceso | null>(null);
 
   useEffect(() => {
     getPlantillasDeProceso(procesoId)
@@ -149,6 +151,7 @@ export function DocumentosProceso({
       await eliminarDocumento(procesoId, docId);
       onDocsChange(docs.filter((x) => x.id !== docId));
       if (editId === docId) setEditId(null);
+      setABorrar(null);
     });
 
   return (
@@ -199,7 +202,7 @@ export function DocumentosProceso({
                 {!readOnly && (
                   <button
                     type="button"
-                    onClick={() => eliminar(doc.id)}
+                    onClick={() => setABorrar(doc)}
                     className="text-xs font-medium text-red-600 hover:underline"
                   >
                     Eliminar
@@ -278,6 +281,17 @@ export function DocumentosProceso({
       </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={!!aBorrar}
+        title="Eliminar documento"
+        message={`¿Eliminar "${aBorrar?.nombre}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        danger
+        busy={busy}
+        onConfirm={() => aBorrar && eliminar(aBorrar.id)}
+        onCancel={() => setABorrar(null)}
+      />
     </div>
   );
 }
