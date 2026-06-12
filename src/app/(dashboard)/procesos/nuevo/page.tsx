@@ -11,6 +11,7 @@ import { errorMessage } from "@/lib/api";
 import { getUser, type AuthUser } from "@/lib/auth";
 import {
   documentosRequeridosDeEtapas,
+  documentosOpcionalesDeEtapas,
   etiquetaDoc,
   etiquetasPlazoOpciones,
   JURISDICCION_LABEL,
@@ -82,8 +83,9 @@ export default function NuevoProcesoPage() {
   const [tipo, setTipo] = useState<TipoProceso | null>(null);
 
   // Documentos del proceso (peticion.pdf, poder.pdf, etc.): se eligen aquí y se
-  // suben tras crear el proceso (la subida necesita el id). Opcional: no bloquea.
+  // suben tras crear el proceso (la subida necesita el id).
   const [archivos, setArchivos] = useState<Record<string, File>>({});
+  const [docsError, setDocsError] = useState<string | null>(null);
 
   const [titulo, setTitulo] = useState("");
   const [datos, setDatos] = useState<Record<string, unknown>>({});
@@ -131,20 +133,24 @@ export default function NuevoProcesoPage() {
     setDatos((d) => ({ ...d, [key]: value }));
   }
 
-  // Lista de adjuntos (petición, poder…) reusada inline (bajo "¿Requiere poder?")
-  // o como sección aparte. La petición va siempre; el poder aparece al marcar Sí.
-  const listaDocs = (docs: string[]) => (
+  // Lista de adjuntos: `requeridos` se marcan con * (rojo si faltan y ya se
+  // intentó crear); los demás van como "(opcional)". `docsError` se setea al
+  // intentar crear sin los obligatorios.
+  const listaDocs = (docs: string[], requeridos: string[]) => (
     <ul className="space-y-2">
       {docs.map((nombre) => {
         const file = archivos[nombre];
+        const req = requeridos.includes(nombre);
+        const falta = req && !file && !!docsError;
         return (
           <li
             key={nombre}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+            className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 ${falta ? "border-red-300 dark:border-red-500/40" : "border-slate-200 dark:border-slate-700"} bg-white dark:bg-slate-900`}
           >
             <span className={`text-sm font-medium ${file ? "text-emerald-700 dark:text-emerald-400" : "text-slate-700 dark:text-slate-200"}`}>
               {file ? "✓ " : "• "}
               {etiquetaDoc(nombre)}
+              {req ? <span className="ml-0.5 text-red-500">*</span> : <span className="ml-1 font-normal text-slate-400">(opcional)</span>}
               {file && <span className="ml-1 font-normal text-slate-400">· {file.name}</span>}
             </span>
             <BotonSubirDoc
@@ -207,7 +213,11 @@ export default function NuevoProcesoPage() {
       .filter((c) => faltantes.includes(c.label))
       .map((c) => c.key);
     setErrores(keysFaltantes);
-    if (!ok || !tituloOk || !hayCliente || !hayResponsable) return;
+    // Documentos OBLIGATORIOS (petición, poder si requiere, respuesta si contestó):
+    // deben estar adjuntos para crear. Los opcionales (reiteración) no bloquean.
+    const docsFaltan = documentosRequeridosDeEtapas(tipo.etapas, datos).filter((d) => !archivos[d]);
+    setDocsError(docsFaltan.length ? `Faltan documentos obligatorios: ${docsFaltan.map(etiquetaDoc).join(", ")}.` : null);
+    if (!ok || !tituloOk || !hayCliente || !hayResponsable || docsFaltan.length > 0) return;
 
     setGuardando(true);
     setApiError(null);
@@ -453,33 +463,33 @@ export default function NuevoProcesoPage() {
             // ese campo; para los que no, va la sección de fallback de abajo.)
             slotDespuesDe={{
               fechaRadicacion: <VencimientoHint tipoProcesoId={tipo.id} datos={datos} />,
-              // Bajo "¿Requiere poder?": documentos de la radicación (petición + poder),
-              // que NO dependen de la respuesta (se calculan con contestaron neutro).
+              // Bajo "¿Requiere poder?": documentos de la radicación (petición * +
+              // poder * si requiere), que NO dependen de la respuesta.
               requierePoder: (() => {
-                const docs = documentosRequeridosDeEtapas(tipo.etapas, { ...datos, contestaron: "" });
+                const neutro = { ...datos, contestaron: "" };
+                const req = documentosRequeridosDeEtapas(tipo.etapas, neutro);
+                const docs = [...req, ...documentosOpcionalesDeEtapas(tipo.etapas, neutro)];
                 if (docs.length === 0) return null;
                 return (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
-                    <p className="mb-2 text-sm font-medium text-amber-900 dark:text-amber-200">
-                      Documentos a adjuntar <span className="font-normal text-amber-700/80 dark:text-amber-300/70">(opcional)</span>
-                    </p>
-                    {listaDocs(docs)}
+                    <p className="mb-2 text-sm font-medium text-amber-900 dark:text-amber-200">Documentos a adjuntar</p>
+                    {listaDocs(docs, req)}
                   </div>
                 );
               })(),
               // Bajo "¿Contestaron?": los documentos que aparecen POR la respuesta
-              // (respuesta.pdf en Sí/Parcial; + reiteracion.pdf en Parcial) — la
+              // (respuesta * en Sí/Parcial; reiteración opcional en Parcial) — la
               // diferencia entre los docs con la respuesta actual y sin ella.
               contestaron: (() => {
-                const base = documentosRequeridosDeEtapas(tipo.etapas, { ...datos, contestaron: "" });
-                const resp = documentosRequeridosDeEtapas(tipo.etapas, datos).filter((d) => !base.includes(d));
-                if (resp.length === 0) return null;
+                const neutro = { ...datos, contestaron: "" };
+                const reqResp = documentosRequeridosDeEtapas(tipo.etapas, datos).filter((d) => !documentosRequeridosDeEtapas(tipo.etapas, neutro).includes(d));
+                const optResp = documentosOpcionalesDeEtapas(tipo.etapas, datos).filter((d) => !documentosOpcionalesDeEtapas(tipo.etapas, neutro).includes(d));
+                const docs = [...reqResp, ...optResp];
+                if (docs.length === 0) return null;
                 return (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
-                    <p className="mb-2 text-sm font-medium text-amber-900 dark:text-amber-200">
-                      Documentos de la respuesta <span className="font-normal text-amber-700/80 dark:text-amber-300/70">(opcional)</span>
-                    </p>
-                    {listaDocs(resp)}
+                    <p className="mb-2 text-sm font-medium text-amber-900 dark:text-amber-200">Documentos de la respuesta</p>
+                    {listaDocs(docs, reqResp)}
                   </div>
                 );
               })(),
@@ -489,18 +499,24 @@ export default function NuevoProcesoPage() {
 
         {/* Fallback: tipos SIN campo "¿Requiere poder?" muestran los documentos en
             sección aparte (los que sí lo tienen los muestran inline bajo el check). */}
-        {!tipo.esquemaFormulario.some((c) => c.key === "requierePoder") &&
-          documentosRequeridosDeEtapas(tipo.etapas, datos).length > 0 && (
+        {!tipo.esquemaFormulario.some((c) => c.key === "requierePoder") && (() => {
+          const req = documentosRequeridosDeEtapas(tipo.etapas, datos);
+          const docs = [...req, ...documentosOpcionalesDeEtapas(tipo.etapas, datos)];
+          if (docs.length === 0) return null;
+          return (
             <Card>
-              <h3 className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                Documentos del proceso <span className="font-normal text-slate-400">(opcional)</span>
-              </h3>
+              <h3 className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">Documentos del proceso</h3>
               <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-                Adjunta los documentos que el proceso necesitará. Se guardan al crearlo; también puedes subirlos después desde la ficha.
+                Los marcados con <span className="text-red-500">*</span> son obligatorios para crear. Se guardan al crearlo; también puedes subirlos después desde la ficha.
               </p>
-              {listaDocs(documentosRequeridosDeEtapas(tipo.etapas, datos))}
+              {listaDocs(docs, req)}
             </Card>
-          )}
+          );
+        })()}
+
+        {docsError && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{docsError}</p>
+        )}
 
         {/* Datos judiciales: solo para procesos que van ante un juez (no en trámites
             ante entidad como el derecho de petición). */}

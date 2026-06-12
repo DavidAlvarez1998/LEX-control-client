@@ -7,7 +7,7 @@
 // bloquea por no saber el nombre. Sube el archivo real a tecnovapp.
 
 import { BotonSubirDoc } from "@/components/boton-subir-doc";
-import { documentosRequeridosDeEtapas, etiquetaDoc, type EtapaDef } from "@/lib/procesos";
+import { documentosOpcionalesDeEtapas, documentosRequeridosDeEtapas, etiquetaDoc, type EtapaDef } from "@/lib/procesos";
 import { subirArchivoProceso, type DocumentoProceso } from "@/lib/procesos-api";
 
 export function DocumentosRequeridos({
@@ -28,7 +28,12 @@ export function DocumentosRequeridos({
   readOnly?: boolean;
 }) {
   const requeridos = documentosRequeridosDeEtapas(etapas, datos);
-  if (requeridos.length === 0) return null;
+  const opcionales = documentosOpcionalesDeEtapas(etapas, datos);
+  const items = [
+    ...requeridos.map((nombre) => ({ nombre, req: true })),
+    ...opcionales.map((nombre) => ({ nombre, req: false })),
+  ];
+  if (items.length === 0) return null;
 
   const presente = (nombre: string) =>
     documentos.find((d) => d.nombre.trim().toLowerCase() === nombre.trim().toLowerCase());
@@ -40,12 +45,12 @@ export function DocumentosRequeridos({
 
   return (
     <div className={`rounded-lg border border-amber-200 bg-amber-50 p-4 transition-shadow dark:border-amber-500/30 dark:bg-amber-500/10 ${resaltar ? "ring-2 ring-amber-400 dark:ring-amber-500" : ""}`}>
-      <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">Documentos requeridos</h3>
+      <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">Documentos del proceso</h3>
       <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300/80">
-        El sistema los exige para avanzar de etapa.
+        Los marcados con <span className="text-red-500">*</span> se exigen para avanzar de etapa.
       </p>
       <ul className="mt-3 space-y-2">
-        {requeridos.map((nombre) => {
+        {items.map(({ nombre, req }) => {
           const doc = presente(nombre);
           return (
             <li
@@ -55,6 +60,7 @@ export function DocumentosRequeridos({
               <span className={`text-sm font-medium ${doc ? "text-emerald-700 dark:text-emerald-300" : "text-slate-700 dark:text-slate-200"}`}>
                 {doc ? "✓ " : "• "}
                 {etiquetaDoc(nombre)}
+                {req ? <span className="ml-0.5 text-red-500">*</span> : <span className="ml-1 font-normal text-slate-400">(opcional)</span>}
               </span>
               <div className="flex items-center gap-3">
                 {doc?.url && (

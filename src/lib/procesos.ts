@@ -49,6 +49,7 @@ export type CampoEsquema = {
 export type ReglasEtapa = {
   camposRequeridos?: string[];
   documentosRequeridos?: string[];
+  documentosOpcionales?: string[]; // ofrecidos para adjuntar, NO bloquean (p. ej. reiteracion.pdf)
   plazoDias?: number;
   requeridosSi?: { si: Condicion; camposRequeridos?: string[]; documentosRequeridos?: string[] }[];
   plazoDesdeCampo?: string;
@@ -220,6 +221,20 @@ export function documentosRequeridosDeEtapas(
         .flatMap((x) => x.documentosRequeridos ?? []),
     ];
     for (const n of nombres) porNombre.set(n.trim().toLowerCase(), n);
+  }
+  return [...porNombre.values()];
+}
+
+/** Documentos OPCIONALES (ofrecidos para adjuntar, no bloquean) según `datos`,
+ *  respetando `disponibleSi` igual que los requeridos. */
+export function documentosOpcionalesDeEtapas(
+  etapas: EtapaDef[],
+  datos: Record<string, unknown>,
+): string[] {
+  const porNombre = new Map<string, string>();
+  for (const e of etapas) {
+    if (e.disponibleSi && !evaluarCondicion(e.disponibleSi, datos)) continue;
+    for (const n of e.reglas?.documentosOpcionales ?? []) porNombre.set(n.trim().toLowerCase(), n);
   }
   return [...porNombre.values()];
 }
