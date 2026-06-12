@@ -61,8 +61,16 @@ export default function ExpedientePage() {
   }
 
   const etapas = (proceso.tipoProceso.etapas ?? []).slice().sort((a, b) => a.orden - b.orden);
-  const idxActual = etapas.findIndex((e) => e.key === proceso.etapaActual);
   const etapaActualDef = etapas.find((e) => e.key === proceso.etapaActual);
+  const ordenActual = etapaActualDef?.orden ?? -1;
+  // Pasos del stepper: etapas agrupadas por `orden`. Un orden con varias etapas es
+  // una DECISIÓN (ramas alternativas según los datos, p. ej. Reiteración o Tutela).
+  const pasos: { orden: number; etapas: EtapaDef[] }[] = [];
+  for (const e of etapas) {
+    const last = pasos[pasos.length - 1];
+    if (last && last.orden === e.orden) last.etapas.push(e);
+    else pasos.push({ orden: e.orden, etapas: [e] });
+  }
   const accionDerivar = etapaActualDef?.accion?.tipo === "crearDerivado" ? etapaActualDef.accion : null;
   // ¿El derivado de esta acción YA existe? (al cargar la página, no solo tras crearlo
   // en esta sesión): un hijo del caso colgado de este proceso con el tipo destino.
@@ -70,6 +78,31 @@ export default function ExpedientePage() {
     ? caso.find((n) => n.casoRelacionadoId === proceso.id && n.tipoProcesoNombre === accionDerivar.tipoDestinoNombre)
     : undefined;
   const yaDerivado = derivado ?? (derivadoEnCaso ? { id: derivadoEnCaso.id, nuevo: false } : null);
+
+  // Helpers de render del stepper (plazo de la etapa + mensaje de bloqueo por etapa).
+  const plazoSpan = (e: EtapaDef) =>
+    e.reglas?.plazoDias ? (
+      <span
+        className={`ml-auto text-xs ${e.reglas.plazoDias <= 3 ? "font-semibold text-rose-600 dark:text-rose-400" : "text-slate-400"}`}
+        title={e.reglas.plazoDias <= 3 ? "Término muy corto" : undefined}
+      >
+        {e.reglas.plazoDias <= 3 && "⚠ "}
+        {e.reglas.plazoDias} días{e.reglas.plazoTipoDias === "habiles" ? " háb." : ""}
+      </span>
+    ) : null;
+  const bloqueoMsg = (key: string) =>
+    bloqueo?.etapa === key ? (
+      <div className="ml-9 mt-1 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-500/10 dark:text-red-300">
+        {bloqueo.motivo ?? (
+          <>
+            {bloqueo.faltantes.length > 0 && <div>Faltan datos para avanzar: te llevé al formulario y marqué los campos a llenar ↓</div>}
+            {(bloqueo.documentosFaltantes?.length ?? 0) > 0 && (
+              <div>Faltan documentos: {bloqueo.documentosFaltantes!.join(", ")} — súbelos en el formulario ↓</div>
+            )}
+          </>
+        )}
+      </div>
+    ) : null;
 
   async function irAEtapa(key: string) {
     try {
@@ -193,76 +226,83 @@ export default function ExpedientePage() {
             Etapas del proceso
           </h3>
           <ol className="space-y-1">
-            {etapas.map((e: EtapaDef, i: number) => {
-              const done = i < idxActual;
-              const current = i === idxActual;
-              // Ramas por valor: si la etapa tiene `disponibleSi` y no se cumple,
-              // se muestra atenuada y no es clicable.
-              const disponible = !e.disponibleSi || evaluarCondicion(e.disponibleSi, proceso!.datos);
-              return (
-                <li key={e.key}>
-                  <button
-                    type="button"
-                    disabled={!puedeEditar}
-                    onClick={() => irAEtapa(e.key)}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      !puedeEditar ? "cursor-default" : disponible ? "hover:bg-slate-50 dark:hover:bg-slate-800" : "opacity-50 hover:opacity-90 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    } ${current ? "bg-indigo-50 dark:bg-indigo-500/10" : ""}`}
-                  >
-                    <span
-                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                        done
-                          ? "bg-emerald-500 text-white"
-                          : current
-                            ? "bg-indigo-600 text-white"
-                            : "border border-slate-300 text-slate-400 dark:border-slate-700"
-                      }`}
+            {pasos.map((paso, pi) => {
+              const numero = pi + 1;
+              const current = paso.etapas.some((e) => e.key === proceso.etapaActual);
+              const done = paso.orden < ordenActual;
+              const numCls = `flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
+                done ? "bg-emerald-500 text-white" : current ? "bg-indigo-600 text-white" : "border border-slate-300 text-slate-400 dark:border-slate-700"
+              }`;
+
+              // Paso simple (una sola etapa).
+              if (paso.etapas.length === 1) {
+                const e = paso.etapas[0];
+                const disponible = !e.disponibleSi || evaluarCondicion(e.disponibleSi, proceso.datos);
+                return (
+                  <li key={e.key}>
+                    <button
+                      type="button"
+                      disabled={!puedeEditar}
+                      onClick={() => irAEtapa(e.key)}
+                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                        !puedeEditar ? "cursor-default" : disponible ? "hover:bg-slate-50 dark:hover:bg-slate-800" : "opacity-50 hover:opacity-90 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      } ${current ? "bg-indigo-50 dark:bg-indigo-500/10" : ""}`}
                     >
-                      {done ? "✓" : e.orden}
-                    </span>
-                    <span className={current ? "font-medium text-slate-800 dark:text-slate-100" : "text-slate-600 dark:text-slate-300"}>
-                      {e.nombre}
-                      {e.terminal && <span className="ml-2 text-xs text-slate-400">(final)</span>}
-                    </span>
-                    {e.reglas?.plazoDias && (
-                      <span
-                        className={`ml-auto text-xs ${
-                          e.reglas.plazoDias <= 3
-                            ? "font-semibold text-rose-600 dark:text-rose-400"
-                            : "text-slate-400"
-                        }`}
-                        title={e.reglas.plazoDias <= 3 ? "Término muy corto" : undefined}
-                      >
-                        {e.reglas.plazoDias <= 3 && "⚠ "}
-                        {e.reglas.plazoDias} días{e.reglas.plazoTipoDias === "habiles" ? " háb." : ""}
+                      <span className={numCls}>{done ? "✓" : numero}</span>
+                      <span className={current ? "font-medium text-slate-800 dark:text-slate-100" : "text-slate-600 dark:text-slate-300"}>
+                        {e.nombre}
+                        {e.terminal && <span className="ml-2 text-xs text-slate-400">(final)</span>}
                       </span>
-                    )}
-                  </button>
-                  {current && (() => {
-                    const v = vencimientoActivo(proceso.fechaLimite);
-                    return v ? <div className={`ml-9 mt-1 text-xs font-medium ${v.cls}`}>⏱ {v.texto}</div> : null;
-                  })()}
-                  {bloqueo?.etapa === e.key && (
-                    <div className="ml-9 mt-1 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-500/10 dark:text-red-300">
-                      {bloqueo.motivo ?? (
-                        <>
-                          {bloqueo.faltantes.length > 0 && (
-                            <div>Faltan datos para avanzar: te llevé al formulario y marqué los campos a llenar ↓</div>
-                          )}
-                          {(bloqueo.documentosFaltantes?.length ?? 0) > 0 && (
-                            <div>Faltan documentos: {bloqueo.documentosFaltantes!.join(", ")} — súbelos en «Documentos requeridos» ↓</div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
+                      {plazoSpan(e)}
+                    </button>
+                    {current && (() => {
+                      const v = vencimientoActivo(proceso.fechaLimite);
+                      return v ? <div className={`ml-9 mt-1 text-xs font-medium ${v.cls}`}>⏱ {v.texto}</div> : null;
+                    })()}
+                    {bloqueoMsg(e.key)}
+                  </li>
+                );
+              }
+
+              // Paso de DECISIÓN: varias ramas alternativas (según los datos).
+              return (
+                <li key={`paso-${paso.orden}`}>
+                  <div className="flex items-center gap-3 px-3 py-2 text-sm">
+                    <span className={numCls}>{done ? "✓" : numero}</span>
+                    <span className={current ? "font-medium text-slate-800 dark:text-slate-100" : "text-slate-600 dark:text-slate-300"}>
+                      Cómo continuar <span className="text-xs font-normal text-slate-400">(elige una)</span>
+                    </span>
+                  </div>
+                  <div className="ml-9 space-y-1">
+                    {paso.etapas.map((rama) => {
+                      const disp = !rama.disponibleSi || evaluarCondicion(rama.disponibleSi, proceso.datos);
+                      const ramaCurrent = rama.key === proceso.etapaActual;
+                      return (
+                        <div key={rama.key}>
+                          <button
+                            type="button"
+                            disabled={!puedeEditar}
+                            onClick={() => irAEtapa(rama.key)}
+                            className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm transition-colors ${
+                              !puedeEditar ? "cursor-default" : disp ? "hover:bg-slate-50 dark:hover:bg-slate-800" : "opacity-50 hover:opacity-90 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            } ${ramaCurrent ? "bg-indigo-50 dark:bg-indigo-500/10" : ""}`}
+                          >
+                            <span className="text-slate-400">→</span>
+                            <span className={ramaCurrent ? "font-medium text-slate-800 dark:text-slate-100" : "text-slate-600 dark:text-slate-300"}>{rama.nombre}</span>
+                            {plazoSpan(rama)}
+                          </button>
+                          {bloqueoMsg(rama.key)}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </li>
               );
             })}
           </ol>
           {puedeEditar && (
             <p className="mt-3 text-xs text-slate-400">
-              Haz clic en una etapa para mover el proceso. Las etapas con reglas se bloquean si faltan datos.
+              Haz clic en un paso para mover el proceso. Los pasos con reglas se bloquean si faltan datos.
             </p>
           )}
 
