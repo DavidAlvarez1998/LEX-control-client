@@ -9,6 +9,7 @@ import { VencimientoHint } from "@/components/vencimiento-hint";
 import { errorMessage } from "@/lib/api";
 import { getUser, type AuthUser } from "@/lib/auth";
 import {
+  documentosRequeridosDeEtapas,
   etiquetasPlazoOpciones,
   JURISDICCION_LABEL,
   validarDatos,
@@ -78,8 +79,9 @@ export default function NuevoProcesoPage() {
   const [jurisdiccion, setJurisdiccion] = useState<Jurisdiccion | "">("");
   const [tipo, setTipo] = useState<TipoProceso | null>(null);
 
-  // Poder: se elige aquí si el formulario marca requierePoder=Sí y se sube al crear.
-  const [poderFile, setPoderFile] = useState<File | null>(null);
+  // Documentos del proceso (peticion.pdf, poder.pdf, etc.): se eligen aquí y se
+  // suben tras crear el proceso (la subida necesita el id). Opcional: no bloquea.
+  const [archivos, setArchivos] = useState<Record<string, File>>({});
 
   const [titulo, setTitulo] = useState("");
   const [datos, setDatos] = useState<Record<string, unknown>>({});
@@ -208,11 +210,14 @@ export default function NuevoProcesoPage() {
           })),
       };
       const creado = await crearProceso(body);
-      // El poder solo se puede vincular una vez existe el proceso: se sube ahora.
-      // Si falla la subida, el proceso ya quedó creado y se puede reintentar en su ficha.
-      if (poderFile) {
+      // Los documentos solo se pueden vincular una vez existe el proceso: se suben
+      // ahora, solo los que siguen aplicando según los datos finales. Si alguna
+      // subida falla, el proceso ya quedó creado y se reintenta desde su ficha.
+      for (const nombre of documentosRequeridosDeEtapas(tipo.etapas, datos)) {
+        const file = archivos[nombre];
+        if (!file) continue;
         try {
-          await subirArchivoProceso(creado.id, poderFile, "poder.pdf");
+          await subirArchivoProceso(creado.id, file, nombre);
         } catch {
           /* reintenta en la ficha del proceso */
         }
@@ -413,29 +418,62 @@ export default function NuevoProcesoPage() {
             errores={errores}
             // Decora las opciones que definen plazo (p. ej. tipo de petición → "(15 días hábiles)").
             etiquetasOpcion={etiquetasPlazoOpciones(tipo.etapas)}
-            // Slots: vencimiento en vivo tras la fecha de radicación + uploader del
-            // poder tras el check "¿Requiere poder?".
+            // Slot: vencimiento en vivo tras la fecha de radicación. Los documentos
+            // (poder, petición…) se adjuntan en la sección de abajo.
             slotDespuesDe={{
               fechaRadicacion: <VencimientoHint tipoProcesoId={tipo.id} datos={datos} />,
-              requierePoder: Boolean(datos.requierePoder) ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
-                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">Poder</p>
-                  <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300/80">
-                    Adjunta el poder. Se guardará vinculado al proceso al crearlo.
-                  </p>
-                  <input
-                    type="file"
-                    onChange={(e) => setPoderFile(e.target.files?.[0] ?? null)}
-                    className="mt-2 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 dark:text-slate-300 dark:file:bg-indigo-500/10 dark:file:text-indigo-300"
-                  />
-                  {poderFile && (
-                    <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">✓ {poderFile.name}</p>
-                  )}
-                </div>
-              ) : null,
             }}
           />
         </Card>
+
+        {/* Documentos del proceso: adjunta aquí los que piden las etapas aplicables
+            (peticion.pdf, poder.pdf…). Opcional: no bloquea la creación; el gate de
+            cada etapa los sigue exigiendo para avanzar. Se suben al crear el proceso. */}
+        {(() => {
+          const docs = documentosRequeridosDeEtapas(tipo.etapas, datos);
+          if (docs.length === 0) return null;
+          return (
+            <Card>
+              <h3 className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Documentos del proceso <span className="font-normal text-slate-400">(opcional)</span>
+              </h3>
+              <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+                Adjunta los documentos que el proceso necesitará. Se guardan al crearlo; también puedes subirlos después desde la ficha.
+              </p>
+              <ul className="space-y-2">
+                {docs.map((nombre) => {
+                  const file = archivos[nombre];
+                  return (
+                    <li
+                      key={nombre}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-800"
+                    >
+                      <span className={`text-sm font-medium ${file ? "text-emerald-700 dark:text-emerald-400" : "text-slate-700 dark:text-slate-200"}`}>
+                        {file ? "✓ " : "• "}
+                        {nombre}
+                      </span>
+                      <label className="cursor-pointer text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+                        {file ? "Cambiar" : "Adjuntar"}
+                        <input
+                          type="file"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            setArchivos((prev) => {
+                              if (!f) return prev;
+                              return { ...prev, [nombre]: f };
+                            });
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Card>
+          );
+        })()}
 
         {/* Datos judiciales: solo para procesos que van ante un juez (no en trámites
             ante entidad como el derecho de petición). */}
