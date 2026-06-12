@@ -51,7 +51,7 @@ export function DocumentosRequeridos({
     <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
       <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">Documentos requeridos</h3>
       <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300/80">
-        El sistema los exige para avanzar de etapa. Súbelos aquí (ya con su nombre correcto).
+        El sistema los exige para avanzar de etapa.
       </p>
       <ul className="mt-3 space-y-2">
         {requeridos.map((nombre) => {
