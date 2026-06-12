@@ -135,8 +135,9 @@ export const comercialApi = {
   carteraCliente: (clienteId: string) => api.get<CarteraResumen[]>(`/comercial/clientes/${clienteId}/cartera`),
 };
 
-// Clientes (para el buscador de la agenda): el endpoint /clientes ya trae el teléfono.
-export type ClienteAgenda = { id: string; nombre: string; telefono: string | null; estado: string };
+// Clientes (para el buscador de la agenda): el endpoint /clientes ya trae el teléfono
+// y el documento de identidad (numeroDocumento), para buscar por nombre, celular o CC.
+export type ClienteAgenda = { id: string; nombre: string; telefono: string | null; numeroDocumento: string | null; estado: string };
 export function listClientesAgenda(): Promise<ClienteAgenda[]> {
   return api.get<ClienteAgenda[]>("/clientes");
 }

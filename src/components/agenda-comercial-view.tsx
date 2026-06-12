@@ -214,7 +214,9 @@ function DiaModal({ dia, actividades, clientes, esAdmin, comerciales, onClose, o
     const t = query.trim().toLowerCase();
     if (!t) return [];
     return activos.filter((c) =>
-      c.nombre.toLowerCase().includes(t) || (c.telefono ?? "").toLowerCase().includes(t),
+      c.nombre.toLowerCase().includes(t) ||
+      (c.telefono ?? "").toLowerCase().includes(t) ||
+      (c.numeroDocumento ?? "").toLowerCase().includes(t),
     ).slice(0, 8);
   }, [activos, query]);
 
@@ -265,7 +267,7 @@ function DiaModal({ dia, actividades, clientes, esAdmin, comerciales, onClose, o
             </div>
           ) : (
             <>
-              <input value={query} onChange={(e) => setQuery(e.target.value)} className={inputCls} placeholder="Escribe para buscar un cliente… (opcional)" />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} className={inputCls} placeholder="Buscar por nombre, celular o cédula… (opcional)" />
               {query.trim() && (
                 <ul className="mt-1 max-h-44 overflow-auto rounded-lg border border-slate-200 dark:border-slate-800">
                   {matches.length === 0 ? (
@@ -276,6 +278,7 @@ function DiaModal({ dia, actividades, clientes, esAdmin, comerciales, onClose, o
                         className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
                         <span className="font-medium text-slate-800 dark:text-slate-100">{c.nombre}</span>
                         {c.telefono && <span className="text-slate-500 dark:text-slate-400"> · {c.telefono}</span>}
+                        {c.numeroDocumento && <span className="text-slate-400 dark:text-slate-500"> · CC {c.numeroDocumento}</span>}
                       </button>
                     </li>
                   ))}
