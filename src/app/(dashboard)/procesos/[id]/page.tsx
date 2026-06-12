@@ -400,7 +400,7 @@ export default function ExpedientePage() {
           esquema={proceso.tipoProceso.esquemaFormulario ?? []}
           etapas={proceso.tipoProceso.etapas ?? []}
           datos={proceso.datos}
-          onSaved={(datos) => setProceso((p) => (p ? { ...p, datos } : p))}
+          onSaved={(actualizado) => { setProceso(actualizado); cargarCaso(); }}
           documentos={proceso.documentos ?? []}
           onDocSubido={(doc) =>
             setProceso((p) =>

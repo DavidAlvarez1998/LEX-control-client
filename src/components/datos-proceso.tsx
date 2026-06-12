@@ -19,7 +19,7 @@ import {
   type CampoEsquema,
   type EtapaDef,
 } from "@/lib/procesos";
-import { actualizarDatos, subirArchivoProceso, type DocumentoProceso } from "@/lib/procesos-api";
+import { actualizarDatos, subirArchivoProceso, type DocumentoProceso, type ProcesoDetalle } from "@/lib/procesos-api";
 
 export function DatosProceso({
   procesoId,
@@ -38,7 +38,7 @@ export function DatosProceso({
   esquema: CampoEsquema[];
   etapas?: EtapaDef[]; // para mostrar los documentos requeridos/opcionales inline
   datos: Record<string, unknown>;
-  onSaved: (datos: Record<string, unknown>) => void;
+  onSaved: (proceso: ProcesoDetalle) => void; // proceso completo (incluye etapa auto-avanzada)
   documentos?: DocumentoProceso[]; // para saber qué documentos ya están adjuntos
   onDocSubido?: (doc: DocumentoProceso) => void; // refleja la subida en la ficha
   // Campos a resaltar como faltantes (al intentar avanzar de etapa): abre el form
@@ -124,7 +124,7 @@ export function DatosProceso({
     setError(null);
     try {
       const actualizado = await actualizarDatos(procesoId, borrador);
-      onSaved(actualizado.datos);
+      onSaved(actualizado); // proceso completo: refleja la etapa auto-avanzada sin refrescar
       setEditando(false);
     } catch (e) {
       setError(errorMessage(e, "Error al guardar"));
