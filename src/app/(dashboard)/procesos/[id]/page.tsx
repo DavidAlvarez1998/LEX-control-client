@@ -60,7 +60,14 @@ export default function ExpedientePage() {
       if (e instanceof ApiError && e.status === 400) {
         const faltantes = (e.issues as { faltantes?: string[] })?.faltantes ?? [];
         const documentosFaltantes = (e.issues as { documentosFaltantes?: string[] })?.documentosFaltantes ?? [];
-        setBloqueo({ etapa: key, faltantes: [...faltantes, ...documentosFaltantes] });
+        const todos = [...faltantes, ...documentosFaltantes];
+        // Si no hay lista de faltantes, es otro tipo de 400 (p. ej. proceso archivado):
+        // muestra el mensaje real del server, no el genérico de "faltan requisitos".
+        setBloqueo(
+          todos.length > 0
+            ? { etapa: key, faltantes: todos }
+            : { etapa: key, faltantes: [], motivo: e.message || "No se pudo mover a esta etapa." },
+        );
       } else if (e instanceof ApiError && e.status === 422) {
         setBloqueo({ etapa: key, faltantes: [], motivo: "Esta etapa no está disponible con los datos actuales del proceso." });
       }
@@ -141,43 +148,7 @@ export default function ExpedientePage() {
         </div>
       </Card>
 
-      <Card className="mb-5">
-        <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
-          Formulario del proceso
-        </h3>
-        <DatosProceso
-          procesoId={proceso.id}
-          tipoProcesoId={proceso.tipoProceso.id}
-          esquema={proceso.tipoProceso.esquemaFormulario ?? []}
-          datos={proceso.datos}
-          onSaved={(datos) => setProceso((p) => (p ? { ...p, datos } : p))}
-          documentos={proceso.documentos ?? []}
-          onDocSubido={(doc) =>
-            setProceso((p) =>
-              p
-                ? { ...p, documentos: [doc, ...(p.documentos ?? []).filter((d) => d.nombre.trim().toLowerCase() !== doc.nombre.trim().toLowerCase())] }
-                : p,
-            )
-          }
-          readOnly={!puedeEditar}
-        />
-      </Card>
-
-      {/* Documentos requeridos por las etapas (peticion.pdf, poder.pdf,
-          reiteracion.pdf…): un botón "Subir" por cada uno, ya con el nombre exacto
-          que pide el gate, para que avanzar de etapa no se bloquee. */}
-      <div className="mb-5">
-        <DocumentosRequeridos
-          procesoId={proceso.id}
-          etapas={proceso.tipoProceso.etapas ?? []}
-          datos={proceso.datos}
-          documentos={proceso.documentos ?? []}
-          onChange={(documentos) => setProceso((p) => (p ? { ...p, documentos } : p))}
-          readOnly={!puedeEditar}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+      <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
             Etapas del proceso
@@ -222,7 +193,10 @@ export default function ExpedientePage() {
                   </button>
                   {bloqueo?.etapa === e.key && (
                     <div className="ml-9 mt-1 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
-                      {bloqueo.motivo ?? `No puedes avanzar a esta etapa. Faltan: ${bloqueo.faltantes.join(", ")}.`}
+                      {bloqueo.motivo ??
+                        (bloqueo.faltantes.length > 0
+                          ? `Para avanzar a esta etapa faltan: ${bloqueo.faltantes.join(", ")}.`
+                          : "No se pudo mover a esta etapa.")}
                     </div>
                   )}
                 </li>
@@ -305,6 +279,42 @@ export default function ExpedientePage() {
             />
           </Card>
         </div>
+      </div>
+
+      <Card className="mb-5">
+        <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
+          Formulario del proceso
+        </h3>
+        <DatosProceso
+          procesoId={proceso.id}
+          tipoProcesoId={proceso.tipoProceso.id}
+          esquema={proceso.tipoProceso.esquemaFormulario ?? []}
+          datos={proceso.datos}
+          onSaved={(datos) => setProceso((p) => (p ? { ...p, datos } : p))}
+          documentos={proceso.documentos ?? []}
+          onDocSubido={(doc) =>
+            setProceso((p) =>
+              p
+                ? { ...p, documentos: [doc, ...(p.documentos ?? []).filter((d) => d.nombre.trim().toLowerCase() !== doc.nombre.trim().toLowerCase())] }
+                : p,
+            )
+          }
+          readOnly={!puedeEditar}
+        />
+      </Card>
+
+      {/* Documentos requeridos por las etapas (peticion.pdf, poder.pdf,
+          reiteracion.pdf…): un botón "Subir" por cada uno, ya con el nombre exacto
+          que pide el gate, para que avanzar de etapa no se bloquee. */}
+      <div>
+        <DocumentosRequeridos
+          procesoId={proceso.id}
+          etapas={proceso.tipoProceso.etapas ?? []}
+          datos={proceso.datos}
+          documentos={proceso.documentos ?? []}
+          onChange={(documentos) => setProceso((p) => (p ? { ...p, documentos } : p))}
+          readOnly={!puedeEditar}
+        />
       </div>
     </div>
     </RolEmpresaGuard>
