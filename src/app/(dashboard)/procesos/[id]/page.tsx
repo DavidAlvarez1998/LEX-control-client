@@ -55,6 +55,12 @@ export default function ExpedientePage() {
   const idxActual = etapas.findIndex((e) => e.key === proceso.etapaActual);
   const etapaActualDef = etapas.find((e) => e.key === proceso.etapaActual);
   const accionDerivar = etapaActualDef?.accion?.tipo === "crearDerivado" ? etapaActualDef.accion : null;
+  // ¿El derivado de esta acción YA existe? (al cargar la página, no solo tras crearlo
+  // en esta sesión): un hijo del caso colgado de este proceso con el tipo destino.
+  const derivadoEnCaso = accionDerivar
+    ? caso.find((n) => n.casoRelacionadoId === proceso.id && n.tipoProcesoNombre === accionDerivar.tipoDestinoNombre)
+    : undefined;
+  const yaDerivado = derivado ?? (derivadoEnCaso ? { id: derivadoEnCaso.id, nuevo: false } : null);
 
   async function irAEtapa(key: string) {
     try {
@@ -247,25 +253,36 @@ export default function ExpedientePage() {
             const esContinuacion = destino === proceso.tipoProceso.nombre;
             return (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                Acción disponible: {etapaActualDef?.nombre ?? (esContinuacion ? `continuar el ${destino}` : `escalar a ${destino}`)}
-              </p>
-              <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300/80">
-                {esContinuacion
-                  ? `Crea un nuevo ${destino} que reitera este, vinculado como el mismo caso (copia el peticionario y los datos de la solicitud). El proceso actual queda como caso base.`
-                  : `Crea un proceso de ${destino} vinculado a este como parte del mismo caso. El proceso actual queda como caso base.`}
-              </p>
-              {derivado ? (
-                <Link
-                  href={`/procesos/${derivado.id}`}
-                  className="mt-2 inline-block text-sm font-medium text-indigo-600 hover:underline"
-                >
-                  {derivado.nuevo ? "✓ Creado — abrir expediente →" : "Ya existía — abrir expediente →"}
-                </Link>
+              {yaDerivado ? (
+                // Ya se creó el derivado (reiteración / tutela): no ofrecer crearlo de nuevo.
+                <>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    {esContinuacion ? "La reiteración ya está creada" : `La ${destino} ya está creada`}
+                  </p>
+                  <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300/80">
+                    Forma parte de este caso.
+                  </p>
+                  <Link
+                    href={`/procesos/${yaDerivado.id}`}
+                    className="mt-2 inline-block text-sm font-medium text-indigo-600 hover:underline"
+                  >
+                    {yaDerivado.nuevo ? "✓ Creado — abrir expediente →" : "Abrir expediente →"}
+                  </Link>
+                </>
               ) : (
-                <Button className="mt-2" onClick={escalar} disabled={escalando}>
-                  {escalando ? "Creando…" : esContinuacion ? `Crear la reiteración` : `Crear ${destino}`}
-                </Button>
+                <>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    Acción disponible: {etapaActualDef?.nombre ?? (esContinuacion ? `continuar el ${destino}` : `escalar a ${destino}`)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300/80">
+                    {esContinuacion
+                      ? `Crea un nuevo ${destino} que reitera este, vinculado como el mismo caso (copia el peticionario y los datos de la solicitud). El proceso actual queda como caso base.`
+                      : `Crea un proceso de ${destino} vinculado a este como parte del mismo caso. El proceso actual queda como caso base.`}
+                  </p>
+                  <Button className="mt-2" onClick={escalar} disabled={escalando}>
+                    {escalando ? "Creando…" : esContinuacion ? `Crear la reiteración` : `Crear ${destino}`}
+                  </Button>
+                </>
               )}
             </div>
             );
