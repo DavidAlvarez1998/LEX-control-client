@@ -98,15 +98,25 @@ export function FormularioDinamico({
             );
         }
 
-        // El checkbox ya trae su propio label; el resto usa <Field>.
+        // Checkbox y multiselect NO usan <Field>: este envuelve en un <label>, y
+        // un <label> que contiene varios controles (las pastillas del multiselect)
+        // se asocia al PRIMERO → al pasar el mouse/clic por el campo se activa la
+        // primera opción ("Información"). Se renderizan con un <div> propio.
+        const sinLabelWrap = campo.tipo === "boolean" || campo.tipo === "multiselect";
         const elemento =
-          campo.tipo === "boolean" ? (
+          sinLabelWrap ? (
             <div className="pt-1">
               <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
                 {campo.label}
                 {requerido && <span className="ml-0.5 text-red-500">*</span>}
               </span>
               {control}
+              {campo.tipo === "multiselect" && campo.ayuda && (
+                <span className="mt-1 block text-xs text-slate-400">{campo.ayuda}</span>
+              )}
+              {campo.tipo === "multiselect" && error && (
+                <span className="mt-1 block text-xs text-red-600">{error}</span>
+              )}
             </div>
           ) : (
             <Field label={campo.label} requerido={requerido} error={error}>
