@@ -128,6 +128,39 @@ export default function NuevoProcesoPage() {
   function setCampo(key: string, value: unknown) {
     setDatos((d) => ({ ...d, [key]: value }));
   }
+
+  // Lista de adjuntos (petición, poder…) reusada inline (bajo "¿Requiere poder?")
+  // o como sección aparte. La petición va siempre; el poder aparece al marcar Sí.
+  const listaDocs = (docs: string[]) => (
+    <ul className="space-y-2">
+      {docs.map((nombre) => {
+        const file = archivos[nombre];
+        return (
+          <li
+            key={nombre}
+            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+          >
+            <span className={`text-sm font-medium ${file ? "text-emerald-700 dark:text-emerald-400" : "text-slate-700 dark:text-slate-200"}`}>
+              {file ? "✓ " : "• "}
+              {nombre}
+            </span>
+            <label className="cursor-pointer text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+              {file ? "Cambiar" : "Adjuntar"}
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  setArchivos((prev) => (f ? { ...prev, [nombre]: f } : prev));
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </li>
+        );
+      })}
+    </ul>
+  );
   function actualizarParte(i: number, patch: Partial<ParteProceso>) {
     setPartes((ps) => ps.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   }
@@ -418,21 +451,32 @@ export default function NuevoProcesoPage() {
             errores={errores}
             // Decora las opciones que definen plazo (p. ej. tipo de petición → "(15 días hábiles)").
             etiquetasOpcion={etiquetasPlazoOpciones(tipo.etapas)}
-            // Slot: vencimiento en vivo tras la fecha de radicación. Los documentos
-            // (poder, petición…) se adjuntan en la sección de abajo.
+            // Slots: vencimiento tras la fecha de radicación; y los documentos a
+            // adjuntar JUSTO debajo de "¿Requiere poder?" — la petición siempre y el
+            // poder desplegándose al marcar Sí. (El slot solo se pinta si el tipo tiene
+            // ese campo; para los que no, va la sección de fallback de abajo.)
             slotDespuesDe={{
               fechaRadicacion: <VencimientoHint tipoProcesoId={tipo.id} datos={datos} />,
+              requierePoder: (() => {
+                const docs = documentosRequeridosDeEtapas(tipo.etapas, datos);
+                if (docs.length === 0) return null;
+                return (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                    <p className="mb-2 text-sm font-medium text-amber-900 dark:text-amber-200">
+                      Documentos a adjuntar <span className="font-normal text-amber-700/80 dark:text-amber-300/70">(opcional)</span>
+                    </p>
+                    {listaDocs(docs)}
+                  </div>
+                );
+              })(),
             }}
           />
         </Card>
 
-        {/* Documentos del proceso: adjunta aquí los que piden las etapas aplicables
-            (peticion.pdf, poder.pdf…). Opcional: no bloquea la creación; el gate de
-            cada etapa los sigue exigiendo para avanzar. Se suben al crear el proceso. */}
-        {(() => {
-          const docs = documentosRequeridosDeEtapas(tipo.etapas, datos);
-          if (docs.length === 0) return null;
-          return (
+        {/* Fallback: tipos SIN campo "¿Requiere poder?" muestran los documentos en
+            sección aparte (los que sí lo tienen los muestran inline bajo el check). */}
+        {!tipo.esquemaFormulario.some((c) => c.key === "requierePoder") &&
+          documentosRequeridosDeEtapas(tipo.etapas, datos).length > 0 && (
             <Card>
               <h3 className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
                 Documentos del proceso <span className="font-normal text-slate-400">(opcional)</span>
@@ -440,40 +484,9 @@ export default function NuevoProcesoPage() {
               <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
                 Adjunta los documentos que el proceso necesitará. Se guardan al crearlo; también puedes subirlos después desde la ficha.
               </p>
-              <ul className="space-y-2">
-                {docs.map((nombre) => {
-                  const file = archivos[nombre];
-                  return (
-                    <li
-                      key={nombre}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-800"
-                    >
-                      <span className={`text-sm font-medium ${file ? "text-emerald-700 dark:text-emerald-400" : "text-slate-700 dark:text-slate-200"}`}>
-                        {file ? "✓ " : "• "}
-                        {nombre}
-                      </span>
-                      <label className="cursor-pointer text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">
-                        {file ? "Cambiar" : "Adjuntar"}
-                        <input
-                          type="file"
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            setArchivos((prev) => {
-                              if (!f) return prev;
-                              return { ...prev, [nombre]: f };
-                            });
-                            e.target.value = "";
-                          }}
-                        />
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
+              {listaDocs(documentosRequeridosDeEtapas(tipo.etapas, datos))}
             </Card>
-          );
-        })()}
+          )}
 
         {/* Datos judiciales: solo para procesos que van ante un juez (no en trámites
             ante entidad como el derecho de petición). */}
