@@ -197,6 +197,33 @@ export function etiquetasPlazoOpciones(etapas: EtapaDef[]): Record<string, Recor
   return out;
 }
 
+/**
+ * Nombres de documento que exigen las etapas dado el estado actual de `datos`:
+ * los `documentosRequeridos` fijos + los `requeridosSi` que apliquen, SALTANDO
+ * las etapas-rama cuyo `disponibleSi` no se cumple (p. ej. `reiteracion.pdf`
+ * solo si contestaron=PARCIAL). Dedup case-insensitive conservando el original.
+ * Lo usan el panel de la ficha y la sección de documentos de la creación.
+ */
+export function documentosRequeridosDeEtapas(
+  etapas: EtapaDef[],
+  datos: Record<string, unknown>,
+): string[] {
+  const porNombre = new Map<string, string>(); // lower → nombre original
+  for (const e of etapas) {
+    if (e.disponibleSi && !evaluarCondicion(e.disponibleSi, datos)) continue;
+    const r = e.reglas;
+    if (!r) continue;
+    const nombres = [
+      ...(r.documentosRequeridos ?? []),
+      ...(r.requeridosSi ?? [])
+        .filter((x) => evaluarCondicion(x.si, datos))
+        .flatMap((x) => x.documentosRequeridos ?? []),
+    ];
+    for (const n of nombres) porNombre.set(n.trim().toLowerCase(), n);
+  }
+  return [...porNombre.values()];
+}
+
 // --- Validación del formulario dinámico (misma lógica que usará el server) ---
 export type ResultadoValidacion = { ok: boolean; faltantes: string[] };
 

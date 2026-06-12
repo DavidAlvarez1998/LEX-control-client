@@ -8,25 +8,8 @@
 
 import { useState } from "react";
 import { errorMessage } from "@/lib/api";
-import { evaluarCondicion, type EtapaDef } from "@/lib/procesos";
+import { documentosRequeridosDeEtapas, type EtapaDef } from "@/lib/procesos";
 import { subirArchivoProceso, type DocumentoProceso } from "@/lib/procesos-api";
-
-/** Nombres de documento que exigen las etapas, dado el estado actual de `datos`. */
-function docsRequeridos(etapas: EtapaDef[], datos: Record<string, unknown>): string[] {
-  const porNombre = new Map<string, string>(); // lower → nombre original
-  for (const e of etapas) {
-    const r = e.reglas;
-    if (!r) continue;
-    const nombres = [
-      ...(r.documentosRequeridos ?? []),
-      ...(r.requeridosSi ?? [])
-        .filter((x) => evaluarCondicion(x.si, datos))
-        .flatMap((x) => x.documentosRequeridos ?? []),
-    ];
-    for (const n of nombres) porNombre.set(n.trim().toLowerCase(), n);
-  }
-  return [...porNombre.values()];
-}
 
 export function DocumentosRequeridos({
   procesoId,
@@ -43,7 +26,7 @@ export function DocumentosRequeridos({
   onChange: (docs: DocumentoProceso[]) => void;
   readOnly?: boolean;
 }) {
-  const requeridos = docsRequeridos(etapas, datos);
+  const requeridos = documentosRequeridosDeEtapas(etapas, datos);
   const [subiendo, setSubiendo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   if (requeridos.length === 0) return null;
