@@ -186,7 +186,15 @@ export default function ExpedientePage() {
                       {e.terminal && <span className="ml-2 text-xs text-slate-400">(final)</span>}
                     </span>
                     {e.reglas?.plazoDias && (
-                      <span className="ml-auto text-xs text-slate-400">
+                      <span
+                        className={`ml-auto text-xs ${
+                          e.reglas.plazoDias <= 3
+                            ? "font-semibold text-rose-600 dark:text-rose-400"
+                            : "text-slate-400"
+                        }`}
+                        title={e.reglas.plazoDias <= 3 ? "Término muy corto" : undefined}
+                      >
+                        {e.reglas.plazoDias <= 3 && "⚠ "}
                         {e.reglas.plazoDias} días{e.reglas.plazoTipoDias === "habiles" ? " háb." : ""}
                       </span>
                     )}

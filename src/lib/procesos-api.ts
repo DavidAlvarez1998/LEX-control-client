@@ -236,6 +236,7 @@ export type CasoNodo = {
   esJudicial: boolean;
   estado: EstadoProceso;
   etapaActual: string;
+  etapaNombre: string;
   fechaLimite: string | null;
   casoRelacionadoId: string | null;
   createdAt: string;
