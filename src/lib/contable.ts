@@ -61,6 +61,7 @@ export type Empleable = {
 export type CajaMenor = {
   id: string; nombre: string; montoInicial: string; estado: string;
   responsableId: string | null; observaciones: string | null; createdAt: string;
+  saldoActual?: number; // derivado por la API también en el listado
 };
 export type Movimiento = {
   id: string; cajaId: string; tipoMovimiento: string; fechaMovimiento: string;

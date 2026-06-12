@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { Button, Modal, PlusIcon } from "@/components/ui";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Field, Input, MoneyInput, Select, Textarea } from "@/components/form-ui";
 import { Badge, Banda, SectionCard, Tabla, fmtFecha, humaniza, money, useCargar } from "./bits";
 import { errorMessage } from "@/lib/api";
@@ -56,6 +57,7 @@ export function CajaTab({ lookups }: { lookups: Lookups }) {
           cols={[
             { h: "Caja", cell: (c) => <span className="font-medium text-slate-800 dark:text-slate-100">{c.nombre}</span> },
             { h: "Monto inicial", cell: (c) => money(c.montoInicial) },
+            { h: "Disponible", cell: (c) => <span className="font-medium text-slate-800 dark:text-slate-100">{money(c.saldoActual ?? Number(c.montoInicial))}</span> },
             { h: "Estado", cell: (c) => <Badge>{c.estado}</Badge> },
             { h: "Creada", cell: (c) => fmtFecha(c.createdAt) },
             { h: "", right: true, cell: (c) => (
@@ -103,6 +105,8 @@ function DetalleCaja({ detalle, lookups, onClose, onChange }: { detalle: CajaDet
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [agregar, setAgregar] = useState(false);
+  const [confirmarCierre, setConfirmarCierre] = useState(false);
+  const [cambiandoEstado, setCambiandoEstado] = useState(false);
   const cerrada = detalle.estado === "CERRADA";
   const set = (k: keyof typeof movVacio, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const cls = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
@@ -125,15 +129,33 @@ function DetalleCaja({ detalle, lookups, onClose, onChange }: { detalle: CajaDet
   }
 
   async function cerrarCaja() {
-    await contableApi.editarCaja(detalle.id, { estado: "CERRADA" });
-    onChange();
+    setCambiandoEstado(true);
+    try {
+      await contableApi.editarCaja(detalle.id, { estado: "CERRADA" });
+      setConfirmarCierre(false);
+      onChange();
+    } finally {
+      setCambiandoEstado(false);
+    }
+  }
+
+  async function reabrirCaja() {
+    setCambiandoEstado(true);
+    try {
+      await contableApi.editarCaja(detalle.id, { estado: "ACTIVA" });
+      onChange();
+    } finally {
+      setCambiandoEstado(false);
+    }
   }
 
   return (
     <Modal open onClose={onClose} title={detalle.nombre} size="lg"
       footer={
         <>
-          {!cerrada && <Button variant="ghost" onClick={cerrarCaja}>Cerrar caja</Button>}
+          {cerrada
+            ? <Button variant="ghost" onClick={reabrirCaja} disabled={cambiandoEstado}>{cambiandoEstado ? "…" : "Reabrir caja"}</Button>
+            : <Button variant="ghost" onClick={() => setConfirmarCierre(true)}>Cerrar caja</Button>}
           <Button onClick={onClose}>Cerrar</Button>
         </>
       }
@@ -148,6 +170,12 @@ function DetalleCaja({ detalle, lookups, onClose, onChange }: { detalle: CajaDet
           <p className="mt-1">Inicial: {money(detalle.montoInicial)}</p>
         </div>
       </div>
+
+      {cerrada && (
+        <p className="rounded-lg bg-amber-50 px-4 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+          Esta caja está cerrada: no acepta movimientos. Usa <strong>Reabrir caja</strong> para volver a registrar gastos.
+        </p>
+      )}
 
       {!cerrada && (
         agregar ? (
@@ -195,6 +223,16 @@ function DetalleCaja({ detalle, lookups, onClose, onChange }: { detalle: CajaDet
           ]}
         />
       </div>
+
+      <ConfirmDialog
+        open={confirmarCierre}
+        title="Cerrar caja menor"
+        message="Cerrar da de baja el fondo: dejará de aceptar movimientos (úsalo al hacer el arqueo final o cuando cambie el responsable). Podrás reabrirla después si la necesitas."
+        confirmText="Cerrar caja"
+        busy={cambiandoEstado}
+        onConfirm={cerrarCaja}
+        onCancel={() => setConfirmarCierre(false)}
+      />
     </Modal>
   );
 }
