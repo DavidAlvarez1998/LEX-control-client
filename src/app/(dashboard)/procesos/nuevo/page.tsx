@@ -6,10 +6,12 @@ import { Button, Card, Modal, PageHeader } from "@/components/ui";
 import { BuscadorSelect, Field, Input, MoneyInput, Select, SelectableCard } from "@/components/form-ui";
 import { FormularioDinamico } from "@/components/formulario-dinamico";
 import { VencimientoHint } from "@/components/vencimiento-hint";
+import { BotonSubirDoc } from "@/components/boton-subir-doc";
 import { errorMessage } from "@/lib/api";
 import { getUser, type AuthUser } from "@/lib/auth";
 import {
   documentosRequeridosDeEtapas,
+  etiquetaDoc,
   etiquetasPlazoOpciones,
   JURISDICCION_LABEL,
   validarDatos,
@@ -142,20 +144,14 @@ export default function NuevoProcesoPage() {
           >
             <span className={`text-sm font-medium ${file ? "text-emerald-700 dark:text-emerald-400" : "text-slate-700 dark:text-slate-200"}`}>
               {file ? "✓ " : "• "}
-              {nombre}
+              {etiquetaDoc(nombre)}
+              {file && <span className="ml-1 font-normal text-slate-400">· {file.name}</span>}
             </span>
-            <label className="cursor-pointer text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">
-              {file ? "Cambiar" : "Adjuntar"}
-              <input
-                type="file"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  setArchivos((prev) => (f ? { ...prev, [nombre]: f } : prev));
-                  e.target.value = "";
-                }}
-              />
-            </label>
+            <BotonSubirDoc
+              etiqueta={etiquetaDoc(nombre)}
+              yaSubido={!!file}
+              onSubir={(f) => setArchivos((prev) => ({ ...prev, [nombre]: f }))}
+            />
           </li>
         );
       })}

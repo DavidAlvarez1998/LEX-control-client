@@ -6,9 +6,8 @@
 // (p. ej. peticion.pdf, poder.pdf, reiteracion.pdf). Así avanzar de etapa no se
 // bloquea por no saber el nombre. Sube el archivo real a tecnovapp.
 
-import { useState } from "react";
-import { errorMessage } from "@/lib/api";
-import { documentosRequeridosDeEtapas, type EtapaDef } from "@/lib/procesos";
+import { BotonSubirDoc } from "@/components/boton-subir-doc";
+import { documentosRequeridosDeEtapas, etiquetaDoc, type EtapaDef } from "@/lib/procesos";
 import { subirArchivoProceso, type DocumentoProceso } from "@/lib/procesos-api";
 
 export function DocumentosRequeridos({
@@ -29,24 +28,14 @@ export function DocumentosRequeridos({
   readOnly?: boolean;
 }) {
   const requeridos = documentosRequeridosDeEtapas(etapas, datos);
-  const [subiendo, setSubiendo] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   if (requeridos.length === 0) return null;
 
   const presente = (nombre: string) =>
     documentos.find((d) => d.nombre.trim().toLowerCase() === nombre.trim().toLowerCase());
 
   async function subir(nombre: string, file: File) {
-    setSubiendo(nombre);
-    setError(null);
-    try {
-      const doc = await subirArchivoProceso(procesoId, file, nombre);
-      onChange([doc, ...documentos.filter((d) => d.nombre.trim().toLowerCase() !== nombre.trim().toLowerCase())]);
-    } catch (e) {
-      setError(errorMessage(e, "No se pudo subir el documento"));
-    } finally {
-      setSubiendo(null);
-    }
+    const doc = await subirArchivoProceso(procesoId, file, nombre);
+    onChange([doc, ...documentos.filter((d) => d.nombre.trim().toLowerCase() !== nombre.trim().toLowerCase())]);
   }
 
   return (
@@ -65,7 +54,7 @@ export function DocumentosRequeridos({
             >
               <span className={`text-sm font-medium ${doc ? "text-emerald-700 dark:text-emerald-300" : "text-slate-700 dark:text-slate-200"}`}>
                 {doc ? "✓ " : "• "}
-                {nombre}
+                {etiquetaDoc(nombre)}
               </span>
               <div className="flex items-center gap-3">
                 {doc?.url && (
@@ -74,26 +63,13 @@ export function DocumentosRequeridos({
                   </a>
                 )}
                 {!readOnly && (
-                  <label className="cursor-pointer text-xs font-medium text-indigo-600 hover:underline">
-                    {subiendo === nombre ? "Subiendo…" : doc ? "Reemplazar" : "Subir"}
-                    <input
-                      type="file"
-                      className="hidden"
-                      disabled={subiendo === nombre}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) subir(nombre, f);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
+                  <BotonSubirDoc etiqueta={etiquetaDoc(nombre)} yaSubido={!!doc} onSubir={(file) => subir(nombre, file)} />
                 )}
               </div>
             </li>
           );
         })}
       </ul>
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
   );
 }

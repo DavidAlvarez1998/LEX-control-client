@@ -224,6 +224,30 @@ export function documentosRequeridosDeEtapas(
   return [...porNombre.values()];
 }
 
+/**
+ * Etiqueta amable de un documento para MOSTRAR (sin extensión: el nombre interno
+ * "poder.pdf" es solo la clave del gate, el archivo real puede ser cualquier
+ * formato). Ej: "poder.pdf" → "Poder", "respuesta.pdf" → "Respuesta",
+ * "auto_admisorio.pdf" → "Auto admisorio".
+ */
+const DOC_ETIQUETAS: Record<string, string> = {
+  peticion: "Petición",
+  reiteracion: "Reiteración",
+  respuesta: "Respuesta",
+  poder: "Poder",
+  demanda: "Demanda",
+  tutela: "Tutela",
+  sentencia: "Sentencia",
+  impugnacion: "Impugnación",
+};
+export function etiquetaDoc(nombre: string): string {
+  const base = nombre.replace(/\.[^.]+$/, "").trim();
+  const clave = base.toLowerCase();
+  if (DOC_ETIQUETAS[clave]) return DOC_ETIQUETAS[clave];
+  const legible = base.replace(/[_-]+/g, " ").trim();
+  return legible.charAt(0).toUpperCase() + legible.slice(1);
+}
+
 // --- Validación del formulario dinámico (misma lógica que usará el server) ---
 export type ResultadoValidacion = { ok: boolean; faltantes: string[] };
 
