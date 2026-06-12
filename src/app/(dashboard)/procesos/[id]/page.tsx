@@ -6,12 +6,11 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { DocumentosProceso } from "@/components/documentos-proceso";
 import { DatosProceso } from "@/components/datos-proceso";
-import { DocumentosRequeridos } from "@/components/documentos-requeridos";
 import { CasoChain } from "@/components/caso-chain";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, evaluarCondicion, type EtapaDef } from "@/lib/procesos";
-import { actualizarProceso, escalarProceso, getCasoChain, getProceso, moverEtapa, type CasoNodo, type ProcesoDetalle } from "@/lib/procesos-api";
+import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, moverEtapa, type CasoNodo, type ProcesoDetalle } from "@/lib/procesos-api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
@@ -26,7 +25,9 @@ export default function ExpedientePage() {
   // para re-disparar) y refs para hacer scroll al form / al panel de documentos.
   const [resaltarCampos, setResaltarCampos] = useState<{ keys: string[]; nonce: number } | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
-  const docsRef = useRef<HTMLDivElement>(null);
+  // Vencimiento ESTIMADO en vivo desde los datos, para mostrarlo en el recuadro de
+  // arriba aunque aún no se haya guardado fechaLimite (al poner la fecha de radicación).
+  const [vencEstimado, setVencEstimado] = useState<string | null>(null);
 
   const cargarCaso = () => getCasoChain(id).then(setCaso).catch(() => setCaso([]));
   useEffect(() => {
@@ -36,6 +37,14 @@ export default function ExpedientePage() {
     cargarCaso();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Si no hay fechaLimite guardada, estimar el vencimiento desde los datos actuales.
+  useEffect(() => {
+    if (!proceso || proceso.fechaLimite) { setVencEstimado(null); return; }
+    calcularVencimiento(proceso.tipoProceso.id, proceso.datos)
+      .then((r) => setVencEstimado(r.fechaLimite))
+      .catch(() => setVencEstimado(null));
+  }, [proceso?.fechaLimite, proceso?.tipoProceso.id, proceso?.datos]);
 
   if (proceso === undefined) {
     return <Card className="text-sm text-slate-500">Cargando…</Card>;
@@ -77,17 +86,29 @@ export default function ExpedientePage() {
           setBloqueo({ etapa: key, faltantes: [], motivo: e.message || "No se pudo mover a esta etapa." });
           return;
         }
-        // En vez de solo listar, GUÍA: campos → abre y marca el formulario; documentos
-        // → resalta el panel de requeridos. Scroll al destino correspondiente.
+        // GUÍA: abre el formulario en edición y marca los campos faltantes; los
+        // documentos viven inline en el formulario (bajo su campo), así que con
+        // abrir el form + scroll basta. `keys` vacío igual abre la edición.
         setBloqueo({ etapa: key, faltantes, documentosFaltantes });
-        if (faltantes.length > 0) {
-          setResaltarCampos({ keys: faltantes, nonce: Date.now() });
+        setResaltarCampos({ keys: faltantes, nonce: Date.now() });
+        setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      } else if (e instanceof ApiError && e.status === 422) {
+        // La etapa depende de un campo del formulario (disponibleSi): guía a él.
+        const campo = (e.issues as { condicion?: { campo?: string } })?.condicion?.campo;
+        const def = campo
+          ? (proceso!.tipoProceso.esquemaFormulario ?? []).find((c) => c.key === campo)
+          : undefined;
+        if (campo) {
+          setResaltarCampos({ keys: [campo], nonce: Date.now() });
+          setBloqueo({
+            etapa: key,
+            faltantes: [],
+            motivo: `Para habilitar esta etapa, completa "${def?.label ?? campo}" en el formulario ↓`,
+          });
           setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
         } else {
-          setTimeout(() => docsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+          setBloqueo({ etapa: key, faltantes: [], motivo: "Esta etapa no está disponible con los datos actuales del proceso." });
         }
-      } else if (e instanceof ApiError && e.status === 422) {
-        setBloqueo({ etapa: key, faltantes: [], motivo: "Esta etapa no está disponible con los datos actuales del proceso." });
       }
     }
   }
@@ -162,7 +183,7 @@ export default function ExpedientePage() {
           {proceso.tipoProceso.esJudicial && (
             <Dato label="Próxima audiencia" value={fecha(proceso.proximaAudiencia)} />
           )}
-          <DatoVencimiento iso={proceso.fechaLimite} />
+          <DatoVencimiento iso={proceso.fechaLimite ?? vencEstimado} estimado={!proceso.fechaLimite && !!vencEstimado} />
         </div>
       </Card>
 
@@ -182,10 +203,10 @@ export default function ExpedientePage() {
                 <li key={e.key}>
                   <button
                     type="button"
-                    disabled={!disponible || !puedeEditar}
+                    disabled={!puedeEditar}
                     onClick={() => irAEtapa(e.key)}
                     className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      !puedeEditar ? "cursor-default" : disponible ? "hover:bg-slate-50 dark:hover:bg-slate-800" : "cursor-not-allowed opacity-40"
+                      !puedeEditar ? "cursor-default" : disponible ? "hover:bg-slate-50 dark:hover:bg-slate-800" : "opacity-50 hover:opacity-90 hover:bg-slate-50 dark:hover:bg-slate-800"
                     } ${current ? "bg-indigo-50 dark:bg-indigo-500/10" : ""}`}
                   >
                     <span
@@ -337,6 +358,7 @@ export default function ExpedientePage() {
           procesoId={proceso.id}
           tipoProcesoId={proceso.tipoProceso.id}
           esquema={proceso.tipoProceso.esquemaFormulario ?? []}
+          etapas={proceso.tipoProceso.etapas ?? []}
           datos={proceso.datos}
           onSaved={(datos) => setProceso((p) => (p ? { ...p, datos } : p))}
           documentos={proceso.documentos ?? []}
@@ -351,21 +373,6 @@ export default function ExpedientePage() {
           readOnly={!puedeEditar}
         />
       </Card>
-      </div>
-
-      {/* Documentos requeridos por las etapas (peticion.pdf, poder.pdf,
-          reiteracion.pdf…): un botón "Subir" por cada uno, ya con el nombre exacto
-          que pide el gate, para que avanzar de etapa no se bloquee. */}
-      <div ref={docsRef}>
-        <DocumentosRequeridos
-          procesoId={proceso.id}
-          etapas={proceso.tipoProceso.etapas ?? []}
-          datos={proceso.datos}
-          documentos={proceso.documentos ?? []}
-          onChange={(documentos) => setProceso((p) => (p ? { ...p, documentos } : p))}
-          resaltar={(bloqueo?.documentosFaltantes?.length ?? 0) > 0}
-          readOnly={!puedeEditar}
-        />
       </div>
     </div>
     </RolEmpresaGuard>
@@ -489,7 +496,7 @@ function vencimientoActivo(iso: string | null | undefined): { texto: string; cls
   return { texto: `Vence el ${fecha}`, cls: "text-slate-500 dark:text-slate-400" };
 }
 
-function DatoVencimiento({ iso }: { iso: string | null | undefined }) {
+function DatoVencimiento({ iso, estimado = false }: { iso: string | null | undefined; estimado?: boolean }) {
   let value = "—";
   let clase = "text-slate-700 dark:text-slate-200";
   if (iso) {
@@ -505,6 +512,7 @@ function DatoVencimiento({ iso }: { iso: string | null | undefined }) {
       value += " (por vencer)";
       clase = "font-semibold text-amber-600";
     }
+    if (estimado) value += " (estimado)";
   }
   return (
     <div>

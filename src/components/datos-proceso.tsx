@@ -10,13 +10,21 @@ import { BotonSubirDoc } from "./boton-subir-doc";
 import { FormularioDinamico } from "./formulario-dinamico";
 import { VencimientoHint } from "./vencimiento-hint";
 import { errorMessage } from "@/lib/api";
-import { campoVisible, type CampoEsquema } from "@/lib/procesos";
+import {
+  campoVisible,
+  documentosOpcionalesDeEtapas,
+  documentosRequeridosDeEtapas,
+  etiquetaDoc,
+  type CampoEsquema,
+  type EtapaDef,
+} from "@/lib/procesos";
 import { actualizarDatos, subirArchivoProceso, type DocumentoProceso } from "@/lib/procesos-api";
 
 export function DatosProceso({
   procesoId,
   tipoProcesoId,
   esquema,
+  etapas = [],
   datos,
   onSaved,
   documentos = [],
@@ -27,9 +35,10 @@ export function DatosProceso({
   procesoId: string;
   tipoProcesoId: string; // para calcular el vencimiento en vivo al editar la fecha
   esquema: CampoEsquema[];
+  etapas?: EtapaDef[]; // para mostrar los documentos requeridos/opcionales inline
   datos: Record<string, unknown>;
   onSaved: (datos: Record<string, unknown>) => void;
-  documentos?: DocumentoProceso[]; // para saber si el poder ya está adjunto
+  documentos?: DocumentoProceso[]; // para saber qué documentos ya están adjuntos
   onDocSubido?: (doc: DocumentoProceso) => void; // refleja la subida en la ficha
   // Campos a resaltar como faltantes (al intentar avanzar de etapa): abre el form
   // en edición y los marca; cada marca se limpia al llenar el campo. Su identidad
@@ -42,10 +51,11 @@ export function DatosProceso({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Al recibir campos a resaltar (etapa bloqueada por datos), abre el form en
-  // edición partiendo de los datos actuales. El nonce re-dispara en cada intento.
+  // Al intentar avanzar una etapa bloqueada (por datos O documentos), se abre el
+  // form en edición partiendo de los datos actuales para que el campo y/o su
+  // documento aparezcan inline. El nonce re-dispara en cada intento.
   useEffect(() => {
-    if (resaltarCampos && resaltarCampos.keys.length > 0) {
+    if (resaltarCampos) {
       setBorrador(datos);
       setEditando(true);
     }
@@ -56,12 +66,40 @@ export function DatosProceso({
   const esVacio = (v: unknown) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
   const erroresVivos = (resaltarCampos?.keys ?? []).filter((k) => esVacio(borrador[k]));
 
-  const poderActual = documentos.find((d) => d.nombre.trim().toLowerCase() === "poder.pdf");
+  const presente = (nombre: string) =>
+    documentos.find((d) => d.nombre.trim().toLowerCase() === nombre.trim().toLowerCase());
 
-  async function subirPoder(file: File) {
-    const doc = await subirArchivoProceso(procesoId, file, "poder.pdf");
+  async function subirDoc(nombre: string, file: File) {
+    const doc = await subirArchivoProceso(procesoId, file, nombre);
     onDocSubido?.(doc);
   }
+
+  // Bloque de documentos inline (bajo un campo del formulario). Los requeridos van
+  // con * y los demás como "(opcional)". Suben al instante (el proceso ya existe).
+  const bloqueDocs = (titulo: string, docs: string[], requeridos: string[]) => {
+    if (docs.length === 0) return null;
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+        <p className="mb-2 text-sm font-medium text-amber-900 dark:text-amber-200">{titulo}</p>
+        <ul className="space-y-2">
+          {docs.map((nombre) => {
+            const doc = presente(nombre);
+            const req = requeridos.includes(nombre);
+            return (
+              <li key={nombre} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200/60 bg-white px-3 py-2 dark:border-amber-500/20 dark:bg-slate-900">
+                <span className={`text-sm font-medium ${doc ? "text-emerald-700 dark:text-emerald-300" : "text-slate-700 dark:text-slate-200"}`}>
+                  {doc ? "✓ " : "• "}
+                  {etiquetaDoc(nombre)}
+                  {req ? <span className="ml-0.5 text-red-500">*</span> : <span className="ml-1 font-normal text-slate-400">(opcional)</span>}
+                </span>
+                <BotonSubirDoc etiqueta={etiquetaDoc(nombre)} yaSubido={!!doc} onSubir={(f) => subirDoc(nombre, f)} />
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  };
 
   async function guardar() {
     setGuardando(true);
@@ -114,24 +152,24 @@ export function DatosProceso({
         onChange={(k, v) => setBorrador((d) => ({ ...d, [k]: v }))}
         errores={erroresVivos}
         className="grid grid-cols-1 gap-4 sm:grid-cols-2"
-        // Slots: vencimiento en vivo tras la fecha de radicación (igual que en la
-        // creación) + uploader del poder bajo el check "¿Requiere poder?". El proceso
-        // ya existe, así que el poder se sube al instante. Ambos opcionales.
+        // Slots: vencimiento en vivo tras la fecha de radicación + documentos INLINE
+        // bajo su campo (suben al instante). Bajo "¿Requiere poder?": petición/poder
+        // (los que no dependen de la respuesta). Bajo "¿Contestaron?": la respuesta y
+        // demás docs que aparecen al responder (Sí/Parcial).
         slotDespuesDe={{
           fechaRadicacion: <VencimientoHint tipoProcesoId={tipoProcesoId} datos={borrador} />,
-          requierePoder: Boolean(borrador.requierePoder) ? (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                  Poder <span className="font-normal text-amber-700/80 dark:text-amber-300/70">(opcional)</span>
-                </p>
-                <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300/80">
-                  {poderActual ? "✓ Poder adjunto. Puedes reemplazarlo." : "Adjunta el poder (cualquier formato)."}
-                </p>
-              </div>
-              <BotonSubirDoc etiqueta="Poder" yaSubido={!!poderActual} onSubir={subirPoder} />
-            </div>
-          ) : null,
+          requierePoder: (() => {
+            const neutro = { ...borrador, contestaron: "" };
+            const req = documentosRequeridosDeEtapas(etapas, neutro);
+            const docs = [...req, ...documentosOpcionalesDeEtapas(etapas, neutro)];
+            return bloqueDocs("Documentos a adjuntar", docs, req);
+          })(),
+          contestaron: (() => {
+            const neutro = { ...borrador, contestaron: "" };
+            const reqResp = documentosRequeridosDeEtapas(etapas, borrador).filter((d) => !documentosRequeridosDeEtapas(etapas, neutro).includes(d));
+            const optResp = documentosOpcionalesDeEtapas(etapas, borrador).filter((d) => !documentosOpcionalesDeEtapas(etapas, neutro).includes(d));
+            return bloqueDocs("Documentos de la respuesta", [...reqResp, ...optResp], reqResp);
+          })(),
         }}
       />
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
