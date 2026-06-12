@@ -457,8 +457,10 @@ export default function NuevoProcesoPage() {
             // ese campo; para los que no, va la sección de fallback de abajo.)
             slotDespuesDe={{
               fechaRadicacion: <VencimientoHint tipoProcesoId={tipo.id} datos={datos} />,
+              // Bajo "¿Requiere poder?": documentos de la radicación (petición + poder),
+              // que NO dependen de la respuesta (se calculan con contestaron neutro).
               requierePoder: (() => {
-                const docs = documentosRequeridosDeEtapas(tipo.etapas, datos);
+                const docs = documentosRequeridosDeEtapas(tipo.etapas, { ...datos, contestaron: "" });
                 if (docs.length === 0) return null;
                 return (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
@@ -466,6 +468,22 @@ export default function NuevoProcesoPage() {
                       Documentos a adjuntar <span className="font-normal text-amber-700/80 dark:text-amber-300/70">(opcional)</span>
                     </p>
                     {listaDocs(docs)}
+                  </div>
+                );
+              })(),
+              // Bajo "¿Contestaron?": los documentos que aparecen POR la respuesta
+              // (respuesta.pdf en Sí/Parcial; + reiteracion.pdf en Parcial) — la
+              // diferencia entre los docs con la respuesta actual y sin ella.
+              contestaron: (() => {
+                const base = documentosRequeridosDeEtapas(tipo.etapas, { ...datos, contestaron: "" });
+                const resp = documentosRequeridosDeEtapas(tipo.etapas, datos).filter((d) => !base.includes(d));
+                if (resp.length === 0) return null;
+                return (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                    <p className="mb-2 text-sm font-medium text-amber-900 dark:text-amber-200">
+                      Documentos de la respuesta <span className="font-normal text-amber-700/80 dark:text-amber-300/70">(opcional)</span>
+                    </p>
+                    {listaDocs(resp)}
                   </div>
                 );
               })(),
