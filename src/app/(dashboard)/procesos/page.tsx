@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, EmptyState, PageHeader, PlusIcon } from "@/components/ui";
 import { Input, Select } from "@/components/form-ui";
@@ -43,6 +44,7 @@ const grupoUrgencia = (i: ProcesoListItem) =>
   i.estado === "CERRADO" || i.estado === "ARCHIVADO" ? 2 : i.fechaLimite ? 0 : 1;
 
 export default function ProcesosPage() {
+  const router = useRouter();
   const [areas, setAreas] = useState<AreaPractica[]>([]);
   const [items, setItems] = useState<ProcesoListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -187,11 +189,11 @@ export default function ProcesosPage() {
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 text-left text-slate-500 dark:border-slate-800">
               <tr>
-                <th className="px-5 py-3 font-medium">Código</th>
-                <th className="px-5 py-3 font-medium">Caso</th>
+                <th className="px-5 py-3 font-medium">Proceso</th>
+                <th className="px-5 py-3 font-medium">Cliente</th>
+                <th className="px-5 py-3 font-medium">Etapa</th>
                 <th className="px-5 py-3 font-medium">Vence</th>
                 <th className="px-5 py-3 font-medium">Responsable</th>
-                <th className="px-5 py-3 font-medium">Radicado</th>
                 <th className="px-5 py-3 font-medium">Estado</th>
               </tr>
             </thead>
@@ -201,21 +203,22 @@ export default function ProcesosPage() {
                 return (
                 <tr
                   key={t.id}
-                  className="border-b border-slate-100 last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                  onClick={() => router.push(`/procesos/${t.id}`)}
+                  className="group cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
                 >
                   <td className="px-5 py-3 align-top">
-                    <Link href={`/procesos/${t.id}`} className="font-medium text-indigo-600 hover:underline">
-                      {t.codigoInterno}
-                    </Link>
-                  </td>
-                  <td className="px-5 py-3 align-top">
-                    <div className="font-medium text-slate-800 dark:text-slate-100">{t.titulo}</div>
+                    <div className="font-medium text-indigo-600 group-hover:underline dark:text-indigo-400">{t.titulo}</div>
                     <div className="text-xs text-slate-500">
-                      {t.tipoProcesoNombre} · {nombreArea(t.areaSlug)}
+                      {t.tipoProcesoNombre} · {nombreArea(t.areaSlug)} · {t.codigoInterno}
+                      {t.radicado && ` · Rad. ${t.radicado}`}
                     </div>
                     {(t.casoRelacionadoId || t.tieneDerivados) && (
                       t.casoRelacionadoId ? (
-                        <Link href={`/procesos/${t.casoRelacionadoId}`} className="mt-0.5 inline-block text-xs font-medium text-indigo-600 hover:underline">
+                        <Link
+                          href={`/procesos/${t.casoRelacionadoId}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-0.5 inline-block text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+                        >
                           ↗ parte de un caso (ver base)
                         </Link>
                       ) : (
@@ -225,15 +228,18 @@ export default function ProcesosPage() {
                       )
                     )}
                   </td>
+                  <td className="px-5 py-3 align-top text-slate-700 dark:text-slate-200">
+                    {t.clienteNombre ?? <span className="text-slate-400">—</span>}
+                  </td>
+                  <td className="px-5 py-3 align-top text-slate-600 dark:text-slate-300">
+                    {t.etapaNombre}
+                  </td>
                   <td className={`px-5 py-3 align-top text-xs ${v.cls}`}>
                     {v.fecha}
                     {v.sub && <div className="text-[11px] font-normal">{v.sub}</div>}
                   </td>
                   <td className="px-5 py-3 align-top text-slate-600 dark:text-slate-300">
                     {t.responsableNombre ?? <span className="text-slate-400">Sin asignar</span>}
-                  </td>
-                  <td className="px-5 py-3 align-top text-xs text-slate-500">
-                    {t.radicado ?? <span className="text-slate-400">Sin radicar</span>}
                   </td>
                   <td className="px-5 py-3 align-top">
                     <EstadoBadge estado={t.estado} />

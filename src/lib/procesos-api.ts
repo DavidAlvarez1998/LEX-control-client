@@ -65,6 +65,7 @@ export type ProcesoListItem = {
   proximaAudiencia: string | null;
   // Deadline-first + caso (change procesos-ux-ddp-tutela)
   etapaActual: string;
+  etapaNombre: string;
   fechaLimite: string | null;
   semaforo: "vencido" | "por_vencer" | "al_dia";
   responsableId: string | null;
