@@ -63,6 +63,15 @@ export type ProcesoListItem = {
   estado: EstadoProceso;
   prioridad: string;
   proximaAudiencia: string | null;
+  // Deadline-first + caso (change procesos-ux-ddp-tutela)
+  etapaActual: string;
+  fechaLimite: string | null;
+  semaforo: "vencido" | "por_vencer" | "al_dia";
+  responsableId: string | null;
+  responsableNombre: string | null;
+  clienteNombre: string | null;
+  casoRelacionadoId: string | null;
+  tieneDerivados: boolean;
 };
 
 export type ListaProcesos = {
@@ -75,11 +84,15 @@ export type ListaProcesos = {
 export function listProcesos(filtros: {
   area?: string;
   estado?: string;
+  q?: string;
+  responsableId?: string;
   page?: number;
 } = {}): Promise<ListaProcesos> {
   const qs = new URLSearchParams();
   if (filtros.area) qs.set("area", filtros.area);
   if (filtros.estado) qs.set("estado", filtros.estado);
+  if (filtros.q) qs.set("q", filtros.q);
+  if (filtros.responsableId) qs.set("responsableId", filtros.responsableId);
   if (filtros.page) qs.set("page", String(filtros.page));
   const q = qs.toString();
   return api.get<ListaProcesos>(`/procesos${q ? `?${q}` : ""}`);

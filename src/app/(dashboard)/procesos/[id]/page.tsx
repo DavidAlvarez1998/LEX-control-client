@@ -191,6 +191,10 @@ export default function ExpedientePage() {
                       </span>
                     )}
                   </button>
+                  {current && (() => {
+                    const v = vencimientoActivo(proceso.fechaLimite);
+                    return v ? <div className={`ml-9 mt-1 text-xs font-medium ${v.cls}`}>⏱ {v.texto}</div> : null;
+                  })()}
                   {bloqueo?.etapa === e.key && (
                     <div className="ml-9 mt-1 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
                       {bloqueo.motivo ??
@@ -423,6 +427,21 @@ function fecha(iso: string | null): string {
 }
 
 // Celda de "Vencimiento" con semáforo: rojo si venció, ámbar si vence en ≤3 días.
+// Cuenta regresiva de la etapa activa (días calendario hasta la fechaLimite, que
+// el backend ya derivó con días hábiles). Solo presentación.
+function vencimientoActivo(iso: string | null | undefined): { texto: string; cls: string } | null {
+  if (!iso) return null;
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const f = new Date(`${iso.slice(0, 10)}T00:00:00`);
+  const dias = Math.round((f.getTime() - hoy.getTime()) / 86_400_000);
+  const fecha = f.toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" });
+  if (dias < 0) return { texto: `Vencido hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? "" : "s"} · ${fecha}`, cls: "text-rose-600 dark:text-rose-400" };
+  if (dias === 0) return { texto: `Vence hoy · ${fecha}`, cls: "text-rose-600 dark:text-rose-400" };
+  if (dias <= 3) return { texto: `Vence en ${dias} día${dias === 1 ? "" : "s"} · ${fecha}`, cls: "text-amber-600 dark:text-amber-400" };
+  return { texto: `Vence el ${fecha}`, cls: "text-slate-500 dark:text-slate-400" };
+}
+
 function DatoVencimiento({ iso }: { iso: string | null | undefined }) {
   let value = "—";
   let clase = "text-slate-700 dark:text-slate-200";
