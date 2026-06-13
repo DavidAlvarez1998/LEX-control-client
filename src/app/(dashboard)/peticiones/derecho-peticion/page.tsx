@@ -220,7 +220,7 @@ function EstadoBadge({ estado }: { estado: EstadoProceso }) {
           ? "bg-amber-50 text-amber-700"
           : "bg-slate-100 text-slate-500";
   return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${color}`}>
+    <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${color}`}>
       {ESTADO_LABEL[estado]}
     </span>
   );
