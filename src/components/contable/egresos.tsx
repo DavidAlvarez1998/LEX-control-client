@@ -109,15 +109,15 @@ export function EgresosTab({ lookups }: { lookups: Lookups }) {
         }
       >
         <Field label="Descripción" requerido><Input value={form.descripcionGasto} onChange={(v) => set("descripcionGasto", v)} placeholder="Ej. Pago de papelería" /></Field>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Tipo de gasto"><Select value={form.tipoGasto} onChange={(v) => set("tipoGasto", v)} opciones={[...TIPO_GASTO]} placeholder="—" /></Field>
           <Field label="Categoría"><Select value={form.categoriaGasto} onChange={(v) => set("categoriaGasto", v)} opciones={[...CATEGORIA_EGRESO]} placeholder="—" /></Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Valor" requerido><MoneyInput value={form.valorGasto} onChange={(v) => set("valorGasto", v)} placeholder="0" /></Field>
           <Field label="Medio de pago"><Select value={form.medioPago} onChange={(v) => set("medioPago", v)} opciones={[...METODO_PAGO]} placeholder="—" /></Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Estado"><Select value={form.estadoGasto} onChange={(v) => set("estadoGasto", v)} opciones={[...ESTADO_GASTO]} placeholder="—" /></Field>
           <Field label="Subcategoría"><Input value={form.subcategoria} onChange={(v) => set("subcategoria", v)} placeholder="Opcional" /></Field>
         </div>

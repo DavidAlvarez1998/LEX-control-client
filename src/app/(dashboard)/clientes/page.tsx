@@ -280,7 +280,7 @@ export default function ClientesPage() {
           action={<Button onClick={abrirCrear}><PlusIcon />Nuevo prospecto</Button>}
         />
       ) : (
-        <Card className="p-0">
+        <Card className="p-0 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 dark:border-slate-800 text-left text-slate-500 dark:text-slate-400">
               <tr>

@@ -128,11 +128,11 @@ export function CuentasTab({ onCuentasChange }: { onCuentasChange: () => void })
         }
       >
         <Field label="Nombre de la bolsa" requerido><Input value={form.nombreBolsa} onChange={(v) => set("nombreBolsa", v)} placeholder="Ej. Cuenta principal" /></Field>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Entidad bancaria" requerido><Input value={form.entidadBancaria} onChange={(v) => set("entidadBancaria", v)} placeholder="Ej. Bancolombia" /></Field>
           <Field label="Tipo de cuenta"><Select value={form.tipoCuenta} onChange={(v) => set("tipoCuenta", v)} opciones={[...TIPO_CUENTA]} placeholder="—" /></Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="N.º de cuenta"><Input value={form.numeroCuenta} onChange={(v) => set("numeroCuenta", v)} placeholder="Opcional" /></Field>
           <Field label="Saldo inicial"><MoneyInput value={form.saldoInicial} onChange={(v) => set("saldoInicial", v)} placeholder="0" /></Field>
         </div>

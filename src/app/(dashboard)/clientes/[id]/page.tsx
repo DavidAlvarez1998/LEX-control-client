@@ -299,6 +299,7 @@ function CotizacionSection({ clienteId, cotizaciones, onChange }: { clienteId: s
       {cotizaciones.length === 0 ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">Sin cotizaciones.</p>
       ) : (
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <tbody>
             {cotizaciones.map((q) => (
@@ -313,6 +314,7 @@ function CotizacionSection({ clienteId, cotizaciones, onChange }: { clienteId: s
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </Card>
   );
@@ -570,6 +572,7 @@ function ComisionSection({ clienteId, esAdmin }: { clienteId: string; esAdmin: b
       {comisiones.length === 0 ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">Sin comisiones registradas.</p>
       ) : (
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <tbody>
             {comisiones.map((c) => (
@@ -587,6 +590,7 @@ function ComisionSection({ clienteId, esAdmin }: { clienteId: string; esAdmin: b
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </Card>
   );

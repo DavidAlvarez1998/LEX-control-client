@@ -180,12 +180,12 @@ function DetalleCaja({ detalle, lookups, onClose, onChange }: { detalle: CajaDet
       {!cerrada && (
         agregar ? (
           <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Tipo"><Select value={form.tipoMovimiento} onChange={(v) => set("tipoMovimiento", v)} opciones={[...TIPO_MOV_CAJA]} placeholder="—" /></Field>
               <Field label="Categoría"><Select value={form.categoria} onChange={(v) => set("categoria", v)} opciones={[...CATEGORIA_CAJA]} placeholder="—" /></Field>
             </div>
             <Field label="Concepto" requerido><Input value={form.concepto} onChange={(v) => set("concepto", v)} placeholder="Ej. Taxi a juzgado" /></Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Valor" requerido><MoneyInput value={form.valor} onChange={(v) => set("valor", v)} placeholder="0" /></Field>
               <Field label="Medio"><Select value={form.medioSalida} onChange={(v) => set("medioSalida", v)} opciones={[...METODO_PAGO]} placeholder="—" /></Field>
             </div>

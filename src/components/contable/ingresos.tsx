@@ -92,11 +92,11 @@ export function IngresosTab({ lookups }: { lookups: Lookups }) {
         <Field label="Concepto" requerido>
           <Input value={form.conceptoPago} onChange={(v) => set("conceptoPago", v)} placeholder="Ej. Anticipo honorarios" />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Tipo de cobro"><Select value={form.tipoCobro} onChange={(v) => set("tipoCobro", v)} opciones={[...TIPO_COBRO]} placeholder="—" /></Field>
           <Field label="Método de pago"><Select value={form.metodoPago} onChange={(v) => set("metodoPago", v)} opciones={[...METODO_PAGO]} placeholder="—" /></Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Valor" requerido><MoneyInput value={form.valorRecibido} onChange={(v) => set("valorRecibido", v)} placeholder="0" /></Field>
           <Field label="Estado"><Select value={form.estadoPago} onChange={(v) => set("estadoPago", v)} opciones={[...ESTADO_PAGO_INGRESO]} placeholder="—" /></Field>
         </div>
@@ -128,7 +128,7 @@ export function ProcesoCuenta({ lookups, procesoId, cuentaId, onProceso, onCuent
 }) {
   const cls = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <Field label="Proceso (opcional)">
         <select value={procesoId} onChange={(e) => onProceso(e.target.value)} className={cls}>
           <option value="">Ninguno</option>

@@ -219,15 +219,15 @@ export function ServiciosFijosTab({ lookups }: { lookups: Lookups }) {
           </>
         }
       >
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Tipo de servicio"><Select value={form.tipoServicio} onChange={(v) => set("tipoServicio", v)} opciones={[...TIPO_SERVICIO_FIJO]} placeholder="—" /></Field>
           <Field label="Proveedor" requerido><Input value={form.proveedor} onChange={(v) => set("proveedor", v)} placeholder="Ej. Claro, EPM…" /></Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Periodo" requerido><Input value={form.periodo} onChange={(v) => set("periodo", v)} placeholder="YYYY-MM" /></Field>
           <Field label="Valor facturado" requerido><MoneyInput value={form.valorFacturado} onChange={(v) => set("valorFacturado", v)} placeholder="0" /></Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Vencimiento"><Input type="date" value={form.fechaVencimiento} onChange={(v) => set("fechaVencimiento", v)} /></Field>
           <Field label="Estado"><Select value={form.estadoPago} onChange={(v) => set("estadoPago", v)} opciones={[...ESTADO_SERVICIO]} placeholder="—" /></Field>
         </div>
@@ -258,15 +258,15 @@ export function ServiciosFijosTab({ lookups }: { lookups: Lookups }) {
           </>
         }
       >
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Tipo de servicio"><Select value={formRec.tipoServicio} onChange={(v) => setR("tipoServicio", v)} opciones={[...TIPO_SERVICIO_FIJO]} placeholder="—" /></Field>
           <Field label="Proveedor" requerido><Input value={formRec.proveedor} onChange={(v) => setR("proveedor", v)} placeholder="Ej. Claro, EPM…" /></Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Valor estimado" requerido><MoneyInput value={formRec.valorEstimado} onChange={(v) => setR("valorEstimado", v)} placeholder="0" /></Field>
           <Field label="Frecuencia"><Select value={formRec.frecuencia} onChange={(v) => setR("frecuencia", v)} opciones={[...FRECUENCIA_SERVICIO]} placeholder="—" /></Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Día de pago" requerido><NumberInput value={formRec.diaPago} onChange={(v) => setR("diaPago", v)} placeholder="1–31" /></Field>
           {formRec.frecuencia === "ANUAL" && (
             <Field label="Mes de pago" requerido>

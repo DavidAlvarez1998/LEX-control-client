@@ -176,23 +176,23 @@ export function NominaTab({ lookups }: { lookups: Lookups }) {
         </div>
         {esManual && <p className="-mt-1 text-xs text-amber-600 dark:text-amber-400">Registro sin contrato registrado — excepción. Verifica nombre y salario.</p>}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Empleado" requerido><Input value={form.nombreEmpleado} onChange={(v) => set("nombreEmpleado", v)} placeholder="Nombre completo" /></Field>
           <Field label="Cargo"><Input value={form.cargo} onChange={(v) => set("cargo", v)} placeholder="Opcional" /></Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Vinculación"><Select value={form.tipoVinculacion} onChange={(v) => set("tipoVinculacion", v)} opciones={[...TIPO_VINCULACION]} placeholder="—" /></Field>
           <Field label="Periodo" requerido><Input value={form.periodo} onChange={(v) => set("periodo", v)} placeholder="YYYY-MM" /></Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Salario / honorarios" requerido><MoneyInput value={form.salarioHonorarios} onChange={(v) => set("salarioHonorarios", v)} placeholder="0" /></Field>
           <Field label="Auxilio de transporte"><MoneyInput value={form.auxilioTransporte} onChange={(v) => set("auxilioTransporte", v)} placeholder="0" /></Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Bonificaciones"><MoneyInput value={form.bonificaciones} onChange={(v) => set("bonificaciones", v)} placeholder="0" /></Field>
           <Field label="Descuentos"><MoneyInput value={form.descuentos} onChange={(v) => set("descuentos", v)} placeholder="0" /></Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Estado"><Select value={form.estadoPago} onChange={(v) => set("estadoPago", v)} opciones={[...ESTADO_PAGO_NOMINA]} placeholder="—" /></Field>
           <Field label="Cuenta / bolsa">
             <select value={form.cuentaId} onChange={(e) => set("cuentaId", e.target.value)} className={cls}>

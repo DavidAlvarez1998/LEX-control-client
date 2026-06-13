@@ -48,6 +48,7 @@ export function GlobalSearch() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activo, setActivo] = useState(0);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
   // Debounce: consulta 250 ms después de dejar de escribir (mín. 2 chars).
@@ -87,14 +88,23 @@ export function GlobalSearch() {
 
   function ir(r: Resultado) {
     setOpen(false);
+    setMobileOpen(false);
     setQ("");
     setResultados([]);
     router.push(hrefDe(r));
   }
 
+  function cerrarMobile() {
+    setMobileOpen(false);
+    setOpen(false);
+    setQ("");
+    setResultados([]);
+  }
+
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Escape") {
       setOpen(false);
+      setMobileOpen(false);
       return;
     }
     if (!open || resultados.length === 0) return;
@@ -110,7 +120,50 @@ export function GlobalSearch() {
     }
   }
 
+  function renderResultados() {
+    if (loading && resultados.length === 0)
+      return <p className="px-3 py-3 text-sm text-slate-400 dark:text-slate-500">Buscando…</p>;
+    if (resultados.length === 0)
+      return <p className="px-3 py-3 text-sm text-slate-400 dark:text-slate-500">Sin resultados</p>;
+    return (
+      <ul className="max-h-80 overflow-auto py-1">
+        {resultados.map((r, i) => {
+          const nuevoGrupo = i === 0 || resultados[i - 1].tipo !== r.tipo;
+          return (
+            <li key={`${r.tipo}-${r.id}`}>
+              {nuevoGrupo && (
+                <p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                  {TIPO_LABEL[r.tipo]}
+                </p>
+              )}
+              <button
+                type="button"
+                onMouseEnter={() => setActivo(i)}
+                onClick={() => ir(r)}
+                className={`block w-full px-3 py-2 text-left text-sm ${
+                  i === activo
+                    ? "bg-indigo-50 dark:bg-slate-800"
+                    : "hover:bg-slate-50 dark:hover:bg-slate-800"
+                }`}
+              >
+                <span className="block truncate font-medium text-slate-800 dark:text-slate-100">
+                  {r.titulo}
+                </span>
+                {r.subtitulo && (
+                  <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                    {r.subtitulo}
+                  </span>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
   return (
+    <>
     <div ref={boxRef} className="relative hidden sm:block">
       <input
         type="search"
@@ -135,47 +188,54 @@ export function GlobalSearch() {
 
       {open && (
         <div className="absolute right-0 z-50 mt-1 w-80 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
-          {loading && resultados.length === 0 ? (
-            <p className="px-3 py-3 text-sm text-slate-400 dark:text-slate-500">Buscando…</p>
-          ) : resultados.length === 0 ? (
-            <p className="px-3 py-3 text-sm text-slate-400 dark:text-slate-500">Sin resultados</p>
-          ) : (
-            <ul className="max-h-80 overflow-auto py-1">
-              {resultados.map((r, i) => {
-                const nuevoGrupo = i === 0 || resultados[i - 1].tipo !== r.tipo;
-                return (
-                  <li key={`${r.tipo}-${r.id}`}>
-                    {nuevoGrupo && (
-                      <p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                        {TIPO_LABEL[r.tipo]}
-                      </p>
-                    )}
-                    <button
-                      type="button"
-                      onMouseEnter={() => setActivo(i)}
-                      onClick={() => ir(r)}
-                      className={`block w-full px-3 py-2 text-left text-sm ${
-                        i === activo
-                          ? "bg-indigo-50 dark:bg-slate-800"
-                          : "hover:bg-slate-50 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <span className="block truncate font-medium text-slate-800 dark:text-slate-100">
-                        {r.titulo}
-                      </span>
-                      {r.subtitulo && (
-                        <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
-                          {r.subtitulo}
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          {renderResultados()}
         </div>
       )}
     </div>
+
+    {/* Móvil: ícono-lupa que abre un overlay de búsqueda */}
+    <button
+      type="button"
+      aria-label="Buscar"
+      onClick={() => setMobileOpen(true)}
+      className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:hidden"
+    >
+      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <circle cx="11" cy="11" r="7" />
+        <line x1="21" y1="21" x2="16.5" y2="16.5" />
+      </svg>
+    </button>
+    {mobileOpen && (
+      <div className="fixed inset-0 z-50 bg-slate-900/40 sm:hidden" onClick={cerrarMobile}>
+        <div className="bg-white p-3 shadow-lg dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input
+                autoFocus
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={onKeyDown}
+                placeholder="Buscar…"
+                className={inputCls.replace("w-64", "w-full")}
+              />
+              <svg className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.5" y2="16.5" />
+              </svg>
+            </div>
+            <button type="button" onClick={cerrarMobile} className="shrink-0 px-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+              Cancelar
+            </button>
+          </div>
+          {q.trim().length >= 2 && (
+            <div className="mt-2 max-h-[70vh] overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
+              {renderResultados()}
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+    </>
   );
 }

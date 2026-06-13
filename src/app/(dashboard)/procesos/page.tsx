@@ -186,7 +186,7 @@ export default function ProcesosPage() {
           }
         />
       ) : (
-        <Card className="p-0">
+        <Card className="p-0 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 text-left text-slate-500 dark:border-slate-800">
               <tr>

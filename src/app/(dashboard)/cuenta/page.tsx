@@ -116,6 +116,7 @@ export default function CuentaPage() {
               Tu empresa aún no tiene servicios contratados.
             </p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-slate-500 dark:text-slate-400">
                 <tr>
@@ -149,6 +150,7 @@ export default function CuentaPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </Card>
       )}

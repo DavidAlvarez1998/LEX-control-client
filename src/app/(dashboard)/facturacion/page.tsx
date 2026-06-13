@@ -307,7 +307,7 @@ export default function FacturacionPage() {
             Ninguna factura coincide con “{filtro}”.
           </Card>
         ) : (
-          <Card className="p-0">
+          <Card className="p-0 overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-slate-200 dark:border-slate-800 text-left text-slate-500 dark:text-slate-400">
                 <tr>
@@ -390,7 +390,7 @@ export default function FacturacionPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="IVA (%)"><NumberInput value={iva} onChange={setIva} placeholder="19" /></Field>
             <Field label="Vencimiento">
               <input type="date" value={vencimiento} onChange={(e) => setVencimiento(e.target.value)} className={inputCls} />
@@ -440,6 +440,7 @@ export default function FacturacionPage() {
                 <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${ESTADO_STYLES[detalle.estadoPago]}`}>{detalle.estadoPago}</span>
               </div>
 
+              <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="text-left text-xs text-slate-400">
                   <tr><th className="py-1">Descripción</th><th className="py-1 text-right">Cant.</th><th className="py-1 text-right">V. unit.</th><th className="py-1 text-right">Total</th></tr>
@@ -455,6 +456,7 @@ export default function FacturacionPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
 
               <div className="ml-auto w-56 space-y-1">
                 <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>Subtotal</span><span>${formatMoney(detalle.subtotal)}</span></div>

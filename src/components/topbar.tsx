@@ -4,9 +4,11 @@ import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GlobalSearch } from "@/components/global-search";
+import { useSidebar } from "@/components/sidebar-context";
 
 export function Topbar() {
   const pathname = usePathname();
+  const { setOpen } = useSidebar();
 
   const current =
     NAV_ITEMS.find((i) =>
@@ -14,10 +16,24 @@ export function Topbar() {
     )?.label ?? "LEX Control";
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6 dark:border-slate-800 dark:bg-slate-900">
-      <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">{current}</h1>
+    <header className="flex h-16 items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+      <div className="flex min-w-0 items-center gap-2">
+        <button
+          type="button"
+          aria-label="Abrir menú"
+          onClick={() => setOpen(true)}
+          className="-ml-1 rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 lg:hidden"
+        >
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <h1 className="truncate text-lg font-semibold text-slate-800 dark:text-slate-100">{current}</h1>
+      </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-3">
         <GlobalSearch />
         <ThemeToggle />
       </div>
