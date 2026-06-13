@@ -173,17 +173,18 @@ export default function ExpedientePage() {
       <PageHeader
         title={proceso.titulo}
         subtitle={`${proceso.tipoProceso.nombre} · ${JURISDICCION_LABEL[proceso.jurisdiccion]}`}
-        action={
-          proceso.tipoProceso.esJudicial ? (
-            <Link href="/procesos">
-              <Button variant="ghost">← Procesos</Button>
+        action={(() => {
+          const back = {
+            JUDICIAL: { href: "/procesos", label: "← Procesos" },
+            PETICION: { href: "/peticiones", label: "← Peticiones" },
+            CONSTITUCIONAL: { href: "/acciones-constitucionales", label: "← Acciones constitucionales" },
+          }[proceso.tipoProceso.grupo];
+          return (
+            <Link href={back.href}>
+              <Button variant="ghost">{back.label}</Button>
             </Link>
-          ) : (
-            <Link href="/peticiones">
-              <Button variant="ghost">← Peticiones</Button>
-            </Link>
-          )
-        }
+          );
+        })()}
       />
 
       {/* Barra de caso: la cadena DdP → DdP reiteración → Tutela como un solo caso.
@@ -195,7 +196,7 @@ export default function ExpedientePage() {
         <div className="mb-4 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
           Este proceso deriva de un caso base.{" "}
           <Link
-            href={rutaProceso({ id: proceso.casoRelacionadoId, esJudicial: proceso.tipoProceso.esJudicial })}
+            href={rutaProceso({ id: proceso.casoRelacionadoId, grupo: proceso.tipoProceso.grupo })}
             className="font-medium text-indigo-600 hover:underline"
           >
             Ver caso relacionado →
@@ -330,7 +331,7 @@ export default function ExpedientePage() {
                     Forma parte de este caso.
                   </p>
                   <Link
-                    href={rutaProceso({ id: yaDerivado.id, esJudicial: esContinuacion ? proceso.tipoProceso.esJudicial : true })}
+                    href={rutaProceso({ id: yaDerivado.id, grupo: esContinuacion ? proceso.tipoProceso.grupo : "CONSTITUCIONAL" })}
                     className="mt-2 inline-block text-sm font-medium text-indigo-600 hover:underline"
                   >
                     {yaDerivado.nuevo ? "✓ Creado — abrir expediente →" : "Abrir expediente →"}

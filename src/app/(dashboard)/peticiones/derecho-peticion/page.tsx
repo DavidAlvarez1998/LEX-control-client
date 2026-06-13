@@ -60,9 +60,8 @@ export default function DerechoPeticionPage() {
     setLoading(true);
     setError(null);
     listProcesos({ q: q || undefined })
-      // Solo peticiones (trámite ante entidad). El detalle vive en /procesos/[id]
-      // (motor genérico compartido); aquí solo cambia el listado y la creación.
-      .then((r) => setItems(r.items.filter((i) => !i.esJudicial)))
+      // Solo la sección Peticiones (DdP enviar/recibir, etc.).
+      .then((r) => setItems(r.items.filter((i) => i.grupo === "PETICION")))
       .catch((e) => setError(errorMessage(e, "Error al cargar")))
       .finally(() => setLoading(false));
   }, [q]);

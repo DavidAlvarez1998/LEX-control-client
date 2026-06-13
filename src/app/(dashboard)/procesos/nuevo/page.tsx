@@ -286,7 +286,7 @@ export default function NuevoProcesoPage() {
       }
       // Una petición (no judicial) abre su ficha bajo /peticiones; un proceso
       // judicial bajo /procesos → el sidebar resalta la sección correcta.
-      router.push(rutaProceso({ id: creado.id, esJudicial: tipo.esJudicial }));
+      router.push(rutaProceso({ id: creado.id, grupo: tipo.grupo }));
     } catch (e) {
       setApiError(errorMessage(e, "No se pudo crear el proceso"));
       setGuardando(false);

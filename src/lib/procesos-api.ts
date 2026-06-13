@@ -8,6 +8,7 @@ import type {
   CuantiaTipo,
   EstadoProceso,
   EtapaDef,
+  GrupoProceso,
   Instancia,
   Jurisdiccion,
   RolParte,
@@ -60,7 +61,8 @@ export type ProcesoListItem = {
   radicado: string | null;
   titulo: string;
   tipoProcesoNombre: string;
-  esJudicial: boolean; // false = petición (trámite ante entidad); vive en /peticiones, no en /procesos
+  esJudicial: boolean; // controla los campos judiciales del formulario
+  grupo: GrupoProceso; // sección del portal (rutaProceso): JUDICIAL | PETICION | CONSTITUCIONAL
   jurisdiccion: Jurisdiccion;
   areaSlug: string | null;
   estado: EstadoProceso;
@@ -137,6 +139,7 @@ export type ProcesoDetalle = {
     id: string;
     nombre: string;
     esJudicial: boolean;
+    grupo: GrupoProceso;
     esquemaFormulario: CampoEsquema[];
     etapas: EtapaDef[];
     jurisdiccion: Jurisdiccion;
@@ -238,6 +241,7 @@ export type CasoNodo = {
   titulo: string;
   tipoProcesoNombre: string;
   esJudicial: boolean;
+  grupo: GrupoProceso;
   estado: EstadoProceso;
   etapaActual: string;
   etapaNombre: string;

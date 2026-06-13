@@ -77,6 +77,10 @@ export type EtapaDef = {
   accion?: AccionEtapa; // acción al entrar (p. ej. crear proceso derivado)
 };
 
+// Sección del portal: Procesos (judicial), Peticiones (DdP/reclamaciones) o
+// Acciones Constitucionales (tutela, popular, grupo, cumplimiento).
+export type GrupoProceso = "JUDICIAL" | "PETICION" | "CONSTITUCIONAL";
+
 // --- Catálogo: tipo de proceso ---
 export type TipoProceso = {
   id: string;
@@ -84,6 +88,7 @@ export type TipoProceso = {
   descripcion?: string;
   jurisdiccion: Jurisdiccion;
   esJudicial: boolean; // true = va ante un juez (radicado 23díg/juzgado/cuantía); false = trámite ante entidad (DdP)
+  grupo: GrupoProceso; // sección del portal donde vive el tipo
   clienteOpcional?: boolean; // true = dirigido al despacho (DdP recibido): el cliente no se exige
   areaSlugs: string[]; // etiquetas de área de práctica
   esquemaFormulario: CampoEsquema[];
@@ -321,8 +326,15 @@ export const ESTADO_LABEL: Record<EstadoProceso, string> = {
   ARCHIVADO: "Archivado",
 };
 
-/** Ruta de la ficha de un proceso según su tipo: las peticiones (no judiciales)
- *  viven bajo /peticiones; el resto bajo /procesos. Así el sidebar resalta la
- *  sección correcta (mismas pantallas, distinta URL). */
-export const rutaProceso = (p: { id: string; esJudicial: boolean }) =>
-  `${p.esJudicial ? "/procesos" : "/peticiones"}/${p.id}`;
+/** Ruta base de cada sección del portal. */
+export const SECCION_RUTA: Record<GrupoProceso, string> = {
+  JUDICIAL: "/procesos",
+  PETICION: "/peticiones",
+  CONSTITUCIONAL: "/acciones-constitucionales",
+};
+
+/** Ruta de la ficha de un proceso según su `grupo`: judicial → /procesos,
+ *  petición → /peticiones, constitucional → /acciones-constitucionales. Mismas
+ *  pantallas, distinta URL → el sidebar resalta la sección correcta. */
+export const rutaProceso = (p: { id: string; grupo: GrupoProceso }) =>
+  `${SECCION_RUTA[p.grupo]}/${p.id}`;

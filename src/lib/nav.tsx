@@ -84,6 +84,17 @@ export const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    href: "/acciones-constitucionales",
+    label: "Acciones Constitucionales",
+    roles: ["JURIDICO"], // tutela, popular, grupo, cumplimiento; el admin de empresa lo ve por defecto
+    icon: (
+      <svg className={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3 4 6v5c0 4 3.5 7 8 8 4.5-1 8-4 8-8V6l-8-3Z" />
+        <path d="M9 12l2 2 4-4" />
+      </svg>
+    ),
+  },
+  {
     href: "/servicios",
     label: "Servicios",
     adminOnly: true,
