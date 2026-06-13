@@ -384,15 +384,16 @@ export default function NuevoProcesoPage() {
           </Field>
         </Card>
 
-        {/* Cliente dueño del proceso */}
+        {/* Cliente dueño del proceso. Oculto en trámites dirigidos al despacho (DdP
+            recibido, clienteOpcional): por defecto van hacia la propia empresa, sin
+            cliente del CRM (se crea con clienteId nulo). */}
+        {!tipo.clienteOpcional && (
         <Card>
           <h3 className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Cliente {!tipo.clienteOpcional && <span className="font-normal text-red-500">*</span>}
+            Cliente <span className="font-normal text-red-500">*</span>
           </h3>
           <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
-            {tipo.clienteOpcional
-              ? "Si la petición va dirigida a tu despacho, déjala sin cliente. Vincula un cliente solo si la atiendes en su nombre."
-              : "La persona o empresa que representas en este caso."}
+            La persona o empresa que representas en este caso.
           </p>
           {clienteSeleccionado ? (
             <div className="space-y-4">
@@ -455,6 +456,7 @@ export default function NuevoProcesoPage() {
             <p className="mt-2 text-xs text-red-600">Elige o crea un cliente para el proceso.</p>
           )}
         </Card>
+        )}
 
         {/* Abogado responsable */}
         <Card>
