@@ -16,6 +16,7 @@ import {
   etiquetaDoc,
   etiquetasPlazoOpciones,
   JURISDICCION_LABEL,
+  rutaProceso,
   validarDatos,
   type CuantiaTipo,
   type Jurisdiccion,
@@ -283,7 +284,9 @@ export default function NuevoProcesoPage() {
           /* reintenta en la ficha del proceso */
         }
       }
-      router.push(`/procesos/${creado.id}`);
+      // Una petición (no judicial) abre su ficha bajo /peticiones; un proceso
+      // judicial bajo /procesos → el sidebar resalta la sección correcta.
+      router.push(rutaProceso({ id: creado.id, esJudicial: tipo.esJudicial }));
     } catch (e) {
       setApiError(errorMessage(e, "No se pudo crear el proceso"));
       setGuardando(false);

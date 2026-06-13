@@ -320,3 +320,9 @@ export const ESTADO_LABEL: Record<EstadoProceso, string> = {
   CERRADO: "Cerrado",
   ARCHIVADO: "Archivado",
 };
+
+/** Ruta de la ficha de un proceso según su tipo: las peticiones (no judiciales)
+ *  viven bajo /peticiones; el resto bajo /procesos. Así el sidebar resalta la
+ *  sección correcta (mismas pantallas, distinta URL). */
+export const rutaProceso = (p: { id: string; esJudicial: boolean }) =>
+  `${p.esJudicial ? "/procesos" : "/peticiones"}/${p.id}`;

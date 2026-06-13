@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card, EmptyState, Modal, PageHeader, PlusIcon } from "@/components/ui";
 import { Input, SelectableCard } from "@/components/form-ui";
-import { ESTADO_LABEL, type EstadoProceso } from "@/lib/procesos";
+import { ESTADO_LABEL, rutaProceso, type EstadoProceso } from "@/lib/procesos";
 import { getTipos, listProcesos, type ProcesoListItem } from "@/lib/procesos-api";
 import { errorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
@@ -121,7 +121,7 @@ export default function DerechoPeticionPage() {
             }
           />
         ) : (
-          <Card className="p-0">
+          <Card className="p-0 overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-slate-200 text-left text-slate-500 dark:border-slate-800">
                 <tr>
@@ -139,7 +139,7 @@ export default function DerechoPeticionPage() {
                   return (
                     <tr
                       key={t.id}
-                      onClick={() => router.push(`/procesos/${t.id}`)}
+                      onClick={() => router.push(rutaProceso(t))}
                       className="group cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
                     >
                       <td className="px-5 py-3 align-top">
@@ -151,7 +151,7 @@ export default function DerechoPeticionPage() {
                         {(t.casoRelacionadoId || t.tieneDerivados) && (
                           t.casoRelacionadoId ? (
                             <Link
-                              href={`/procesos/${t.casoRelacionadoId}`}
+                              href={`/peticiones/${t.casoRelacionadoId}`}
                               onClick={(e) => e.stopPropagation()}
                               className="mt-0.5 inline-block text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
                             >
@@ -192,16 +192,16 @@ export default function DerechoPeticionPage() {
           </p>
           {tipoSolicitar && (
             <SelectableCard
-              title="La envío (solicitud)"
-              subtitle="Tú o tu cliente presentan la petición ante una entidad y esperan respuesta."
-              onClick={() => router.push(`/procesos/nuevo?tipo=${tipoSolicitar}`)}
+              title="Solicitar"
+              subtitle="Presentas la petición ante una entidad y esperan respuesta."
+              onClick={() => router.push(`/peticiones/nueva?tipo=${tipoSolicitar}`)}
             />
           )}
           {tipoRecibir && (
             <SelectableCard
-              title="La recibo (respuesta)"
-              subtitle="Tu cliente recibió una petición y debe responderla dentro del término legal."
-              onClick={() => router.push(`/procesos/nuevo?tipo=${tipoRecibir}`)}
+              title="Recibir"
+              subtitle="Recibes una petición y se debe dar respuesta dentro del término legal."
+              onClick={() => router.push(`/peticiones/nueva?tipo=${tipoRecibir}`)}
             />
           )}
         </Modal>

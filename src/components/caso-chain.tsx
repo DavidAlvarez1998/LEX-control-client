@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { Fragment } from "react";
 import { Card } from "@/components/ui";
-import { ESTADO_LABEL } from "@/lib/procesos";
+import { ESTADO_LABEL, rutaProceso } from "@/lib/procesos";
 import type { CasoNodo } from "@/lib/procesos-api";
 
 function fmtFecha(iso: string | null): string {
@@ -34,7 +34,7 @@ export function CasoChain({ nodos, actualId }: { nodos: CasoNodo[]; actualId: st
                 <div className="mx-1 mt-6 h-0.5 w-6 shrink-0 self-start bg-slate-200 dark:bg-slate-700 sm:w-10" />
               )}
               <Link
-                href={`/procesos/${n.id}`}
+                href={rutaProceso(n)}
                 style={{ minWidth: 150 }}
                 className={`block shrink-0 rounded-lg border px-3 py-2 transition-colors ${
                   actual
