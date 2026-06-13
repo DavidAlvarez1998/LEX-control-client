@@ -9,7 +9,7 @@ import { DatosProceso } from "@/components/datos-proceso";
 import { CasoChain } from "@/components/caso-chain";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
-import { ESTADO_LABEL, JURISDICCION_LABEL, evaluarCondicion, type EtapaDef } from "@/lib/procesos";
+import { ESTADO_LABEL, JURISDICCION_LABEL, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, type EtapaDef } from "@/lib/procesos";
 import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, moverEtapa, type CasoNodo, type ProcesoDetalle } from "@/lib/procesos-api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
@@ -385,6 +385,20 @@ export default function ExpedientePage() {
 
           <Card>
             <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Documentos</h3>
+            {(() => {
+              // Documentos OPCIONALES sugeridos por la etapa/datos actuales (p. ej.
+              // "Recurso" cuando la respuesta fue parcial). No bloquean; solo guían.
+              const sugeridos = documentosOpcionalesDeEtapas(
+                proceso.tipoProceso.etapas,
+                proceso.datos,
+              );
+              return sugeridos.length > 0 ? (
+                <p className="mb-3 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  Puedes adjuntar (opcional):{" "}
+                  <span className="font-medium">{sugeridos.map(etiquetaDoc).join(", ")}</span>.
+                </p>
+              ) : null;
+            })()}
             <DocumentosProceso
               procesoId={proceso.id}
               docs={proceso.documentos ?? []}

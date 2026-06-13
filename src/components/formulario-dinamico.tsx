@@ -48,6 +48,19 @@ export function FormularioDinamico({
         const error = errores.includes(campo.key) ? "Este campo es obligatorio" : undefined;
 
         let control;
+        if (campo.auto) {
+          // Campo autogenerado por el servidor (p. ej. radicado de ingreso): solo
+          // lectura. Vacío al crear ("Se generará automáticamente"); con valor luego.
+          control = (
+            <input
+              type="text"
+              value={(v as string) ?? ""}
+              disabled
+              placeholder="Se generará automáticamente"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400"
+            />
+          );
+        } else
         switch (campo.tipo) {
           case "textoLargo":
             control = (

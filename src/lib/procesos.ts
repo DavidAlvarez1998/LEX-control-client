@@ -43,6 +43,7 @@ export type CampoEsquema = {
   ayuda?: string;
   mostrarSi?: Condicion; // oculto salvo que la condición se cumpla
   requeridoSi?: Condicion; // requerido (además) cuando la condición se cumple
+  auto?: boolean; // lo genera el servidor al crear; en el form se muestra solo lectura
 };
 
 // --- Flujo / etapas ---
@@ -52,6 +53,7 @@ export type ReglasEtapa = {
   documentosOpcionales?: string[]; // ofrecidos para adjuntar, NO bloquean (p. ej. reiteracion.pdf)
   plazoDias?: number;
   requeridosSi?: { si: Condicion; camposRequeridos?: string[]; documentosRequeridos?: string[] }[];
+  opcionalesSi?: { si: Condicion; documentosOpcionales?: string[] }[]; // opcionales condicionales (p. ej. recurso.pdf si parcial)
   plazoDesdeCampo?: string;
   plazoTipoDias?: "habiles" | "calendario";
   plazoDiasPorValorDe?: { campo: string; mapa: Record<string, number> };
@@ -82,6 +84,7 @@ export type TipoProceso = {
   descripcion?: string;
   jurisdiccion: Jurisdiccion;
   esJudicial: boolean; // true = va ante un juez (radicado 23díg/juzgado/cuantía); false = trámite ante entidad (DdP)
+  clienteOpcional?: boolean; // true = dirigido al despacho (DdP recibido): el cliente no se exige
   areaSlugs: string[]; // etiquetas de área de práctica
   esquemaFormulario: CampoEsquema[];
   etapas: EtapaDef[];
@@ -178,6 +181,7 @@ export function campoEfectivamenteRequerido(
   datos: Record<string, unknown>,
 ): boolean {
   if (!campoVisible(campo, datos)) return false;
+  if (campo.auto) return false; // lo llena el servidor; nunca se le exige al usuario
   return campo.requerido || (campo.requeridoSi != null && evaluarCondicion(campo.requeridoSi, datos));
 }
 
@@ -237,7 +241,13 @@ export function documentosOpcionalesDeEtapas(
   const porNombre = new Map<string, string>();
   for (const e of etapas) {
     if (e.disponibleSi && !evaluarCondicion(e.disponibleSi, datos)) continue;
-    for (const n of e.reglas?.documentosOpcionales ?? []) porNombre.set(n.trim().toLowerCase(), n);
+    const nombres = [
+      ...(e.reglas?.documentosOpcionales ?? []),
+      ...(e.reglas?.opcionalesSi ?? [])
+        .filter((x) => evaluarCondicion(x.si, datos))
+        .flatMap((x) => x.documentosOpcionales ?? []),
+    ];
+    for (const n of nombres) porNombre.set(n.trim().toLowerCase(), n);
   }
   return [...porNombre.values()];
 }
@@ -254,6 +264,7 @@ const DOC_ETIQUETAS: Record<string, string> = {
   respuesta: "Respuesta",
   poder: "Poder",
   demanda: "Demanda",
+  recurso: "Recurso",
   tutela: "Tutela",
   sentencia: "Sentencia",
   impugnacion: "Impugnación",

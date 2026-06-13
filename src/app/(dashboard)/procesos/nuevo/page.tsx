@@ -220,8 +220,11 @@ export default function NuevoProcesoPage() {
     const etiquetaCliente = tipo.esJudicial ? undefined : "Peticionario";
     const tituloOk = titulo.trim().length > 0;
     setTituloError(!tituloOk);
+    // El cliente puede ser opcional para trámites dirigidos al despacho (p. ej. DdP
+    // recibido): ahí no bloquea si va vacío. En el resto, sigue siendo obligatorio.
+    const clienteRequerido = !tipo.clienteOpcional;
     const hayCliente = !!clienteId || !!clienteNuevo;
-    setClienteError(!hayCliente);
+    setClienteError(clienteRequerido && !hayCliente);
     const hayResponsable = esAdmin ? !!responsableId : true;
     setResponsableError(!hayResponsable);
     const { ok, faltantes } = validarDatos(tipo.esquemaFormulario, datos);
@@ -233,7 +236,7 @@ export default function NuevoProcesoPage() {
     // deben estar adjuntos para crear. Los opcionales (reiteración) no bloquean.
     const docsFaltan = documentosRequeridosDeEtapas(tipo.etapas, datos).filter((d) => !archivos[d]);
     setDocsError(docsFaltan.length ? `Faltan documentos obligatorios: ${docsFaltan.map(etiquetaDoc).join(", ")}.` : null);
-    if (!ok || !tituloOk || !hayCliente || !hayResponsable || docsFaltan.length > 0) return;
+    if (!ok || !tituloOk || (clienteRequerido && !hayCliente) || !hayResponsable || docsFaltan.length > 0) return;
 
     setGuardando(true);
     setApiError(null);
@@ -247,9 +250,12 @@ export default function NuevoProcesoPage() {
         radicado: radicado.trim() || undefined,
         despachoJuzgado: despachoJuzgado.trim() || undefined,
         responsableId: (esAdmin ? responsableId : yo?.id) || undefined,
+        // Sin cliente (trámite dirigido al despacho) → no se envía `cliente`.
         cliente: clienteNuevo
           ? { nuevo: clienteNuevo, rol: rolCliente, rolEtiqueta: etiquetaCliente }
-          : { clienteId, rol: rolCliente, rolEtiqueta: etiquetaCliente },
+          : clienteId
+            ? { clienteId, rol: rolCliente, rolEtiqueta: etiquetaCliente }
+            : undefined,
         partes: partes
           .filter((p) => p.litigante.nombre.trim().length > 0)
           .map((p) => ({
@@ -381,10 +387,12 @@ export default function NuevoProcesoPage() {
         {/* Cliente dueño del proceso */}
         <Card>
           <h3 className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Cliente <span className="font-normal text-red-500">*</span>
+            Cliente {!tipo.clienteOpcional && <span className="font-normal text-red-500">*</span>}
           </h3>
           <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
-            La persona o empresa que representas en este caso.
+            {tipo.clienteOpcional
+              ? "Si la petición va dirigida a tu despacho, déjala sin cliente. Vincula un cliente solo si la atiendes en su nombre."
+              : "La persona o empresa que representas en este caso."}
           </p>
           {clienteSeleccionado ? (
             <div className="space-y-4">
@@ -490,6 +498,9 @@ export default function NuevoProcesoPage() {
             // ese campo; para los que no, va la sección de fallback de abajo.)
             slotDespuesDe={{
               fechaRadicacion: <VencimientoHint tipoProcesoId={tipo.id} datos={datos} />,
+              // DdP recibido: el plazo corre desde la fecha de recepción, así que el
+              // preview de vencimiento va debajo de ese campo (equivale a fechaRadicacion).
+              fechaRecepcion: <VencimientoHint tipoProcesoId={tipo.id} datos={datos} />,
               // Bajo "¿Requiere poder?": documentos de la radicación (petición * +
               // poder * si requiere), que NO dependen de la respuesta.
               requierePoder: (() => {
