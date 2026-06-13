@@ -80,6 +80,13 @@ export default function DerechoPeticionPage() {
   const puedeEditar = !!u?.esAdminEmpresa || (u?.roles ?? []).includes("JURIDICO");
   const hayTipos = !!(tipoSolicitar || tipoRecibir);
 
+  // Modalidad: enviada (la presenta el despacho) vs recibida (dirigida al despacho).
+  const esRecibida = (t: ProcesoListItem) => t.tipoProcesoNombre === "Derecho de Petición Recibido";
+  const [modalidad, setModalidad] = useState<"todas" | "enviadas" | "recibidas">("todas");
+  const visibles = ordenados.filter(
+    (t) => modalidad === "todas" || esRecibida(t) === (modalidad === "recibidas"),
+  );
+
   return (
     <RolEmpresaGuard roles={["JURIDICO"]}>
       <div>
@@ -100,8 +107,28 @@ export default function DerechoPeticionPage() {
           }
         />
 
-        <div className="mb-4 w-72">
-          <Input value={qInput} onChange={setQInput} placeholder="Buscar por código, título, cliente o radicado…" />
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="w-72">
+            <Input value={qInput} onChange={setQInput} placeholder="Buscar por código, título, cliente o radicado…" />
+          </div>
+          <div className="flex gap-1">
+            {([["todas", "Todas"], ["enviadas", "Enviadas"], ["recibidas", "Recibidas"]] as const).map(
+              ([v, label]) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setModalidad(v)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                    modalidad === v
+                      ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                  }`}
+                >
+                  {label}
+                </button>
+              ),
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -126,6 +153,7 @@ export default function DerechoPeticionPage() {
               <thead className="border-b border-slate-200 text-left text-slate-500 dark:border-slate-800">
                 <tr>
                   <th className="px-5 py-3 font-medium">Petición</th>
+                  <th className="px-5 py-3 font-medium">Modalidad</th>
                   <th className="px-5 py-3 font-medium">Cliente</th>
                   <th className="px-5 py-3 font-medium">Etapa</th>
                   <th className="px-5 py-3 font-medium">Vence</th>
@@ -134,7 +162,14 @@ export default function DerechoPeticionPage() {
                 </tr>
               </thead>
               <tbody>
-                {ordenados.map((t) => {
+                {visibles.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-5 py-6 text-center text-sm text-slate-400">
+                      No hay peticiones {modalidad === "recibidas" ? "recibidas" : "enviadas"}.
+                    </td>
+                  </tr>
+                )}
+                {visibles.map((t) => {
                   const v = venceUI(t);
                   return (
                     <tr
@@ -162,6 +197,13 @@ export default function DerechoPeticionPage() {
                               caso con derivados
                             </span>
                           )
+                        )}
+                      </td>
+                      <td className="px-5 py-3 align-top">
+                        {esRecibida(t) ? (
+                          <span className="whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">Recibida</span>
+                        ) : (
+                          <span className="whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">Enviada</span>
                         )}
                       </td>
                       <td className="px-5 py-3 align-top text-slate-700 dark:text-slate-200">
