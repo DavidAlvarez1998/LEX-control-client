@@ -60,6 +60,7 @@ export type ProcesoListItem = {
   radicado: string | null;
   titulo: string;
   tipoProcesoNombre: string;
+  esJudicial: boolean; // false = petición (trámite ante entidad); vive en /peticiones, no en /procesos
   jurisdiccion: Jurisdiccion;
   areaSlug: string | null;
   estado: EstadoProceso;

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, Card, Modal, PageHeader } from "@/components/ui";
@@ -81,6 +82,9 @@ export default function NuevoProcesoPage() {
   const [tipos, setTipos] = useState<TipoProceso[] | null>(null);
   const [jurisdiccion, setJurisdiccion] = useState<Jurisdiccion | "">("");
   const [tipo, setTipo] = useState<TipoProceso | null>(null);
+  // Tipo pre-seleccionado por ?tipo=ID (p. ej. al crear una petición desde /peticiones):
+  // salta los pasos de jurisdicción/tipo y oculta los botones "Cambiar".
+  const [tipoBloqueado, setTipoBloqueado] = useState(false);
 
   // Documentos del proceso (peticion.pdf, poder.pdf, etc.): se eligen aquí y se
   // suben tras crear el proceso (la subida necesita el id).
@@ -118,7 +122,19 @@ export default function NuevoProcesoPage() {
 
   useEffect(() => {
     setYo(getUser());
-    getTipos().then(setTipos).catch(() => setTipos([]));
+    getTipos()
+      .then((ts) => {
+        setTipos(ts);
+        // Pre-selección por ?tipo=ID (sin useSearchParams para no exigir Suspense).
+        const q = new URLSearchParams(window.location.search).get("tipo");
+        const pre = q ? ts.find((t) => t.id === q) : undefined;
+        if (pre) {
+          setTipo(pre);
+          setJurisdiccion(pre.jurisdiccion);
+          setTipoBloqueado(true);
+        }
+      })
+      .catch(() => setTipos([]));
     listClientes().then(setClientes).catch(() => {});
   }, []);
 
@@ -268,9 +284,13 @@ export default function NuevoProcesoPage() {
     }
   }
 
+  // Catálogo de /procesos = solo judicial. Las peticiones (trámite ante entidad)
+  // se crean desde /peticiones (que abre este form con ?tipo=ID pre-bloqueado).
+  const tiposJudiciales = (tipos ?? []).filter((t) => t.esJudicial);
+
   // --- Paso 1: jurisdicción (6 fijas; solo las que tienen tipos en el catálogo) ---
   if (!jurisdiccion) {
-    const conteo = (tipos ?? []).reduce<Record<string, number>>((acc, t) => {
+    const conteo = tiposJudiciales.reduce<Record<string, number>>((acc, t) => {
       acc[t.jurisdiccion] = (acc[t.jurisdiccion] ?? 0) + 1;
       return acc;
     }, {});
@@ -300,7 +320,7 @@ export default function NuevoProcesoPage() {
 
   // --- Paso 2: tipo de proceso (filtrado por la jurisdicción elegida) ---
   if (!tipo) {
-    const tiposJur = (tipos ?? []).filter((t) => t.jurisdiccion === jurisdiccion);
+    const tiposJur = tiposJudiciales.filter((t) => t.jurisdiccion === jurisdiccion);
     return (
       <div>
         <PageHeader
@@ -337,11 +357,17 @@ export default function NuevoProcesoPage() {
     <div className="mx-auto max-w-4xl">
       <PageHeader
         title={tipo.nombre}
-        subtitle={`Paso 3 de 3 · ${JURISDICCION_LABEL[tipo.jurisdiccion]}`}
+        subtitle={tipoBloqueado ? "Nueva petición" : `Paso 3 de 3 · ${JURISDICCION_LABEL[tipo.jurisdiccion]}`}
         action={
-          <Button variant="ghost" onClick={() => setTipo(null)}>
-            ← Cambiar tipo
-          </Button>
+          tipoBloqueado ? (
+            <Link href="/peticiones">
+              <Button variant="ghost">← Peticiones</Button>
+            </Link>
+          ) : (
+            <Button variant="ghost" onClick={() => setTipo(null)}>
+              ← Cambiar tipo
+            </Button>
+          )
         }
       />
 
@@ -430,7 +456,10 @@ export default function NuevoProcesoPage() {
           {esAdmin ? (
             <Field label="Asignar abogado" error={responsableError ? "Obligatorio" : undefined}>
               <BuscadorSelect
-                opciones={abogadosElegibles.map((m) => ({ id: m.id, nombre: m.nombre }))}
+                opciones={abogadosElegibles.map((m) => ({
+                  id: m.id,
+                  nombre: m.id === yo?.id ? `${m.nombre} (tú)` : m.nombre,
+                }))}
                 value={responsableId}
                 onChange={setResponsableId}
                 placeholder="Buscar abogado por nombre…"

@@ -96,7 +96,8 @@ export default function ProcesosPage() {
   );
 
   const ordenados = useMemo(() => {
-    return [...items].sort((a, b) => {
+    // Procesos = solo lo judicial. Las peticiones (trámite ante entidad) viven en /peticiones.
+    return [...items].filter((i) => i.esJudicial).sort((a, b) => {
       const ga = grupoUrgencia(a), gb = grupoUrgencia(b);
       if (ga !== gb) return ga - gb;
       if (ga === 0) return (a.fechaLimite ?? "").localeCompare(b.fechaLimite ?? "");

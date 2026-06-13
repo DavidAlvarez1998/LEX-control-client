@@ -158,10 +158,13 @@ export type Proceso = {
 // --- Condiciones (mismo evaluador que el server; el server es la fuente de verdad) ---
 
 /** Evalúa una condición de igualdad. `String()` para que los boolean comparen
- *  con `igualA: "true"`. */
+ *  con `igualA: "true"`. Si el campo es un multiselect (array), se cumple cuando
+ *  el array CONTIENE alguno de los objetivos (p. ej. "Otro" entre lo elegido). */
 export function evaluarCondicion(cond: Condicion, datos: Record<string, unknown>): boolean {
-  const actual = String(datos[cond.campo] ?? "");
-  return Array.isArray(cond.igualA) ? cond.igualA.includes(actual) : actual === cond.igualA;
+  const objetivos = Array.isArray(cond.igualA) ? cond.igualA : [cond.igualA];
+  const valor = datos[cond.campo];
+  if (Array.isArray(valor)) return valor.some((v) => objetivos.includes(String(v)));
+  return objetivos.includes(String(valor ?? ""));
 }
 
 /** ¿El campo es visible dado el estado actual de `datos`? */

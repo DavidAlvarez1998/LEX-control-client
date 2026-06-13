@@ -174,9 +174,15 @@ export default function ExpedientePage() {
         title={proceso.titulo}
         subtitle={`${proceso.tipoProceso.nombre} · ${JURISDICCION_LABEL[proceso.jurisdiccion]}`}
         action={
-          <Link href="/procesos">
-            <Button variant="ghost">← Procesos</Button>
-          </Link>
+          proceso.tipoProceso.esJudicial ? (
+            <Link href="/procesos">
+              <Button variant="ghost">← Procesos</Button>
+            </Link>
+          ) : (
+            <Link href="/peticiones">
+              <Button variant="ghost">← Peticiones</Button>
+            </Link>
+          )
         }
       />
 

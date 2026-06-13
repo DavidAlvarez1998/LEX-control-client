@@ -72,6 +72,18 @@ export const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    href: "/peticiones",
+    label: "Peticiones",
+    roles: ["JURIDICO"], // trámites ante entidad (DdP, etc.); el admin de empresa lo ve por defecto
+    icon: (
+      <svg className={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" />
+        <path d="M14 4v5h5" />
+        <path d="M8 13h6M8 17h4" />
+      </svg>
+    ),
+  },
+  {
     href: "/servicios",
     label: "Servicios",
     adminOnly: true,
