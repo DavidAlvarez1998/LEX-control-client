@@ -191,6 +191,60 @@ export function BuscadorSelect({
   );
 }
 
+/**
+ * Lista editable de correos: una fila por correo con botón de quitar (×) y un
+ * enlace "+ Agregar otro correo". Siempre muestra al menos una fila para escribir.
+ * `value` = string[] (el primero es el principal). Reutilizada en el cliente del
+ * CRM, el modal de "crear cliente", los peticionarios y los campos `listaCorreos`
+ * del formulario dinámico (p. ej. correos de la entidad del DdP).
+ */
+export function CorreosInput({
+  value,
+  onChange,
+  placeholder = "correo@ejemplo.com",
+}: {
+  value: string[];
+  onChange: (v: string[]) => void;
+  placeholder?: string;
+}) {
+  // Defensa: datos heredados podrían no ser un array (un solo correo en string).
+  const lista = Array.isArray(value) ? value : value ? [String(value)] : [];
+  const filas = lista.length > 0 ? lista : [""];
+  const setEn = (i: number, v: string) => onChange(filas.map((c, idx) => (idx === i ? v : c)));
+  return (
+    <div className="space-y-2">
+      {filas.map((c, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <input
+            type="email"
+            value={c}
+            onChange={(e) => setEn(i, e.target.value)}
+            placeholder={placeholder}
+            className={base}
+          />
+          {filas.length > 1 && (
+            <button
+              type="button"
+              onClick={() => onChange(filas.filter((_, idx) => idx !== i))}
+              aria-label="Quitar correo"
+              className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-2 text-sm text-slate-400 transition-colors hover:border-red-300 hover:text-red-500 dark:border-slate-800"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...filas, ""])}
+        className="text-xs font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+      >
+        + Agregar otro correo
+      </button>
+    </div>
+  );
+}
+
 /** Selección múltiple con chips (no hay control nativo para esto). */
 export function MultiSelect({
   value,

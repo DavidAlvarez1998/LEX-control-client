@@ -40,6 +40,7 @@ export type ClienteOption = {
   numeroDocumento: string | null;
   telefono: string | null;
   email: string | null;
+  correos: string[] | null;
 };
 
 /** Clientes del despacho (CRM): para elegir el dueño del proceso. */
@@ -278,6 +279,7 @@ export type CrearProcesoBody = {
       numeroDocumento?: string;
       telefono?: string;
       email?: string;
+      correos?: string[];
       ciudad?: string;
     };
     rol: RolParte;
@@ -289,6 +291,9 @@ export type CrearProcesoBody = {
       nombre: string;
       tipoDocumento?: TipoDocumento;
       numeroDocumento?: string;
+      telefono?: string;
+      email?: string;
+      correos?: string[];
     };
     rol: RolParte;
     rolEtiqueta?: string;

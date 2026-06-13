@@ -29,7 +29,8 @@ export type CampoTipo =
   | "fecha"
   | "boolean"
   | "select"
-  | "multiselect";
+  | "multiselect"
+  | "listaCorreos"; // varios correos (string[]); p. ej. correos de la entidad
 
 // Condición de igualdad sobre otro campo (mostrarSi / requeridoSi / disponibleSi).
 export type Condicion = { campo: string; igualA: string | string[] };
@@ -106,6 +107,8 @@ export type Litigante = {
   nombre: string;
   tipoDocumento?: TipoDocumento;
   numeroDocumento?: string;
+  telefono?: string;
+  correos?: string[]; // varios correos; el primero es el principal
 };
 
 export type RolParte =

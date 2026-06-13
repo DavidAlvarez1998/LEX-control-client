@@ -9,6 +9,7 @@ import type { CampoEsquema } from "@/lib/procesos";
 import { campoEfectivamenteRequerido, campoVisible } from "@/lib/procesos";
 import {
   Checkbox,
+  CorreosInput,
   Field,
   Input,
   MultiSelect,
@@ -105,6 +106,15 @@ export function FormularioDinamico({
               />
             );
             break;
+          case "listaCorreos":
+            // Datos viejos pueden traer un solo correo como string: se coerciona a lista.
+            control = (
+              <CorreosInput
+                value={Array.isArray(v) ? (v as string[]) : v ? [String(v)] : []}
+                onChange={(x) => onChange(campo.key, x)}
+              />
+            );
+            break;
           default:
             control = (
               <Input value={(v as string) ?? ""} onChange={(x) => onChange(campo.key, x)} />
@@ -115,7 +125,8 @@ export function FormularioDinamico({
         // un <label> que contiene varios controles (las pastillas del multiselect)
         // se asocia al PRIMERO → al pasar el mouse/clic por el campo se activa la
         // primera opción ("Información"). Se renderizan con un <div> propio.
-        const sinLabelWrap = campo.tipo === "boolean" || campo.tipo === "multiselect";
+        const sinLabelWrap =
+          campo.tipo === "boolean" || campo.tipo === "multiselect" || campo.tipo === "listaCorreos";
         const elemento =
           sinLabelWrap ? (
             <div className="pt-1">
@@ -124,7 +135,7 @@ export function FormularioDinamico({
                 {requerido && <span className="ml-0.5 text-red-500">*</span>}
               </span>
               {control}
-              {campo.tipo === "multiselect" && campo.ayuda && (
+              {(campo.tipo === "multiselect" || campo.tipo === "listaCorreos") && campo.ayuda && (
                 <span className="mt-1 block text-xs text-slate-400">{campo.ayuda}</span>
               )}
               {campo.tipo === "multiselect" && error && (

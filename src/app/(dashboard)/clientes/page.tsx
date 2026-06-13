@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button, Card, EmptyState, PageHeader, PlusIcon } from "@/components/ui";
-import { Field, Input, Select, Textarea } from "@/components/form-ui";
+import { CorreosInput, Field, Input, Select, Textarea } from "@/components/form-ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { api, errorMessage } from "@/lib/api";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
@@ -21,6 +21,7 @@ type Cliente = {
   numeroDocumento: string | null;
   telefono: string | null;
   email: string | null;
+  correos: string[] | null;
   ciudad: string | null;
   canalIngreso: string | null;
   tipoCaso: string | null;
@@ -38,7 +39,7 @@ type FormState = {
   tipoDocumento: string;
   numeroDocumento: string;
   telefono: string;
-  email: string;
+  correos: string[]; // varios correos; el primero es el principal
   ciudad: string;
   canalIngreso: string;
   tipoCaso: string;
@@ -49,7 +50,7 @@ type FormState = {
 
 const EMPTY: FormState = {
   nombre: "", tipoPersona: "NATURAL", tipoDocumento: "", numeroDocumento: "",
-  telefono: "", email: "", ciudad: "", canalIngreso: "", tipoCaso: "",
+  telefono: "", correos: [], ciudad: "", canalIngreso: "", tipoCaso: "",
   viabilidad: "EN_ESTUDIO", resumenCaso: "", observaciones: "",
 };
 
@@ -158,7 +159,9 @@ export default function ClientesPage() {
     setForm({
       nombre: c.nombre, tipoPersona: c.tipoPersona,
       tipoDocumento: c.tipoDocumento ?? "", numeroDocumento: c.numeroDocumento ?? "",
-      telefono: c.telefono ?? "", email: c.email ?? "", ciudad: c.ciudad ?? "",
+      telefono: c.telefono ?? "",
+      correos: c.correos ?? (c.email ? [c.email] : []),
+      ciudad: c.ciudad ?? "",
       canalIngreso: c.canalIngreso ?? "", tipoCaso: c.tipoCaso ?? "",
       viabilidad: c.viabilidad ?? "EN_ESTUDIO", resumenCaso: c.resumenCaso ?? "",
       observaciones: c.observaciones ?? "",
@@ -167,10 +170,17 @@ export default function ClientesPage() {
     setFormOpen(true);
   }
 
-  /** Arma el payload omitiendo strings vacíos (la API rechaza "" en opcionales). */
+  /** Arma el payload omitiendo strings vacíos (la API rechaza "" en opcionales).
+   *  `correos` es lista: se recorta y se descartan vacíos. */
   function payload(): Record<string, unknown> {
     const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(form)) if (v.trim() !== "") out[k] = v.trim();
+    for (const [k, v] of Object.entries(form)) {
+      if (k === "correos") continue;
+      if (typeof v === "string" && v.trim() !== "") out[k] = v.trim();
+    }
+    const correos = form.correos.map((c) => c.trim()).filter(Boolean);
+    // Siempre se envía (incluso []) para poder limpiar correos al editar.
+    out.correos = correos;
     return out;
   }
 
@@ -382,9 +392,10 @@ export default function ClientesPage() {
               <Field label="Teléfono">
                 <Input value={form.telefono} onChange={(v) => setForm({ ...form, telefono: v })} placeholder="Teléfono" />
               </Field>
-              <Field label="Correo">
-                <Input value={form.email} onChange={(v) => setForm({ ...form, email: v })} placeholder="correo@ejemplo.com" />
-              </Field>
+              <div>
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Correos</span>
+                <CorreosInput value={form.correos} onChange={(v) => setForm({ ...form, correos: v })} />
+              </div>
               <Field label="Ciudad">
                 <Input value={form.ciudad} onChange={(v) => setForm({ ...form, ciudad: v })} placeholder="Ciudad" />
               </Field>

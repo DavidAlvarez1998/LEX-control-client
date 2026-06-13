@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, Card, Modal, PageHeader } from "@/components/ui";
-import { BuscadorSelect, Field, Input, MoneyInput, Select, SelectableCard } from "@/components/form-ui";
+import { BuscadorSelect, CorreosInput, Field, Input, MoneyInput, Select, SelectableCard } from "@/components/form-ui";
 import { FormularioDinamico } from "@/components/formulario-dinamico";
 import { VencimientoHint } from "@/components/vencimiento-hint";
 import { BotonSubirDoc } from "@/components/boton-subir-doc";
@@ -57,16 +57,28 @@ type ClienteNuevo = {
   tipoDocumento?: TipoDocumento;
   numeroDocumento?: string;
   telefono?: string;
-  email?: string;
+  correos?: string[]; // varios correos; el primero es el principal
 };
 const CLIENTE_NUEVO_VACIO: ClienteNuevo = { nombre: "", tipoPersona: "NATURAL" };
 
 // Las partes de esta sección son la contraparte y terceros (nunca el cliente).
 function parteVacia(): ParteProceso {
   return {
-    litigante: { id: `tmp-${Math.floor(performance.now())}`, tipoPersona: "NATURAL", nombre: "" },
+    litigante: { id: `tmp-${Math.floor(performance.now())}`, tipoPersona: "NATURAL", nombre: "", correos: [] },
     rol: "DEMANDADO",
     esNuestroCliente: false,
+  };
+}
+
+// Peticionario adicional (co-peticionario) de una petición: se materializa como
+// una parte con rol OTRO + etiqueta "Peticionario" (esNuestroCliente=true), igual
+// que el cliente principal. No entra al CRM; vive solo en el proceso.
+function peticionarioVacio(): ParteProceso {
+  return {
+    litigante: { id: `pet-${Math.floor(performance.now())}`, tipoPersona: "NATURAL", nombre: "", correos: [] },
+    rol: "OTRO",
+    rolEtiqueta: "Peticionario",
+    esNuestroCliente: true,
   };
 }
 
@@ -102,6 +114,8 @@ export default function NuevoProcesoPage() {
   const [cuantiaLabel, setCuantiaLabel] = useState("");
   const [cuantiaValor, setCuantiaValor] = useState("");
   const [partes, setPartes] = useState<ParteProceso[]>([]);
+  // Peticionarios adicionales (co-peticionarios) en una petición/DdP.
+  const [peticionarios, setPeticionarios] = useState<ParteProceso[]>([]);
 
   // --- Cliente dueño del proceso ---
   const [clientes, setClientes] = useState<ClienteOption[]>([]);
@@ -188,6 +202,11 @@ export default function NuevoProcesoPage() {
       ps.map((p, idx) => (idx === i ? { ...p, litigante: { ...p.litigante, ...patch } } : p)),
     );
   }
+  function actualizarPeticionario(i: number, patch: Partial<ParteProceso["litigante"]>) {
+    setPeticionarios((ps) =>
+      ps.map((p, idx) => (idx === i ? { ...p, litigante: { ...p.litigante, ...patch } } : p)),
+    );
+  }
 
   const clienteSeleccionado = clienteNuevo
     ? `${clienteNuevo.nombre} (nuevo)`
@@ -202,7 +221,8 @@ export default function NuevoProcesoPage() {
       setNuevoError(true);
       return;
     }
-    setClienteNuevo({ ...nuevoForm, nombre: nuevoForm.nombre.trim() });
+    const correos = (nuevoForm.correos ?? []).map((c) => c.trim()).filter(Boolean);
+    setClienteNuevo({ ...nuevoForm, nombre: nuevoForm.nombre.trim(), correos });
     setClienteId("");
     setModalCliente(false);
   }
@@ -257,19 +277,38 @@ export default function NuevoProcesoPage() {
           : clienteId
             ? { clienteId, rol: rolCliente, rolEtiqueta: etiquetaCliente }
             : undefined,
-        partes: partes
-          .filter((p) => p.litigante.nombre.trim().length > 0)
-          .map((p) => ({
-            litigante: {
-              tipoPersona: p.litigante.tipoPersona,
-              nombre: p.litigante.nombre.trim(),
-              tipoDocumento: p.litigante.tipoDocumento,
-              numeroDocumento: p.litigante.numeroDocumento,
-            },
-            rol: p.rol,
-            rolEtiqueta: p.rolEtiqueta,
-            esNuestroCliente: false,
-          })),
+        partes: [
+          ...partes
+            .filter((p) => p.litigante.nombre.trim().length > 0)
+            .map((p) => ({
+              litigante: {
+                tipoPersona: p.litigante.tipoPersona,
+                nombre: p.litigante.nombre.trim(),
+                tipoDocumento: p.litigante.tipoDocumento,
+                numeroDocumento: p.litigante.numeroDocumento,
+                correos: (p.litigante.correos ?? []).map((c) => c.trim()).filter(Boolean),
+              },
+              rol: p.rol,
+              rolEtiqueta: p.rolEtiqueta,
+              esNuestroCliente: false,
+            })),
+          // Co-peticionarios → parte OTRO + etiqueta "Peticionario" (nuestro).
+          ...peticionarios
+            .filter((p) => p.litigante.nombre.trim().length > 0)
+            .map((p) => ({
+              litigante: {
+                tipoPersona: p.litigante.tipoPersona,
+                nombre: p.litigante.nombre.trim(),
+                tipoDocumento: p.litigante.tipoDocumento,
+                numeroDocumento: p.litigante.numeroDocumento,
+                telefono: p.litigante.telefono,
+                correos: (p.litigante.correos ?? []).map((c) => c.trim()).filter(Boolean),
+              },
+              rol: "OTRO" as RolParte,
+              rolEtiqueta: "Peticionario",
+              esNuestroCliente: true,
+            })),
+        ],
       };
       const creado = await crearProceso(body);
       // Los documentos solo se pueden vincular una vez existe el proceso: se suben
@@ -461,6 +500,90 @@ export default function NuevoProcesoPage() {
         </Card>
         )}
 
+        {/* Otros peticionarios: solo en peticiones (trámite ante entidad con cliente).
+            El cliente de arriba es el peticionario principal; aquí se agregan los
+            co-peticionarios (cada uno con sus propios correos). No entran al CRM. */}
+        {!tipo.esJudicial && !tipo.clienteOpcional && (
+          <Card>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Otros peticionarios <span className="font-normal text-slate-400">(opcional)</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Si la petición la presentan varias personas, agrégalas aquí — el cliente de arriba es el peticionario principal.
+                </p>
+              </div>
+              <Button variant="ghost" onClick={() => setPeticionarios((p) => [...p, peticionarioVacio()])}>
+                + Agregar peticionario
+              </Button>
+            </div>
+            {peticionarios.length === 0 ? (
+              <p className="text-sm text-slate-400 dark:text-slate-500">Sin peticionarios adicionales.</p>
+            ) : (
+              <div className="space-y-4">
+                {peticionarios.map((p, i) => (
+                  <div key={p.litigante.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <Field label="Nombre / razón social">
+                        <Input
+                          value={p.litigante.nombre}
+                          onChange={(v) => actualizarPeticionario(i, { nombre: v })}
+                          placeholder="Nombre del peticionario"
+                        />
+                      </Field>
+                      <Field label="Tipo de persona">
+                        <Select
+                          value={p.litigante.tipoPersona}
+                          onChange={(v) => actualizarPeticionario(i, { tipoPersona: v as TipoPersona })}
+                          opciones={["NATURAL", "JURIDICA"]}
+                        />
+                      </Field>
+                      <Field label="Tipo de documento">
+                        <Select
+                          value={p.litigante.tipoDocumento ?? ""}
+                          onChange={(v) => actualizarPeticionario(i, { tipoDocumento: (v as TipoDocumento) || undefined })}
+                          opciones={TIPOS_DOC}
+                          placeholder="Tipo"
+                        />
+                      </Field>
+                      <Field label="Número de documento">
+                        <Input
+                          value={p.litigante.numeroDocumento ?? ""}
+                          onChange={(v) => actualizarPeticionario(i, { numeroDocumento: v })}
+                        />
+                      </Field>
+                      <Field label="Teléfono">
+                        <Input
+                          value={p.litigante.telefono ?? ""}
+                          onChange={(v) => actualizarPeticionario(i, { telefono: v })}
+                          placeholder="Teléfono"
+                        />
+                      </Field>
+                    </div>
+                    <div className="mt-3">
+                      <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Correos</span>
+                      <CorreosInput
+                        value={p.litigante.correos ?? []}
+                        onChange={(v) => actualizarPeticionario(i, { correos: v })}
+                      />
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setPeticionarios((ps) => ps.filter((_, idx) => idx !== i))}
+                        className="text-xs text-red-600 hover:underline"
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
+
         {/* Abogado responsable */}
         <Card>
           <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -631,7 +754,7 @@ export default function NuevoProcesoPage() {
                         opciones={["NATURAL", "JURIDICA"]}
                       />
                     </Field>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <Field label="Documento">
                         <Select
                           value={p.litigante.tipoDocumento ?? ""}
@@ -647,6 +770,13 @@ export default function NuevoProcesoPage() {
                         />
                       </Field>
                     </div>
+                  </div>
+                  <div className="mt-3">
+                    <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Correos</span>
+                    <CorreosInput
+                      value={p.litigante.correos ?? []}
+                      onChange={(v) => actualizarLitigante(i, { correos: v })}
+                    />
                   </div>
                   <div className="mt-3 flex justify-end">
                     <button
@@ -711,7 +841,7 @@ export default function NuevoProcesoPage() {
             opciones={["NATURAL", "JURIDICA"]}
           />
         </Field>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Field label="Tipo de documento">
             <Select
               value={nuevoForm.tipoDocumento ?? ""}
@@ -734,13 +864,13 @@ export default function NuevoProcesoPage() {
             placeholder="Teléfono"
           />
         </Field>
-        <Field label="Correo">
-          <Input
-            value={nuevoForm.email ?? ""}
-            onChange={(v) => setNuevoForm((f) => ({ ...f, email: v }))}
-            placeholder="correo@ejemplo.com"
+        <div>
+          <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Correos</span>
+          <CorreosInput
+            value={nuevoForm.correos ?? []}
+            onChange={(v) => setNuevoForm((f) => ({ ...f, correos: v }))}
           />
-        </Field>
+        </div>
       </Modal>
     </div>
   );
