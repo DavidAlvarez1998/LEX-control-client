@@ -37,6 +37,8 @@ export type ClienteOption = {
   estado: string;
   tipoDocumento: TipoDocumento | null;
   numeroDocumento: string | null;
+  telefono: string | null;
+  email: string | null;
 };
 
 /** Clientes del despacho (CRM): para elegir el dueño del proceso. */

@@ -140,7 +140,9 @@ export function BuscadorSelect({
   onChange,
   placeholder = "Buscar por nombre…",
 }: {
-  opciones: { id: string; nombre: string }[];
+  // `sub`: segunda línea (p. ej. documento/celular/correo). `buscar`: texto extra
+  // que también filtra (nombre siempre filtra). Ambos opcionales → uso retro intacto.
+  opciones: { id: string; nombre: string; sub?: string; buscar?: string }[];
   value: string;
   onChange: (id: string) => void;
   placeholder?: string;
@@ -149,7 +151,9 @@ export function BuscadorSelect({
   const [abierto, setAbierto] = useState(false);
   const sel = opciones.find((o) => o.id === value);
   const filtro = q.trim().toLowerCase();
-  const filtradas = filtro ? opciones.filter((o) => o.nombre.toLowerCase().includes(filtro)) : opciones;
+  const filtradas = filtro
+    ? opciones.filter((o) => `${o.nombre} ${o.buscar ?? ""}`.toLowerCase().includes(filtro))
+    : opciones;
   return (
     <div className="relative">
       <input
@@ -174,6 +178,9 @@ export function BuscadorSelect({
                   className={`block w-full px-3 py-2 text-left text-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10 ${o.id === value ? "font-medium text-indigo-600 dark:text-indigo-400" : "text-slate-700 dark:text-slate-200"}`}
                 >
                   {o.nombre}
+                  {o.sub && (
+                    <span className="block text-xs text-slate-400 dark:text-slate-500">{o.sub}</span>
+                  )}
                 </button>
               </li>
             ))

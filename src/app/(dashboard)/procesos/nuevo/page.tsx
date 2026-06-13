@@ -390,22 +390,20 @@ export default function NuevoProcesoPage() {
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
               <Field label="Elegir cliente existente">
-                <select
+                <BuscadorSelect
                   value={clienteId}
-                  onChange={(e) => {
-                    setClienteId(e.target.value);
+                  onChange={(id) => {
+                    setClienteId(id);
                     setClienteNuevo(null);
                   }}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
-                >
-                  <option value="">Selecciona…</option>
-                  {clientes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre}
-                      {c.numeroDocumento ? ` · ${c.numeroDocumento}` : ""}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Buscar por nombre, identificación, celular o correo…"
+                  opciones={clientes.map((c) => ({
+                    id: c.id,
+                    nombre: c.nombre,
+                    sub: [c.numeroDocumento, c.telefono, c.email].filter(Boolean).join(" · ") || undefined,
+                    buscar: [c.numeroDocumento, c.telefono, c.email].filter(Boolean).join(" "),
+                  }))}
+                />
               </Field>
               <Button
                 variant="ghost"
