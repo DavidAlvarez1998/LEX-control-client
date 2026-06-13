@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, EmptyState, Modal, PageHeader, PlusIcon } from "@/components/ui";
-import { Input, SelectableCard } from "@/components/form-ui";
+import { Button, Card, EmptyState, PageHeader, PlusIcon } from "@/components/ui";
+import { Input } from "@/components/form-ui";
 import { ESTADO_LABEL, rutaProceso, type EstadoProceso } from "@/lib/procesos";
 import { getTipos, listProcesos, type ProcesoListItem } from "@/lib/procesos-api";
 import { errorMessage } from "@/lib/api";
@@ -29,27 +29,35 @@ function venceUI(item: ProcesoListItem): { fecha: string; sub: string | null; cl
 const grupoUrgencia = (i: ProcesoListItem) =>
   i.estado === "CERRADO" || i.estado === "ARCHIVADO" ? 2 : i.fechaLimite ? 0 : 1;
 
-export default function DerechoPeticionPage() {
+/**
+ * Lista simple de un único tipo de petición (Reclamación Administrativa o
+ * Constitución de Renuencia). Modelada en /peticiones/derecho-peticion pero sin
+ * la columna/chips de modalidad Enviada/Recibida (eso es exclusivo del DdP).
+ */
+export default function ListaPeticionSimple({
+  tipoNombre,
+  title,
+  subtitle,
+  botonNuevo,
+}: {
+  tipoNombre: string;
+  title: string;
+  subtitle: string;
+  botonNuevo: string;
+}) {
   const router = useRouter();
   const [items, setItems] = useState<ProcesoListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
-  // Ids de los dos TipoProceso de DdP: el que se envía (solicitar, "el actual") y
-  // el que se recibe. Una petición se crea eligiendo modalidad → tipo correspondiente.
-  const [tipoSolicitar, setTipoSolicitar] = useState<string | null>(null);
-  const [tipoRecibir, setTipoRecibir] = useState<string | null>(null);
-  const [modalNueva, setModalNueva] = useState(false);
+  const [tipoId, setTipoId] = useState<string | null>(null);
 
   useEffect(() => {
     getTipos()
-      .then((ts) => {
-        setTipoSolicitar(ts.find((t) => t.nombre === "Derecho de Petición")?.id ?? null);
-        setTipoRecibir(ts.find((t) => t.nombre === "Derecho de Petición Recibido")?.id ?? null);
-      })
+      .then((ts) => setTipoId(ts.find((t) => t.nombre === tipoNombre)?.id ?? null))
       .catch(() => {});
-  }, []);
+  }, [tipoNombre]);
 
   useEffect(() => {
     const t = setTimeout(() => setQ(qInput.trim()), 300);
@@ -60,21 +68,10 @@ export default function DerechoPeticionPage() {
     setLoading(true);
     setError(null);
     listProcesos({ q: q || undefined })
-      // Solo los dos tipos de Derecho de Petición (enviar/recibir). Reclamación
-      // Administrativa y Constitución de Renuencia también son grupo PETICION pero
-      // tienen su propia pantalla, así que se filtran por nombre de tipo.
-      .then((r) =>
-        setItems(
-          r.items.filter(
-            (i) =>
-              i.tipoProcesoNombre === "Derecho de Petición" ||
-              i.tipoProcesoNombre === "Derecho de Petición Recibido",
-          ),
-        ),
-      )
+      .then((r) => setItems(r.items.filter((i) => i.tipoProcesoNombre === tipoNombre)))
       .catch((e) => setError(errorMessage(e, "Error al cargar")))
       .finally(() => setLoading(false));
-  }, [q]);
+  }, [q, tipoNombre]);
 
   const ordenados = useMemo(() => {
     return [...items].sort((a, b) => {
@@ -87,29 +84,22 @@ export default function DerechoPeticionPage() {
 
   const u = getUser();
   const puedeEditar = !!u?.esAdminEmpresa || (u?.roles ?? []).includes("JURIDICO");
-  const hayTipos = !!(tipoSolicitar || tipoRecibir);
-
-  // Modalidad: enviada (la presenta el despacho) vs recibida (dirigida al despacho).
-  const esRecibida = (t: ProcesoListItem) => t.tipoProcesoNombre === "Derecho de Petición Recibido";
-  const [modalidad, setModalidad] = useState<"todas" | "enviadas" | "recibidas">("todas");
-  const visibles = ordenados.filter(
-    (t) => modalidad === "todas" || esRecibida(t) === (modalidad === "recibidas"),
-  );
+  const puedeCrear = puedeEditar && !!tipoId;
 
   return (
     <RolEmpresaGuard roles={["JURIDICO"]}>
       <div>
         <PageHeader
-          title="Derecho de Petición"
-          subtitle="Peticiones ante entidades de tu despacho."
+          title={title}
+          subtitle={subtitle}
           action={
             <div className="flex gap-2">
               <Link href="/peticiones">
                 <Button variant="ghost">← Peticiones</Button>
               </Link>
-              {puedeEditar && hayTipos && (
-                <Button onClick={() => setModalNueva(true)}>
-                  <PlusIcon /> Nueva petición
+              {puedeCrear && (
+                <Button onClick={() => router.push(`/peticiones/nueva?tipo=${tipoId}`)}>
+                  <PlusIcon /> {botonNuevo}
                 </Button>
               )}
             </div>
@@ -120,24 +110,6 @@ export default function DerechoPeticionPage() {
           <div className="w-72">
             <Input value={qInput} onChange={setQInput} placeholder="Buscar por código, título, cliente o radicado…" />
           </div>
-          <div className="flex gap-1">
-            {([["todas", "Todas"], ["enviadas", "Enviadas"], ["recibidas", "Recibidas"]] as const).map(
-              ([v, label]) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setModalidad(v)}
-                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                    modalidad === v
-                      ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
-                  }`}
-                >
-                  {label}
-                </button>
-              ),
-            )}
-          </div>
         </div>
 
         {loading ? (
@@ -146,12 +118,12 @@ export default function DerechoPeticionPage() {
           <Card className="border-red-200 bg-red-50 text-sm text-red-700">{error}</Card>
         ) : ordenados.length === 0 ? (
           <EmptyState
-            title="No hay peticiones"
-            description="Crea tu primer derecho de petición para empezar."
+            title="No hay registros"
+            description="Crea el primero para empezar."
             action={
-              puedeEditar && hayTipos ? (
-                <Button onClick={() => setModalNueva(true)}>
-                  <PlusIcon /> Nueva petición
+              puedeCrear ? (
+                <Button onClick={() => router.push(`/peticiones/nueva?tipo=${tipoId}`)}>
+                  <PlusIcon /> {botonNuevo}
                 </Button>
               ) : undefined
             }
@@ -161,8 +133,7 @@ export default function DerechoPeticionPage() {
             <table className="w-full text-sm">
               <thead className="border-b border-slate-200 text-left text-slate-500 dark:border-slate-800">
                 <tr>
-                  <th className="px-5 py-3 font-medium">Petición</th>
-                  <th className="px-5 py-3 font-medium">Modalidad</th>
+                  <th className="px-5 py-3 font-medium">Proceso</th>
                   <th className="px-5 py-3 font-medium">Cliente</th>
                   <th className="px-5 py-3 font-medium">Etapa</th>
                   <th className="px-5 py-3 font-medium">Vence</th>
@@ -171,14 +142,7 @@ export default function DerechoPeticionPage() {
                 </tr>
               </thead>
               <tbody>
-                {visibles.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-5 py-6 text-center text-sm text-slate-400">
-                      No hay peticiones {modalidad === "recibidas" ? "recibidas" : "enviadas"}.
-                    </td>
-                  </tr>
-                )}
-                {visibles.map((t) => {
+                {ordenados.map((t) => {
                   const v = venceUI(t);
                   return (
                     <tr
@@ -208,13 +172,6 @@ export default function DerechoPeticionPage() {
                           )
                         )}
                       </td>
-                      <td className="px-5 py-3 align-top">
-                        {esRecibida(t) ? (
-                          <span className="whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">Recibida</span>
-                        ) : (
-                          <span className="whitespace-nowrap rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">Enviada</span>
-                        )}
-                      </td>
                       <td className="px-5 py-3 align-top text-slate-700 dark:text-slate-200">
                         {t.clienteNombre ?? <span className="text-slate-400">—</span>}
                       </td>
@@ -236,26 +193,6 @@ export default function DerechoPeticionPage() {
             </table>
           </Card>
         )}
-
-        <Modal open={modalNueva} onClose={() => setModalNueva(false)} title="Nueva petición">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            ¿Esta petición la envías a una entidad, o la recibes y debes responderla?
-          </p>
-          {tipoSolicitar && (
-            <SelectableCard
-              title="Solicitar"
-              subtitle="Presentas la petición ante una entidad y esperan respuesta."
-              onClick={() => router.push(`/peticiones/nueva?tipo=${tipoSolicitar}`)}
-            />
-          )}
-          {tipoRecibir && (
-            <SelectableCard
-              title="Recibir"
-              subtitle="Recibes una petición y se debe dar respuesta dentro del término legal."
-              onClick={() => router.push(`/peticiones/nueva?tipo=${tipoRecibir}`)}
-            />
-          )}
-        </Modal>
       </div>
     </RolEmpresaGuard>
   );

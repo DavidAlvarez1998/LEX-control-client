@@ -23,11 +23,13 @@ const PETICIONES: Peticion[] = [
   {
     titulo: "Reclamación Administrativa",
     descripcion: "Reclamo previo ante la administración antes de acudir a la jurisdicción.",
+    href: "/peticiones/reclamacion-administrativa",
   },
   {
     titulo: "Constitución de Renuencia",
     descripcion:
       "Requisito de procedibilidad de la acción de cumplimiento (art. 8 Ley 393/1997).",
+    href: "/peticiones/constitucion-renuencia",
   },
 ];
 
