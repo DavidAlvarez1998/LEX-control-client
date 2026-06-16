@@ -7,6 +7,7 @@ import { Button, Card, PageHeader } from "@/components/ui";
 import { DocumentosProceso } from "@/components/documentos-proceso";
 import { DatosProceso } from "@/components/datos-proceso";
 import { CasoChain } from "@/components/caso-chain";
+import { ActuacionesProceso } from "@/components/actuaciones-proceso";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, rutaProceso, type EtapaDef } from "@/lib/procesos";
@@ -186,6 +187,7 @@ export default function ExpedientePage() {
           );
         })()}
       />
+      <TituloEditable procesoId={proceso.id} valor={proceso.titulo} onSaved={setProceso} readOnly={!puedeEditar} />
 
       {/* Barra de caso: la cadena DdP → DdP reiteración → Tutela como un solo caso.
           Reemplaza el viejo enlace "Ver caso relacionado" (solo aparece si hay >1). */}
@@ -407,6 +409,16 @@ export default function ExpedientePage() {
               readOnly={!puedeEditar}
             />
           </Card>
+
+          {proceso.tipoProceso.esJudicial && (
+            <Card>
+              <ActuacionesProceso
+                procesoId={proceso.id}
+                radicado={proceso.radicado}
+                puedeSincronizar={puedeEditar}
+              />
+            </Card>
+          )}
         </div>
       </div>
 
@@ -445,6 +457,87 @@ function Dato({ label, value }: { label: string; value: string }) {
     <div>
       <div className="text-xs text-slate-400">{label}</div>
       <div className="mt-0.5 font-medium text-slate-700 dark:text-slate-200">{value}</div>
+    </div>
+  );
+}
+
+// Título del caso editable in-situ. En trámites ante entidad (DdP) el título se
+// auto-genera al crear ("Tipo — Entidad") y se ajusta acá si hace falta.
+function TituloEditable({
+  procesoId,
+  valor,
+  onSaved,
+  readOnly = false,
+}: {
+  procesoId: string;
+  valor: string;
+  onSaved: (p: ProcesoDetalle) => void;
+  readOnly?: boolean;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [texto, setTexto] = useState(valor);
+  const [guardando, setGuardando] = useState(false);
+
+  if (readOnly) return null;
+
+  async function guardar() {
+    const t = texto.trim();
+    if (!t) return;
+    setGuardando(true);
+    try {
+      const actualizado = await actualizarProceso(procesoId, { titulo: t });
+      onSaved(actualizado);
+      setEditando(false);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="-mt-3 mb-4">
+      {editando ? (
+        <div className="flex items-center gap-1.5">
+          <input
+            autoFocus
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") guardar();
+              if (e.key === "Escape") {
+                setTexto(valor);
+                setEditando(false);
+              }
+            }}
+            className="w-full max-w-md rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <button
+            onClick={guardar}
+            disabled={guardando}
+            className="shrink-0 text-xs font-medium text-indigo-600 hover:underline disabled:opacity-50"
+          >
+            {guardando ? "…" : "Guardar"}
+          </button>
+          <button
+            onClick={() => {
+              setTexto(valor);
+              setEditando(false);
+            }}
+            className="shrink-0 text-xs text-slate-400 hover:text-slate-600"
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => {
+            setTexto(valor);
+            setEditando(true);
+          }}
+          className="text-xs text-slate-400 transition-colors hover:text-indigo-600 dark:hover:text-indigo-400"
+        >
+          ✎ Editar título
+        </button>
+      )}
     </div>
   );
 }
