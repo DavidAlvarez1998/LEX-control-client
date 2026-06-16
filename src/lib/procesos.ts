@@ -45,6 +45,7 @@ export type CampoEsquema = {
   mostrarSi?: Condicion; // oculto salvo que la condición se cumpla
   requeridoSi?: Condicion; // requerido (además) cuando la condición se cumple
   auto?: boolean; // lo genera el servidor al crear; en el form se muestra solo lectura
+  soloFicha?: boolean; // no se muestra al CREAR; se llena en la ficha al avanzar de etapa
 };
 
 // --- Flujo / etapas ---

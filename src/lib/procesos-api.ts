@@ -331,7 +331,7 @@ export function actualizarDatos(
  *  columna canónica que usan facturación y contable, no un campo del formulario). */
 export function actualizarProceso(
   id: string,
-  body: { radicado?: string | null },
+  body: { radicado?: string | null; titulo?: string },
 ): Promise<ProcesoDetalle> {
   return api.patch<ProcesoDetalle>(`/procesos/${id}`, body);
 }

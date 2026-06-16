@@ -155,8 +155,12 @@ export function FormularioDinamico({
         // (uploader del poder, hint de vencimiento…) quede DEBAJO del campo y con el
         // ancho de su columna — no como otra celda a la derecha ni a fila completa.
         const slot = slotDespuesDe?.[campo.key];
+        // Solo los controles de chips (multiselect, correos) ocupan la fila completa:
+        // de verdad necesitan el ancho. El resto (fecha, select, texto, texto largo)
+        // queda compacto en una columna para no verse estirado.
+        const anchoCompleto = campo.tipo === "multiselect" || campo.tipo === "listaCorreos";
         return (
-          <div key={campo.key}>
+          <div key={campo.key} data-campo={campo.key} className={anchoCompleto ? "sm:col-span-2" : undefined}>
             {elemento}
             {slot && <div className="mt-2">{slot}</div>}
           </div>

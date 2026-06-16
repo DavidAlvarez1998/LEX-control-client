@@ -4,7 +4,7 @@
 // corregir `datos` después de creado (incl. la tutela derivada que nace vacía).
 // Guarda contra PATCH /procesos/:id (validación tolerante: borradores incompletos).
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui";
 import { BotonSubirDoc } from "./boton-subir-doc";
 import { FormularioDinamico } from "./formulario-dinamico";
@@ -52,6 +52,7 @@ export function DatosProceso({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [erroresGuardar, setErroresGuardar] = useState<string[]>([]); // keys marcadas al validar al guardar
+  const formRef = useRef<HTMLDivElement>(null);
 
   // Al intentar avanzar una etapa bloqueada (por datos O documentos), se abre el
   // form en edición partiendo de los datos actuales para que el campo y/o su
@@ -60,6 +61,16 @@ export function DatosProceso({
     if (resaltarCampos) {
       setBorrador(datos);
       setEditando(true);
+      // Scroll al PRIMER campo faltante (no al tope del form): los campos de la
+      // etapa que falta (p. ej. radicación) están abajo en la lista, así que ir
+      // al tope dejaba al usuario sin ver lo que debe llenar. Espera a que el
+      // form en edición renderice.
+      const primero = resaltarCampos.keys[0];
+      setTimeout(() => {
+        const cont = formRef.current;
+        const destino = primero ? cont?.querySelector(`[data-campo="${CSS.escape(primero)}"]`) : null;
+        (destino ?? cont)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 120);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resaltarCampos?.nonce]);
@@ -134,14 +145,15 @@ export function DatosProceso({
   }
 
   if (!editando) {
-    const visibles = esquema.filter((c) => campoVisible(c, datos));
+    // Solo los campos CON valor: los vacíos llenaban el resumen de "—" y huecos.
+    const visibles = esquema.filter((c) => campoVisible(c, datos) && !esVacio(datos[c.key]));
     return (
       <div>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
           {visibles.map((c) => (
-            <div key={c.key}>
+            <div key={c.key} className={c.tipo === "textoLargo" ? "sm:col-span-2 lg:col-span-3" : undefined}>
               <dt className="text-xs text-slate-400">{c.label}</dt>
-              <dd className="mt-0.5 text-slate-700 dark:text-slate-200">{formatValor(datos[c.key])}</dd>
+              <dd className="mt-0.5 whitespace-pre-line text-slate-700 dark:text-slate-200">{formatValor(datos[c.key])}</dd>
             </div>
           ))}
           {visibles.length === 0 && <p className="text-slate-400">Sin datos aún.</p>}
@@ -163,7 +175,7 @@ export function DatosProceso({
   }
 
   return (
-    <div>
+    <div ref={formRef}>
       <FormularioDinamico
         esquema={esquema}
         datos={borrador}

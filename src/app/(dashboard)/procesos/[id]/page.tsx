@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { DocumentosProceso } from "@/components/documentos-proceso";
 import { DatosProceso } from "@/components/datos-proceso";
@@ -23,9 +23,8 @@ export default function ExpedientePage() {
   const [escalando, setEscalando] = useState(false);
   const [caso, setCaso] = useState<CasoNodo[]>([]);
   // Guía al bloquear una etapa: campos faltantes a marcar en el form (con nonce
-  // para re-disparar) y refs para hacer scroll al form / al panel de documentos.
+  // para re-disparar). El scroll al primer campo faltante lo hace DatosProceso.
   const [resaltarCampos, setResaltarCampos] = useState<{ keys: string[]; nonce: number } | null>(null);
-  const formRef = useRef<HTMLDivElement>(null);
   // Vencimiento ESTIMADO en vivo desde los datos, para mostrarlo en el recuadro de
   // arriba aunque aún no se haya guardado fechaLimite (al poner la fecha de radicación).
   const [vencEstimado, setVencEstimado] = useState<string | null>(null);
@@ -124,8 +123,9 @@ export default function ExpedientePage() {
         // documentos viven inline en el formulario (bajo su campo), así que con
         // abrir el form + scroll basta. `keys` vacío igual abre la edición.
         setBloqueo({ etapa: key, faltantes, documentosFaltantes });
+        // El scroll al primer campo faltante lo hace DatosProceso (sabe cuáles
+        // resaltó y cuándo renderizó el form en edición).
         setResaltarCampos({ keys: faltantes, nonce: Date.now() });
-        setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
       } else if (e instanceof ApiError && e.status === 422) {
         // La etapa depende de un campo del formulario (disponibleSi): guía a él.
         const campo = (e.issues as { condicion?: { campo?: string } })?.condicion?.campo;
@@ -139,7 +139,6 @@ export default function ExpedientePage() {
             faltantes: [],
             motivo: `Para habilitar esta etapa, completa "${def?.label ?? campo}" en el formulario ↓`,
           });
-          setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
         } else {
           setBloqueo({ etapa: key, faltantes: [], motivo: "Esta etapa no está disponible con los datos actuales del proceso." });
         }
@@ -422,7 +421,7 @@ export default function ExpedientePage() {
         </div>
       </div>
 
-      <div ref={formRef}>
+      <div>
       <Card className="mb-5">
         <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
           Formulario del proceso

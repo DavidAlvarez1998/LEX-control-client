@@ -82,6 +82,13 @@ function peticionarioVacio(): ParteProceso {
   };
 }
 
+// Título auto-generado para trámites ante entidad (no judiciales): "Tipo — Entidad"
+// (p. ej. "Derecho de Petición — Colpensiones"). Si aún no hay entidad, usa el tipo.
+function tituloGenerado(tipo: TipoProceso, datos: Record<string, unknown>): string {
+  const entidad = String(datos.entidad ?? "").trim();
+  return [tipo.nombre, entidad].filter(Boolean).join(" — ");
+}
+
 export default function NuevoProcesoPage() {
   const router = useRouter();
   // Se lee tras montar (localStorage) para no romper la hidratación.
@@ -239,7 +246,11 @@ export default function NuevoProcesoPage() {
     // se guarda "OTRO" con etiqueta "Peticionario". En judiciales, el rol elegido.
     const rolCliente: RolParte = tipo.esJudicial ? clienteRol : "OTRO";
     const etiquetaCliente = tipo.esJudicial ? undefined : "Peticionario";
-    const tituloOk = titulo.trim().length > 0;
+    // Trámites ante entidad (no judiciales): el título se auto-genera "Tipo — Entidad"
+    // y el campo va oculto. En judiciales sigue siendo manual ("Pérez vs. XYZ").
+    const tituloAuto = !tipo.esJudicial;
+    const tituloFinal = tituloAuto ? tituloGenerado(tipo, datos) : titulo.trim();
+    const tituloOk = tituloFinal.length > 0;
     setTituloError(!tituloOk);
     // El cliente puede ser opcional para trámites dirigidos al despacho (p. ej. DdP
     // recibido): ahí no bloquea si va vacío. En el resto, sigue siendo obligatorio.
@@ -248,8 +259,11 @@ export default function NuevoProcesoPage() {
     setClienteError(clienteRequerido && !hayCliente);
     const hayResponsable = esAdmin ? !!responsableId : true;
     setResponsableError(!hayResponsable);
-    const { ok, faltantes } = validarDatos(tipo.esquemaFormulario, datos);
-    const keysFaltantes = tipo.esquemaFormulario
+    // Solo los campos visibles al CREAR; los `soloFicha` (radicación, contestación)
+    // se llenan después en la ficha al avanzar de etapa.
+    const esquemaCreacion = tipo.esquemaFormulario.filter((c) => !c.soloFicha);
+    const { ok, faltantes } = validarDatos(esquemaCreacion, datos);
+    const keysFaltantes = esquemaCreacion
       .filter((c) => faltantes.includes(c.label))
       .map((c) => c.key);
     setErrores(keysFaltantes);
@@ -264,7 +278,7 @@ export default function NuevoProcesoPage() {
     try {
       const body: CrearProcesoBody = {
         tipoProcesoId: tipo.id,
-        titulo: titulo.trim(),
+        titulo: tituloFinal,
         datos,
         cuantiaTipo: CUANTIAS.find((c) => c.label === cuantiaLabel)?.v,
         cuantiaValor: cuantiaValor || undefined,
@@ -420,11 +434,16 @@ export default function NuevoProcesoPage() {
       />
 
       <div className="space-y-5">
+        {/* Título manual solo en procesos judiciales ("Pérez vs. XYZ"). En trámites
+            ante entidad (DdP/peticiones) se auto-genera "Tipo — Entidad" y se oculta;
+            queda editable luego en la ficha. */}
+        {tipo.esJudicial && (
         <Card>
           <Field label="Título del caso" requerido error={tituloError ? "Obligatorio" : undefined}>
             <Input value={titulo} onChange={setTitulo} placeholder="Ej. Pérez vs. Aseguradora XYZ" />
           </Field>
         </Card>
+        )}
 
         {/* Cliente dueño del proceso. Oculto en trámites dirigidos al despacho (DdP
             recibido, clienteOpcional): por defecto van hacia la propia empresa, sin
@@ -614,7 +633,7 @@ export default function NuevoProcesoPage() {
             Datos del proceso
           </h3>
           <FormularioDinamico
-            esquema={tipo.esquemaFormulario}
+            esquema={tipo.esquemaFormulario.filter((c) => !c.soloFicha)}
             datos={datos}
             onChange={setCampo}
             errores={errores}
