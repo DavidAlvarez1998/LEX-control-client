@@ -128,16 +128,28 @@ export default function ExpedientePage() {
         setResaltarCampos({ keys: faltantes, nonce: Date.now() });
       } else if (e instanceof ApiError && e.status === 422) {
         // La etapa depende de un campo del formulario (disponibleSi): guía a él.
-        const campo = (e.issues as { condicion?: { campo?: string } })?.condicion?.campo;
+        const condicion = (e.issues as { condicion?: { campo?: string; igualA?: unknown } })?.condicion;
+        const campo = condicion?.campo;
         const def = campo
           ? (proceso!.tipoProceso.esquemaFormulario ?? []).find((c) => c.key === campo)
           : undefined;
         if (campo) {
+          const label = def?.label ?? campo;
+          const actual = proceso!.datos[campo];
+          const vacio = actual === undefined || actual === null || actual === "" || (Array.isArray(actual) && actual.length === 0);
+          const esperado = (Array.isArray(condicion?.igualA) ? condicion!.igualA : [condicion?.igualA])
+            .filter((v) => v != null)
+            .map(String)
+            .join(" o ");
+          // Distingue "falta llenar" de "el valor no habilita esta rama" (p. ej.
+          // reiteración exige respuesta PARCIAL, pero la respuesta fue NO).
           setResaltarCampos({ keys: [campo], nonce: Date.now() });
           setBloqueo({
             etapa: key,
             faltantes: [],
-            motivo: `Para habilitar esta etapa, completa "${def?.label ?? campo}" en el formulario ↓`,
+            motivo: vacio
+              ? `Para habilitar esta etapa, completa "${label}" en el formulario ↓`
+              : `Esta etapa solo aplica si "${label}" es ${esperado} — actualmente es "${Array.isArray(actual) ? actual.join(", ") : String(actual)}". Si corresponde, usa la otra opción disponible o corrige el campo ↓`,
           });
         } else {
           setBloqueo({ etapa: key, faltantes: [], motivo: "Esta etapa no está disponible con los datos actuales del proceso." });

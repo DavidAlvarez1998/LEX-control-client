@@ -4,7 +4,7 @@
 // corregir `datos` después de creado (incl. la tutela derivada que nace vacía).
 // Guarda contra PATCH /procesos/:id (validación tolerante: borradores incompletos).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "./ui";
 import { BotonSubirDoc } from "./boton-subir-doc";
 import { FormularioDinamico } from "./formulario-dinamico";
@@ -174,6 +174,27 @@ export function DatosProceso({
     );
   }
 
+  // Anclas de documentos según el tipo: el DdP enviado usa requierePoder/contestaron;
+  // el recibido no tiene requierePoder y su "respuesta" es `contestada`. Se elige el
+  // campo que EXISTA en el esquema para que los uploads aparezcan en ambos.
+  const tieneCampo = (k: string) => esquema.some((c) => c.key === k);
+  const campoBaseDoc = tieneCampo("requierePoder") ? "requierePoder" : tieneCampo("queSolicita") ? "queSolicita" : null;
+  const campoRespuesta = tieneCampo("contestaron") ? "contestaron" : tieneCampo("contestada") ? "contestada" : null;
+  // "neutro": estado sin respuesta, para separar los docs base de los de la respuesta.
+  // Resetea todos los campos que disparan docs de la respuesta (incl. el medio, del
+  // que dependen los acuses de envío del recibido).
+  const neutro = { ...borrador, contestaron: "", contestada: "", medioRespuesta: "" };
+  const baseReq = documentosRequeridosDeEtapas(etapas, neutro);
+  const baseDocs = [...baseReq, ...documentosOpcionalesDeEtapas(etapas, neutro)];
+  const respReq = documentosRequeridosDeEtapas(etapas, borrador).filter((d) => !baseReq.includes(d));
+  const respOpt = documentosOpcionalesDeEtapas(etapas, borrador).filter((d) => !documentosOpcionalesDeEtapas(etapas, neutro).includes(d));
+  const slots: Record<string, ReactNode> = {
+    fechaRadicacion: <VencimientoHint tipoProcesoId={tipoProcesoId} datos={borrador} />,
+    fechaRecepcion: <VencimientoHint tipoProcesoId={tipoProcesoId} datos={borrador} />,
+  };
+  if (campoBaseDoc && baseDocs.length) slots[campoBaseDoc] = bloqueDocs("Documentos a adjuntar", baseDocs, baseReq);
+  if (campoRespuesta && [...respReq, ...respOpt].length) slots[campoRespuesta] = bloqueDocs("Documentos de la respuesta", [...respReq, ...respOpt], respReq);
+
   return (
     <div ref={formRef}>
       <FormularioDinamico
@@ -182,25 +203,9 @@ export function DatosProceso({
         onChange={(k, v) => setBorrador((d) => ({ ...d, [k]: v }))}
         errores={erroresVivos}
         className="grid grid-cols-1 gap-4 sm:grid-cols-2"
-        // Slots: vencimiento en vivo tras la fecha de radicación + documentos INLINE
-        // bajo su campo (suben al instante). Bajo "¿Requiere poder?": petición/poder
-        // (los que no dependen de la respuesta). Bajo "¿Contestaron?": la respuesta y
-        // demás docs que aparecen al responder (Sí/Parcial).
-        slotDespuesDe={{
-          fechaRadicacion: <VencimientoHint tipoProcesoId={tipoProcesoId} datos={borrador} />,
-          requierePoder: (() => {
-            const neutro = { ...borrador, contestaron: "" };
-            const req = documentosRequeridosDeEtapas(etapas, neutro);
-            const docs = [...req, ...documentosOpcionalesDeEtapas(etapas, neutro)];
-            return bloqueDocs("Documentos a adjuntar", docs, req);
-          })(),
-          contestaron: (() => {
-            const neutro = { ...borrador, contestaron: "" };
-            const reqResp = documentosRequeridosDeEtapas(etapas, borrador).filter((d) => !documentosRequeridosDeEtapas(etapas, neutro).includes(d));
-            const optResp = documentosOpcionalesDeEtapas(etapas, borrador).filter((d) => !documentosOpcionalesDeEtapas(etapas, neutro).includes(d));
-            return bloqueDocs("Documentos de la respuesta", [...reqResp, ...optResp], reqResp);
-          })(),
-        }}
+        // Documentos INLINE bajo su campo (suben al instante): los base bajo
+        // requierePoder/queSolicita y los de la respuesta bajo contestaron/contestada.
+        slotDespuesDe={slots}
       />
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
       <div className="mt-4 flex gap-2">

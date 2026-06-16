@@ -274,6 +274,8 @@ const DOC_ETIQUETAS: Record<string, string> = {
   poder: "Poder",
   demanda: "Demanda",
   recurso: "Recurso",
+  "acuse-correo": "Acuse de correo",
+  "constancia-envio": "Constancia de envío",
   tutela: "Tutela",
   sentencia: "Sentencia",
   impugnacion: "Impugnación",

@@ -48,8 +48,12 @@ export function CasoChain({ nodos, actualId }: { nodos: CasoNodo[]; actualId: st
                   </span>
                   {actual && <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">actual</span>}
                 </div>
-                <div className="mt-1 text-sm font-medium text-slate-800 dark:text-slate-100">{n.codigoInterno}</div>
-                <div className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">{n.etapaNombre}</div>
+                {n.radicado && (
+                  <div className="mt-1 text-sm font-medium text-slate-800 dark:text-slate-100">
+                    Radicado {n.radicado}
+                  </div>
+                )}
+                <div className="mt-1 text-xs font-medium text-slate-600 dark:text-slate-300">{n.etapaNombre}</div>
                 <div className="text-xs text-slate-500 dark:text-slate-400">{ESTADO_LABEL[n.estado]}</div>
                 {n.fechaLimite && (
                   <div className={`mt-0.5 text-xs ${vencido ? "font-medium text-red-600 dark:text-red-400" : "text-slate-400"}`}>

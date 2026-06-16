@@ -239,6 +239,7 @@ export function getProceso(id: string): Promise<ProcesoDetalle> {
 export type CasoNodo = {
   id: string;
   codigoInterno: string;
+  radicado: string | null;
   titulo: string;
   tipoProcesoNombre: string;
   esJudicial: boolean;
