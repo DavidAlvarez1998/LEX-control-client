@@ -17,6 +17,8 @@ import {
   etiquetasPlazoOpciones,
   JURISDICCION_LABEL,
   rutaProceso,
+  SECCION_RUTA,
+  SECCION_LABEL,
   validarDatos,
   type CuantiaTipo,
   type Jurisdiccion,
@@ -349,9 +351,15 @@ export default function NuevoProcesoPage() {
     }
   }
 
-  // Catálogo de /procesos = solo judicial. Las peticiones (trámite ante entidad)
-  // se crean desde /peticiones (que abre este form con ?tipo=ID pre-bloqueado).
-  const tiposJudiciales = (tipos ?? []).filter((t) => t.esJudicial);
+  // Catálogo del wizard genérico /procesos = solo judicial del grupo JUDICIAL. Las
+  // peticiones (trámite ante entidad), las acciones constitucionales y los procesos
+  // laborales tienen su propia sección y se crean desde ahí (con ?tipo=ID pre-bloqueado).
+  const tiposJudiciales = (tipos ?? []).filter((t) => t.esJudicial && t.grupo === "JUDICIAL");
+
+  // Sección a la que pertenece el tipo pre-bloqueado (peticiones / acciones / laborales):
+  // los enlaces "volver" y "cancelar" apuntan ahí en vez de a /procesos.
+  const seccionBloqueada = tipo ? SECCION_RUTA[tipo.grupo] : "/procesos";
+  const seccionBloqueadaLabel = tipo ? SECCION_LABEL[tipo.grupo] : "Procesos";
 
   // --- Paso 1: jurisdicción (6 fijas; solo las que tienen tipos en el catálogo) ---
   if (!jurisdiccion) {
@@ -422,11 +430,11 @@ export default function NuevoProcesoPage() {
     <div className="mx-auto max-w-4xl">
       <PageHeader
         title={tipo.nombre}
-        subtitle={tipoBloqueado ? "Nueva petición" : `Paso 3 de 3 · ${JURISDICCION_LABEL[tipo.jurisdiccion]}`}
+        subtitle={tipoBloqueado ? seccionBloqueadaLabel : `Paso 3 de 3 · ${JURISDICCION_LABEL[tipo.jurisdiccion]}`}
         action={
           tipoBloqueado ? (
-            <Link href="/peticiones">
-              <Button variant="ghost">← Peticiones</Button>
+            <Link href={seccionBloqueada}>
+              <Button variant="ghost">← {seccionBloqueadaLabel}</Button>
             </Link>
           ) : (
             <Button variant="ghost" onClick={() => setTipo(null)}>
@@ -826,7 +834,7 @@ export default function NuevoProcesoPage() {
         )}
 
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => router.push("/procesos")}>
+          <Button variant="ghost" onClick={() => router.push(tipoBloqueado ? seccionBloqueada : "/procesos")}>
             Cancelar
           </Button>
           <Button onClick={guardar} disabled={guardando}>

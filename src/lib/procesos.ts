@@ -79,9 +79,10 @@ export type EtapaDef = {
   accion?: AccionEtapa; // acción al entrar (p. ej. crear proceso derivado)
 };
 
-// Sección del portal: Procesos (judicial), Peticiones (DdP/reclamaciones) o
-// Acciones Constitucionales (tutela, popular, grupo, cumplimiento).
-export type GrupoProceso = "JUDICIAL" | "PETICION" | "CONSTITUCIONAL";
+// Sección del portal: Procesos (judicial), Peticiones (DdP/reclamaciones),
+// Acciones Constitucionales (tutela, popular, grupo, cumplimiento) o
+// Procesos Laborales (ordinario laboral, Ley 2452/2025).
+export type GrupoProceso = "JUDICIAL" | "PETICION" | "CONSTITUCIONAL" | "LABORAL";
 
 // --- Catálogo: tipo de proceso ---
 export type TipoProceso = {
@@ -337,6 +338,15 @@ export const SECCION_RUTA: Record<GrupoProceso, string> = {
   JUDICIAL: "/procesos",
   PETICION: "/peticiones",
   CONSTITUCIONAL: "/acciones-constitucionales",
+  LABORAL: "/procesos-laborales",
+};
+
+/** Etiqueta de cada sección del portal (para enlaces "volver", títulos, etc.). */
+export const SECCION_LABEL: Record<GrupoProceso, string> = {
+  JUDICIAL: "Procesos",
+  PETICION: "Peticiones",
+  CONSTITUCIONAL: "Acciones Constitucionales",
+  LABORAL: "Procesos Laborales",
 };
 
 /** Ruta de la ficha de un proceso según su `grupo`: judicial → /procesos,

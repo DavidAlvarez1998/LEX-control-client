@@ -190,6 +190,7 @@ export default function ExpedientePage() {
             JUDICIAL: { href: "/procesos", label: "← Procesos" },
             PETICION: { href: "/peticiones", label: "← Peticiones" },
             CONSTITUCIONAL: { href: "/acciones-constitucionales", label: "← Acciones constitucionales" },
+            LABORAL: { href: "/procesos-laborales", label: "← Procesos laborales" },
           }[proceso.tipoProceso.grupo];
           return (
             <Link href={back.href}>
