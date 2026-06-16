@@ -82,10 +82,12 @@ function peticionarioVacio(): ParteProceso {
   };
 }
 
-// Título auto-generado para trámites ante entidad (no judiciales): "Tipo — Entidad"
-// (p. ej. "Derecho de Petición — Colpensiones"). Si aún no hay entidad, usa el tipo.
+// Título auto-generado para trámites ante entidad (DdP) y acciones constitucionales
+// (tutela): "Tipo — Entidad" (p. ej. "Derecho de Petición — Colpensiones",
+// "Acción de tutela — Colpensiones"). La entidad sale de `entidad` (DdP) o de
+// `entidadAccionada` (tutela). Si aún no hay entidad, usa solo el tipo.
 function tituloGenerado(tipo: TipoProceso, datos: Record<string, unknown>): string {
-  const entidad = String(datos.entidad ?? "").trim();
+  const entidad = String(datos.entidad ?? datos.entidadAccionada ?? "").trim();
   return [tipo.nombre, entidad].filter(Boolean).join(" — ");
 }
 
@@ -246,9 +248,10 @@ export default function NuevoProcesoPage() {
     // se guarda "OTRO" con etiqueta "Peticionario". En judiciales, el rol elegido.
     const rolCliente: RolParte = tipo.esJudicial ? clienteRol : "OTRO";
     const etiquetaCliente = tipo.esJudicial ? undefined : "Peticionario";
-    // Trámites ante entidad (no judiciales): el título se auto-genera "Tipo — Entidad"
-    // y el campo va oculto. En judiciales sigue siendo manual ("Pérez vs. XYZ").
-    const tituloAuto = !tipo.esJudicial;
+    // Trámites ante entidad (DdP) y acciones constitucionales (tutela): el título se
+    // auto-genera "Tipo — Entidad" y el campo va oculto. En el resto de judiciales
+    // (laboral/civil…) sigue siendo manual ("Pérez vs. XYZ").
+    const tituloAuto = !tipo.esJudicial || tipo.grupo === "CONSTITUCIONAL";
     const tituloFinal = tituloAuto ? tituloGenerado(tipo, datos) : titulo.trim();
     const tituloOk = tituloFinal.length > 0;
     setTituloError(!tituloOk);
@@ -434,10 +437,10 @@ export default function NuevoProcesoPage() {
       />
 
       <div className="space-y-5">
-        {/* Título manual solo en procesos judiciales ("Pérez vs. XYZ"). En trámites
-            ante entidad (DdP/peticiones) se auto-genera "Tipo — Entidad" y se oculta;
-            queda editable luego en la ficha. */}
-        {tipo.esJudicial && (
+        {/* Título manual solo en judiciales NO constitucionales ("Pérez vs. XYZ").
+            En trámites ante entidad (DdP) y acciones constitucionales (tutela) se
+            auto-genera "Tipo — Entidad" y se oculta; queda editable luego en la ficha. */}
+        {tipo.esJudicial && tipo.grupo !== "CONSTITUCIONAL" && (
         <Card>
           <Field label="Título del caso" requerido error={tituloError ? "Obligatorio" : undefined}>
             <Input value={titulo} onChange={setTitulo} placeholder="Ej. Pérez vs. Aseguradora XYZ" />
