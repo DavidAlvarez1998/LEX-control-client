@@ -14,7 +14,7 @@ const ic = "h-5 w-5 shrink-0";
 
 export const NAV_ITEMS: NavItem[] = [
   {
-    href: "/",
+    href: "/inicio",
     label: "Inicio",
     icon: (
       <svg className={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -33,17 +33,6 @@ export const NAV_ITEMS: NavItem[] = [
         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="4" />
         <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      </svg>
-    ),
-  },
-  {
-    href: "/seguimiento",
-    label: "Seguimiento",
-    roles: ["COMERCIAL", "JURIDICO"],
-    icon: (
-      <svg className={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-        <path d="m9 11 3 3L22 4" />
       </svg>
     ),
   },

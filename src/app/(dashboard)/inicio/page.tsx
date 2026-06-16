@@ -111,7 +111,7 @@ export default function InicioPage() {
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between">
             <h3 className="font-medium text-slate-800 dark:text-slate-100">Pendientes</h3>
-            <Link href="/seguimiento" className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">Para hoy →</Link>
+            <Link href="/agenda" className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">Ver agenda →</Link>
           </div>
           {!alertas ? (
             <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">{loading ? "Cargando…" : "Sin pendientes (o el módulo comercial no está contratado)."}</p>
@@ -119,7 +119,7 @@ export default function InicioPage() {
             <ul className="mt-3 space-y-1">
               {ALERTAS_LABEL.map(([k, label]) => {
                 const n = alertas[k]?.length ?? 0;
-                const destino = ["tareaVencida", "citaHoy", "prospectoSinSeguimiento"].includes(k) ? "/seguimiento" : "/clientes";
+                const destino = ["tareaVencida", "citaHoy", "prospectoSinSeguimiento"].includes(k) ? "/agenda" : "/clientes";
                 return n > 0 ? (
                   <li key={k}>
                     <Link href={destino} className="flex items-center justify-between rounded-md px-1.5 py-1 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">

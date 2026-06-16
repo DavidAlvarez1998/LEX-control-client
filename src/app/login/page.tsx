@@ -26,7 +26,7 @@ export default function LoginPage() {
         audience: "USUARIO",
       });
       setSession(token, user);
-      router.replace("/");
+      router.replace("/inicio");
     } catch (err) {
       setError(
         errorMessage(err, "No se pudo iniciar sesión. Verifica tu conexión."),

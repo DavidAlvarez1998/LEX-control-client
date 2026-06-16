@@ -67,7 +67,7 @@ export function Sidebar() {
       >
       {/* Marca → inicio */}
       <Link
-        href="/"
+        href="/inicio"
         aria-label="Ir al inicio"
         className="flex h-16 items-center gap-2 px-6 transition-colors hover:bg-slate-800/60"
       >

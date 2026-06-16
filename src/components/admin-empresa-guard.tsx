@@ -23,7 +23,7 @@ export function AdminEmpresaGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const check = () => {
       if (getUser()?.esAdminEmpresa) setEstado("ok");
-      else router.replace("/"); // sin permiso → al inicio, no se renderiza el contenido
+      else router.replace("/inicio"); // sin permiso → al inicio, no se renderiza el contenido
     };
     check();
     window.addEventListener(USER_CHANGED_EVENT, check);

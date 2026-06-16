@@ -30,7 +30,7 @@ export function RolEmpresaGuard({
       const permitido =
         !!u?.esAdminEmpresa || (u?.roles ?? []).some((r) => roles.includes(r));
       if (permitido) setEstado("ok");
-      else router.replace("/");
+      else router.replace("/inicio");
     };
     check();
     window.addEventListener(USER_CHANGED_EVENT, check);
