@@ -62,3 +62,88 @@ html.dark *::-webkit-scrollbar-thumb {
 html.dark *::-webkit-scrollbar-thumb:hover {
   background-color: #64748b;
 }
+
+/* ───────── Landing: animaciones y efectos ───────── */
+html { scroll-behavior: smooth; }
+
+@keyframes lex-fade-up {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes lex-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(0, -26px) scale(1.06); }
+}
+@keyframes lex-shimmer {
+  to { background-position: 200% center; }
+}
+@keyframes lex-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Reveal on scroll: oculto hasta que .in lo activa (IntersectionObserver). */
+.lex-reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.lex-reveal.in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Entrada inmediata (hero), apilable con animation-delay inline. */
+.lex-fade-up { animation: lex-fade-up 0.85s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Blobs de fondo flotantes. */
+.lex-blob { animation: lex-float 15s ease-in-out infinite; }
+.lex-blob-slow { animation: lex-float 21s ease-in-out infinite reverse; }
+
+/* Texto con gradiente animado. */
+.lex-gradient-text {
+  background: linear-gradient(100deg, #4f46e5, #7c3aed 45%, #4f46e5);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: lex-shimmer 5.5s linear infinite;
+}
+
+/* Card con elevación suave al hover (transform/opacity solo → 60fps). */
+.lex-card {
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.3s ease, border-color 0.3s ease;
+  will-change: transform;
+}
+.lex-card:hover {
+  transform: translateY(-6px);
+}
+
+/* Brillo que cruza una tarjeta destacada. */
+@keyframes lex-sheen {
+  0%   { transform: translateX(-120%) rotate(8deg); }
+  60%, 100% { transform: translateX(220%) rotate(8deg); }
+}
+.lex-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+  transform: translateX(-120%) rotate(8deg);
+  pointer-events: none;
+}
+.lex-sheen:hover::after { animation: lex-sheen 0.9s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .lex-reveal, .lex-fade-up, .lex-blob, .lex-blob-slow,
+  .lex-gradient-text, .lex-card, .lex-sheen::after {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

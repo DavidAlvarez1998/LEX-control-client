@@ -16,15 +16,22 @@ export function getPlanesPublicos(): Promise<PlanPublico[]> {
   return api.get<PlanPublico[]>("/publico/planes");
 }
 
-export type SolicitudDemo = {
+export type SolicitudCuenta = {
+  // Empresa / despacho
   nombreEmpresa: string;
+  nit?: string;
+  emailEmpresa?: string;
+  telefonoEmpresa?: string;
+  // Usuario administrador
   nombreContacto: string;
   email: string;
   telefono?: string;
-  mensaje?: string;
-  website?: string; // honeypot
+  // Plan elegido (clave) + honeypot
+  planClave?: string;
+  website?: string;
 };
 
-export function solicitarDemo(body: SolicitudDemo): Promise<{ ok: boolean }> {
-  return api.post<{ ok: boolean }>("/publico/solicitar-demo", body);
+/** Solicita crear una cuenta (genera un Prospecto pendiente de aprobación). */
+export function solicitudCuenta(body: SolicitudCuenta): Promise<{ ok: boolean }> {
+  return api.post<{ ok: boolean }>("/publico/solicitud-cuenta", body);
 }

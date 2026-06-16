@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Reveal } from "@/components/reveal";
 import { formatMoney } from "@/lib/format";
 import { getUser, type AuthUser } from "@/lib/auth";
-import { getPlanesPublicos, solicitarDemo, type PlanPublico } from "@/lib/publico-api";
+import { getPlanesPublicos, solicitudCuenta, type PlanPublico } from "@/lib/publico-api";
 
 // Módulos de la plataforma (los mismos del portal). Icono = SVG inline minimal.
 const MODULOS: { titulo: string; desc: string; icon: React.ReactNode }[] = [
@@ -36,9 +37,18 @@ function Icono({ children }: { children: React.ReactNode }) {
 export default function LandingPage() {
   const [planes, setPlanes] = useState<PlanPublico[] | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [demo, setDemo] = useState({ nombreEmpresa: "", nombreContacto: "", email: "", telefono: "", mensaje: "", website: "" });
+  const [demo, setDemo] = useState({
+    nombreEmpresa: "", nit: "", emailEmpresa: "", telefonoEmpresa: "",
+    nombreContacto: "", email: "", telefono: "", planClave: "", website: "",
+  });
   const [demoEstado, setDemoEstado] = useState<"idle" | "enviando" | "ok" | "error">("idle");
   const [demoError, setDemoError] = useState<string | null>(null);
+
+  // Pre-selecciona un plan (desde una tarjeta) y baja al formulario.
+  function elegirPlan(clave: string) {
+    setDemo((d) => ({ ...d, planClave: clave }));
+    document.getElementById("cuenta")?.scrollIntoView({ behavior: "smooth" });
+  }
 
   useEffect(() => {
     setUser(getUser());
@@ -50,7 +60,7 @@ export default function LandingPage() {
     setDemoEstado("enviando");
     setDemoError(null);
     try {
-      await solicitarDemo(demo);
+      await solicitudCuenta(demo);
       setDemoEstado("ok");
     } catch {
       setDemoEstado("error");
@@ -58,7 +68,7 @@ export default function LandingPage() {
     }
   }
 
-  const set = (k: keyof typeof demo) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+  const set = (k: keyof typeof demo) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setDemo((d) => ({ ...d, [k]: e.target.value }));
 
   return (
@@ -72,7 +82,7 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Link href="/login" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
+            <Link href="/login" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-600/30">
               Ingresar
             </Link>
           </div>
@@ -80,30 +90,33 @@ export default function LandingPage() {
       </header>
 
       {/* ───────── Hero ───────── */}
-      <section className="mx-auto max-w-6xl px-4 pb-16 pt-16 sm:px-6 sm:pt-24">
+      <section className="relative overflow-hidden px-4 pb-16 pt-16 sm:px-6 sm:pt-24">
+        {/* Blobs de gradiente flotantes (decorativos). */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          <div className="lex-blob absolute -left-24 -top-24 h-72 w-72 rounded-full bg-indigo-400/30 blur-3xl dark:bg-indigo-600/20" />
+          <div className="lex-blob-slow absolute -right-24 top-10 h-80 w-80 rounded-full bg-violet-400/25 blur-3xl dark:bg-violet-600/20" />
+          <div className="lex-blob absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-sky-400/20 blur-3xl dark:bg-sky-600/15" />
+        </div>
         <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-block rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+          <span className="lex-fade-up inline-block rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300">
             Software de gestión para despachos jurídicos
           </span>
-          <h1 className="mt-5 text-4xl font-bold tracking-tight sm:text-5xl">
-            Gestiona tu despacho <span className="text-indigo-600 dark:text-indigo-400">sin perder un término</span>
+          <h1 className="lex-fade-up mt-5 text-4xl font-bold tracking-tight sm:text-5xl" style={{ animationDelay: "90ms" }}>
+            Gestiona tu despacho <span className="lex-gradient-text">sin perder un término</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600 dark:text-slate-400">
+          <p className="lex-fade-up mx-auto mt-5 max-w-2xl text-lg text-slate-600 dark:text-slate-400" style={{ animationDelay: "180ms" }}>
             Procesos, derecho de petición, clientes, contabilidad y agenda en una sola plataforma —
             con vencimientos al día y permisos por rol.
           </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            {user ? (
-              <Link href="/inicio" className="rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
-                Ir a mi portal
-              </Link>
-            ) : (
-              <Link href="/login" className="rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
-                Ingresar
-              </Link>
-            )}
-            <a href="#demo" className="rounded-lg border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">
-              Solicitar demo
+          <div className="lex-fade-up mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row" style={{ animationDelay: "270ms" }}>
+            <Link
+              href={user ? "/inicio" : "/login"}
+              className="rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/30 active:translate-y-0"
+            >
+              {user ? "Ir a mi portal" : "Ingresar"}
+            </Link>
+            <a href="#cuenta" className="rounded-lg border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">
+              Crear cuenta
             </a>
           </div>
         </div>
@@ -112,19 +125,23 @@ export default function LandingPage() {
       {/* ───────── Módulos ───────── */}
       <section className="border-t border-slate-100 bg-slate-50/60 py-16 dark:border-slate-900 dark:bg-slate-900/30">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <h2 className="text-center text-2xl font-bold sm:text-3xl">Todo lo que tu despacho necesita</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-center text-slate-600 dark:text-slate-400">
-            Módulos que trabajan juntos sobre la misma información del cliente y el proceso.
-          </p>
+          <Reveal>
+            <h2 className="text-center text-2xl font-bold sm:text-3xl">Todo lo que tu despacho necesita</h2>
+            <p className="mx-auto mt-3 max-w-2xl text-center text-slate-600 dark:text-slate-400">
+              Módulos que trabajan juntos sobre la misma información del cliente y el proceso.
+            </p>
+          </Reveal>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {MODULOS.map((m) => (
-              <div key={m.titulo} className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
-                  <Icono>{m.icon}</Icono>
+            {MODULOS.map((m, i) => (
+              <Reveal key={m.titulo} delay={i * 70}>
+                <div className="lex-card group h-full rounded-xl border border-slate-200 bg-white p-5 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-500/10 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/40">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 transition-transform duration-300 group-hover:scale-110 dark:bg-indigo-500/10 dark:text-indigo-300">
+                    <Icono>{m.icon}</Icono>
+                  </div>
+                  <h3 className="mt-4 text-base font-semibold">{m.titulo}</h3>
+                  <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{m.desc}</p>
                 </div>
-                <h3 className="mt-4 text-base font-semibold">{m.titulo}</h3>
-                <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{m.desc}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -133,14 +150,16 @@ export default function LandingPage() {
       {/* ───────── Beneficios ───────── */}
       <section className="py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <h2 className="text-center text-2xl font-bold sm:text-3xl">Pensado para la operación real</h2>
+          <Reveal>
+            <h2 className="text-center text-2xl font-bold sm:text-3xl">Pensado para la operación real</h2>
+          </Reveal>
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {BENEFICIOS.map((b, i) => (
-              <div key={b.titulo}>
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white">{i + 1}</div>
+              <Reveal key={b.titulo} delay={i * 90}>
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white shadow-lg shadow-indigo-600/30">{i + 1}</div>
                 <h3 className="mt-3 text-base font-semibold">{b.titulo}</h3>
                 <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{b.desc}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -149,33 +168,37 @@ export default function LandingPage() {
       {/* ───────── Planes ───────── */}
       <section className="border-t border-slate-100 bg-slate-50/60 py-16 dark:border-slate-900 dark:bg-slate-900/30">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <h2 className="text-center text-2xl font-bold sm:text-3xl">Planes para cada tamaño de despacho</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-center text-slate-600 dark:text-slate-400">
-            Desde abogado independiente hasta bufete. Paga por lo que tu equipo necesita.
-          </p>
+          <Reveal>
+            <h2 className="text-center text-2xl font-bold sm:text-3xl">Planes para cada tamaño de despacho</h2>
+            <p className="mx-auto mt-3 max-w-2xl text-center text-slate-600 dark:text-slate-400">
+              Desde abogado independiente hasta bufete. Paga por lo que tu equipo necesita.
+            </p>
+          </Reveal>
 
           {planes && planes.length > 0 ? (
             <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {planes.map((p) => {
+              {planes.map((p, i) => {
                 const cupos = Object.entries(p.cuotas).filter(([, v]) => v !== 0);
                 return (
-                  <div key={p.clave} className="flex flex-col rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-                    <h3 className="text-base font-semibold">{p.nombre}</h3>
-                    {p.descripcion && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{p.descripcion}</p>}
-                    <p className="mt-4 text-2xl font-bold">
-                      ${formatMoney(p.precioMensual)}
-                      <span className="text-sm font-normal text-slate-500 dark:text-slate-400"> /mes</span>
-                    </p>
-                    <ul className="mt-4 flex-1 space-y-1.5 text-sm text-slate-600 dark:text-slate-400">
-                      {cupos.map(([rol, lim]) => (
-                        <li key={rol}>· {lim === null ? "Ilimitados" : lim} {rol.toLowerCase()}</li>
-                      ))}
-                      {p.modulos.length > 0 && <li>· Módulos: {p.modulos.join(", ")}</li>}
-                    </ul>
-                    <a href="#demo" className="mt-6 rounded-lg border border-indigo-600 px-4 py-2 text-center text-sm font-medium text-indigo-600 transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-500/10">
-                      Quiero este plan
-                    </a>
-                  </div>
+                  <Reveal key={p.clave} delay={i * 80}>
+                    <div className="lex-card lex-sheen relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-6 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-500/10 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/40">
+                      <h3 className="text-base font-semibold">{p.nombre}</h3>
+                      {p.descripcion && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{p.descripcion}</p>}
+                      <p className="mt-4 text-2xl font-bold">
+                        ${formatMoney(p.precioMensual)}
+                        <span className="text-sm font-normal text-slate-500 dark:text-slate-400"> /mes</span>
+                      </p>
+                      <ul className="mt-4 flex-1 space-y-1.5 text-sm text-slate-600 dark:text-slate-400">
+                        {cupos.map(([rol, lim]) => (
+                          <li key={rol}>· {lim === null ? "Ilimitados" : lim} {rol.toLowerCase()}</li>
+                        ))}
+                        {p.modulos.length > 0 && <li>· Módulos: {p.modulos.join(", ")}</li>}
+                      </ul>
+                      <button type="button" onClick={() => elegirPlan(p.clave)} className="mt-6 rounded-lg border border-indigo-600 px-4 py-2 text-center text-sm font-medium text-indigo-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500/20 dark:hover:text-white">
+                        Quiero este plan
+                      </button>
+                    </div>
+                  </Reveal>
                 );
               })}
             </div>
@@ -187,39 +210,68 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ───────── Demo ───────── */}
-      <section id="demo" className="py-16">
-        <div className="mx-auto max-w-xl px-4 sm:px-6">
-          <h2 className="text-center text-2xl font-bold sm:text-3xl">Solicita una demo</h2>
-          <p className="mt-3 text-center text-slate-600 dark:text-slate-400">Cuéntanos de tu despacho y te contactamos.</p>
+      {/* ───────── Crear cuenta ───────── */}
+      <section id="cuenta" className="border-t border-slate-100 bg-slate-50/60 py-16 dark:border-slate-900 dark:bg-slate-900/30">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6">
+          <Reveal>
+            <h2 className="text-center text-2xl font-bold sm:text-3xl">Crea tu cuenta</h2>
+            <p className="mt-3 text-center text-slate-600 dark:text-slate-400">
+              Déjanos los datos de tu despacho y del administrador. Revisamos la solicitud y activamos tu cuenta.
+            </p>
+          </Reveal>
 
           {demoEstado === "ok" ? (
-            <div className="mt-8 rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+            <div className="lex-fade-up mt-8 rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
               <p className="font-semibold">¡Gracias! Recibimos tu solicitud.</p>
-              <p className="mt-1 text-sm">Te contactaremos muy pronto.</p>
+              <p className="mt-1 text-sm">La revisaremos y te avisaremos al correo del administrador para activar tu cuenta.</p>
             </div>
           ) : (
-            <form onSubmit={enviarDemo} className="mt-8 space-y-4">
+            <form onSubmit={enviarDemo} className="mt-8 space-y-6">
               {/* Honeypot: oculto a humanos; los bots lo llenan. */}
               <input type="text" name="website" value={demo.website} onChange={set("website")} tabIndex={-1} autoComplete="off" aria-hidden className="hidden" />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Campo label="Despacho / empresa" value={demo.nombreEmpresa} onChange={set("nombreEmpresa")} required />
-                <Campo label="Tu nombre" value={demo.nombreContacto} onChange={set("nombreContacto")} required />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Campo label="Correo" type="email" value={demo.email} onChange={set("email")} required />
-                <Campo label="Teléfono" value={demo.telefono} onChange={set("telefono")} />
-              </div>
+
+              {/* Datos del despacho */}
+              <fieldset className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                <legend className="px-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">Datos del despacho</legend>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Campo label="Nombre del despacho / empresa" value={demo.nombreEmpresa} onChange={set("nombreEmpresa")} required />
+                  <Campo label="NIT" value={demo.nit} onChange={set("nit")} />
+                  <Campo label="Correo de la empresa" type="email" value={demo.emailEmpresa} onChange={set("emailEmpresa")} />
+                  <Campo label="Teléfono de la empresa" value={demo.telefonoEmpresa} onChange={set("telefonoEmpresa")} />
+                </div>
+              </fieldset>
+
+              {/* Usuario administrador */}
+              <fieldset className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                <legend className="px-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">Usuario administrador</legend>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Campo label="Nombre del administrador" value={demo.nombreContacto} onChange={set("nombreContacto")} required />
+                  <Campo label="Correo del administrador" type="email" value={demo.email} onChange={set("email")} required />
+                  <Campo label="Celular del administrador" value={demo.telefono} onChange={set("telefono")} />
+                </div>
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Este correo será el acceso del administrador cuando se active la cuenta.</p>
+              </fieldset>
+
+              {/* Plan */}
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Mensaje (opcional)</label>
-                <textarea value={demo.mensaje} onChange={set("mensaje")} rows={3}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-900" />
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Plan de interés</label>
+                <select value={demo.planClave} onChange={set("planClave")}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-900">
+                  <option value="">Sin definir / que me asesoren</option>
+                  {(planes ?? []).map((p) => (
+                    <option key={p.clave} value={p.clave}>{p.nombre} — ${formatMoney(p.precioMensual)}/mes</option>
+                  ))}
+                </select>
               </div>
+
               {demoError && <p className="text-sm text-red-600 dark:text-red-400">{demoError}</p>}
               <button type="submit" disabled={demoEstado === "enviando"}
-                className="w-full rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60">
-                {demoEstado === "enviando" ? "Enviando…" : "Solicitar demo"}
+                className="w-full rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/30 active:translate-y-0 disabled:opacity-60">
+                {demoEstado === "enviando" ? "Enviando…" : "Crear cuenta"}
               </button>
+              <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+                ¿Ya tienes cuenta? <Link href="/login" className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">Ingresar</Link>
+              </p>
             </form>
           )}
         </div>
