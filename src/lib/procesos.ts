@@ -384,8 +384,8 @@ export function validarDatos(
 
 /** Etiqueta legible de una jurisdicción (para la UI). */
 export const JURISDICCION_LABEL: Record<Jurisdiccion, string> = {
-  ORDINARIA_CIVIL: "Jurisdicción Ordinaria · Civil",
-  ORDINARIA_LABORAL: "Jurisdicción Ordinaria · Laboral",
+  ORDINARIA_CIVIL: "Ordinaria · Civil",
+  ORDINARIA_LABORAL: "Ordinaria · Laboral",
   CONTENCIOSO_ADMIN: "Contencioso-Administrativa",
   PENAL: "Penal",
   CONSTITUCIONAL: "Constitucional",
@@ -401,19 +401,20 @@ export const ESTADO_LABEL: Record<EstadoProceso, string> = {
 };
 
 /** Ruta base de cada sección del portal. */
+// Procesos unificado: todo grupo vive bajo /procesos (la ficha es /procesos/[id]).
 export const SECCION_RUTA: Record<GrupoProceso, string> = {
   JUDICIAL: "/procesos",
-  PETICION: "/peticiones",
-  CONSTITUCIONAL: "/acciones-constitucionales",
-  LABORAL: "/procesos-laborales",
+  PETICION: "/procesos",
+  CONSTITUCIONAL: "/procesos",
+  LABORAL: "/procesos",
 };
 
-/** Etiqueta de cada sección del portal (para enlaces "volver", títulos, etc.). */
+/** Etiqueta de la sección (todo es "Procesos" tras la unificación). */
 export const SECCION_LABEL: Record<GrupoProceso, string> = {
   JUDICIAL: "Procesos",
-  PETICION: "Peticiones",
-  CONSTITUCIONAL: "Acciones Constitucionales",
-  LABORAL: "Procesos Laborales",
+  PETICION: "Procesos",
+  CONSTITUCIONAL: "Procesos",
+  LABORAL: "Procesos",
 };
 
 /** Ruta de la ficha de un proceso según su `grupo`: judicial → /procesos,

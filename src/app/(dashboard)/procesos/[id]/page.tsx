@@ -264,19 +264,11 @@ export default function ExpedientePage() {
         title={proceso.titulo}
         titleStyle={{ viewTransitionName: vtName("proceso-titulo", proceso.id) }}
         subtitle={`${proceso.tipoProceso.nombre} · ${JURISDICCION_LABEL[proceso.jurisdiccion]}`}
-        action={(() => {
-          const back = {
-            JUDICIAL: { href: "/procesos", label: "← Procesos" },
-            PETICION: { href: "/peticiones", label: "← Peticiones" },
-            CONSTITUCIONAL: { href: "/acciones-constitucionales", label: "← Acciones constitucionales" },
-            LABORAL: { href: "/procesos-laborales", label: "← Procesos laborales" },
-          }[proceso.tipoProceso.grupo];
-          return (
-            <Link href={back.href}>
-              <Button variant="ghost">{back.label}</Button>
-            </Link>
-          );
-        })()}
+        action={
+          <Link href="/procesos">
+            <Button variant="ghost">← Procesos</Button>
+          </Link>
+        }
       />
       <TituloEditable procesoId={proceso.id} valor={proceso.titulo} onSaved={setProceso} readOnly={!puedeEditar} />
 

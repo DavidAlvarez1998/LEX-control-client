@@ -224,7 +224,7 @@ function ProcesosInner() {
         ? GRUPOS.map((g) => ({ key: g as string, label: GRUPO_LABEL[g], n: conteoTiposPorGrupo[g] ?? 0, href: `/procesos?vista=seccion&grupo=${g}` }))
         : JURISDICCIONES.map((j) => ({ key: j as string, label: sinJurisdiccion(JURISDICCION_LABEL[j]), n: conteoTiposPorJur[j] ?? 0, href: `/procesos?jurisdiccion=${j}` }));
     return (
-      <RolEmpresaGuard roles={["JURIDICO", "COMERCIAL"]}>
+      <RolEmpresaGuard roles={["JURIDICO"]}>
         <div>
           <PageHeader
             title="Procesos"
@@ -241,7 +241,7 @@ function ProcesosInner() {
               <Link
                 key={c.key}
                 href={c.href}
-                className="lex-card group rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-600 dark:bg-slate-700"
+                className="lex-card group rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800"
               >
                 <div className="font-medium text-slate-800 group-hover:text-indigo-600 dark:text-slate-100 dark:group-hover:text-indigo-400">
                   {c.label}
@@ -272,7 +272,7 @@ function ProcesosInner() {
   // ── NIVEL 2: tarjetas de cada tipo del nodo elegido ──
   if (!tipoSel) {
     return (
-      <RolEmpresaGuard roles={["JURIDICO", "COMERCIAL"]}>
+      <RolEmpresaGuard roles={["JURIDICO"]}>
         <div>
           <Link
             href={hrefNivel1}
@@ -295,8 +295,8 @@ function ProcesosInner() {
                     href={hrefTipo(t.id)}
                     className={`lex-card group rounded-xl border p-5 ${
                       noActualizado
-                        ? "border-slate-200 bg-slate-50 dark:border-slate-600/60 dark:bg-slate-700/40"
-                        : "border-slate-200 bg-slate-50 dark:border-slate-600 dark:bg-slate-700"
+                        ? "border-slate-200 bg-slate-100 dark:border-slate-700/60 dark:bg-slate-800/40"
+                        : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -330,7 +330,7 @@ function ProcesosInner() {
 
   // ── NIVEL 3: procesos del tipo elegido ──
   return (
-    <RolEmpresaGuard roles={["JURIDICO", "COMERCIAL"]}>
+    <RolEmpresaGuard roles={["JURIDICO"]}>
       <div>
       <Link
         href={hrefNivel2}

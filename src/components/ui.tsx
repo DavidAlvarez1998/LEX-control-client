@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 
 export function PageHeader({
   title,
@@ -67,7 +68,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 p-4 sm:p-5 shadow-sm ${className}`}
+      className={`rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 sm:p-5 shadow-sm ${className}`}
     >
       {children}
     </div>
@@ -78,17 +79,31 @@ export function StatCard({
   label,
   value,
   hint,
+  href,
 }: {
   label: string;
   value: string;
   hint?: string;
+  // Si está, la tarjeta navega (afordancia hover). Sin href = tarjeta estática.
+  href?: string;
 }) {
-  return (
-    <Card>
+  const cuerpo = (
+    <>
       <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-slate-800 dark:text-slate-100">{value}</p>
       {hint && <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">{hint}</p>}
-    </Card>
+    </>
+  );
+  if (!href) return <Card>{cuerpo}</Card>;
+  return (
+    <Link href={href} className="group block">
+      <Card className="transition-colors hover:border-indigo-300 hover:bg-slate-50 dark:hover:border-indigo-500/40 dark:hover:bg-slate-700/60">
+        {cuerpo}
+        <span className="mt-2 inline-block text-xs font-medium text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100 dark:text-indigo-400">
+          Ver →
+        </span>
+      </Card>
+    </Link>
   );
 }
 
