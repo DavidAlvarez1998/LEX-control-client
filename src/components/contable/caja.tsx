@@ -109,7 +109,7 @@ function DetalleCaja({ detalle, lookups, onClose, onChange }: { detalle: CajaDet
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
   const cerrada = detalle.estado === "CERRADA";
   const set = (k: keyof typeof movVacio, v: string) => setForm((f) => ({ ...f, [k]: v }));
-  const cls = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
+  const cls = "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100";
 
   async function guardarMov() {
     setErr(null);
@@ -160,7 +160,7 @@ function DetalleCaja({ detalle, lookups, onClose, onChange }: { detalle: CajaDet
         </>
       }
     >
-      <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3 dark:bg-slate-800/40">
+      <div className="flex items-center justify-between rounded-lg bg-slate-200 px-4 py-3 dark:bg-slate-600/40">
         <div>
           <span className="text-sm text-slate-500 dark:text-slate-400">Saldo actual</span>
           <p className="text-xl font-semibold text-slate-800 dark:text-slate-100">{money(detalle.saldoActual)}</p>
@@ -179,7 +179,7 @@ function DetalleCaja({ detalle, lookups, onClose, onChange }: { detalle: CajaDet
 
       {!cerrada && (
         agregar ? (
-          <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+          <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-600">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Tipo"><Select value={form.tipoMovimiento} onChange={(v) => set("tipoMovimiento", v)} opciones={[...TIPO_MOV_CAJA]} placeholder="—" /></Field>
               <Field label="Categoría"><Select value={form.categoria} onChange={(v) => set("categoria", v)} opciones={[...CATEGORIA_CAJA]} placeholder="—" /></Field>

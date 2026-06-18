@@ -148,7 +148,7 @@ export function CuentasTab({ onCuentasChange }: { onCuentasChange: () => void })
             <Dato k="Entidad" v={`${detalle.entidadBancaria} · ${humaniza(detalle.tipoCuenta)}`} />
             {detalle.numeroCuenta && <Dato k="N.º de cuenta" v={detalle.numeroCuenta} />}
             <Dato k="Saldo inicial" v={money(detalle.saldoInicial)} />
-            <div className="rounded-lg bg-slate-50 px-4 py-3 dark:bg-slate-800/40">
+            <div className="rounded-lg bg-slate-200 px-4 py-3 dark:bg-slate-600/40">
               <span className="text-slate-500 dark:text-slate-400">Saldo actual (derivado): </span>
               <span className="font-semibold text-slate-800 dark:text-slate-100">{money(detalle.saldoActual)}</span>
             </div>

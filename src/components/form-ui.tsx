@@ -8,23 +8,25 @@
 import { useState, type ReactNode } from "react";
 
 const base =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
+  "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100";
 
 /** Envuelve un campo con su label (asterisco rojo si es requerido) y error. */
 export function Field({
   label,
   requerido = false,
   error,
+  negrita = false,
   children,
 }: {
   label: string;
   requerido?: boolean;
   error?: string;
+  negrita?: boolean; // resalta el label en negrita
   children: ReactNode;
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
+      <span className={`mb-1 block text-sm text-slate-700 dark:text-slate-200 ${negrita ? "font-bold" : "font-medium"}`}>
         {label}
         {requerido && <span className="ml-0.5 text-red-500">*</span>}
       </span>
@@ -166,7 +168,7 @@ export function BuscadorSelect({
         className={base}
       />
       {abierto && (
-        <ul className="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+        <ul className="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-slate-50 py-1 shadow-lg dark:border-slate-600 dark:bg-slate-700">
           {filtradas.length === 0 ? (
             <li className="px-3 py-2 text-sm text-slate-400">Sin resultados</li>
           ) : (
@@ -227,7 +229,7 @@ export function CorreosInput({
               type="button"
               onClick={() => onChange(filas.filter((_, idx) => idx !== i))}
               aria-label="Quitar correo"
-              className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-2 text-sm text-slate-400 transition-colors hover:border-red-300 hover:text-red-500 dark:border-slate-800"
+              className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-2 text-sm text-slate-400 transition-colors hover:border-red-300 hover:text-red-500 dark:border-slate-600"
             >
               ✕
             </button>
@@ -269,7 +271,7 @@ export function MultiSelect({
             className={`rounded-full border px-3 py-1 text-sm transition-colors ${
               on
                 ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10"
-                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
             }`}
           >
             {o}
@@ -345,7 +347,7 @@ export function SelectableCard({
       className={`flex h-full flex-col rounded-xl border p-4 text-left shadow-sm transition-colors ${
         selected
           ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10"
-          : "border-slate-200 bg-white hover:border-indigo-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
+          : "border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600"
       }`}
     >
       <span className="font-medium text-slate-800 dark:text-slate-100">{title}</span>

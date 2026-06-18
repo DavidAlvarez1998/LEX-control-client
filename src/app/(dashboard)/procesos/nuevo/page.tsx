@@ -13,6 +13,7 @@ import { getUser, type AuthUser } from "@/lib/auth";
 import {
   documentosRequeridosDeEtapas,
   documentosOpcionalesDeEtapas,
+  etapasDeCreacion,
   etiquetaDoc,
   etiquetasPlazoOpciones,
   JURISDICCION_LABEL,
@@ -50,6 +51,12 @@ const ROLES: RolParte[] = [
   "DEMANDANTE", "DEMANDADO", "EJECUTANTE", "EJECUTADO", "ACCIONANTE",
   "ACCIONADO", "IMPUTADO", "ACUSADO", "VICTIMA", "TERCERO", "APODERADO", "OTRO",
 ];
+// El proceso laboral (Ley 2452/2025) es un ordinario entre dos partes: solo aplican
+// demandante/demandado. Los demás roles (ejecutante, víctima, acusado…) son de otras
+// jurisdicciones, así que se acota el selector cuando el tipo es de grupo LABORAL.
+const ROLES_LABORAL: RolParte[] = ["DEMANDANTE", "DEMANDADO"];
+const rolesDisponibles = (tipo: TipoProceso): RolParte[] =>
+  tipo.grupo === "LABORAL" ? ROLES_LABORAL : ROLES;
 const TIPOS_DOC: TipoDocumento[] = ["CC", "CE", "NIT", "TI", "PASAPORTE", "PEP_PPT"];
 
 // Datos del cliente nuevo creado al vuelo (se crea junto con el proceso).
@@ -187,7 +194,7 @@ export default function NuevoProcesoPage() {
         return (
           <li
             key={nombre}
-            className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 ${falta ? "border-red-300 dark:border-red-500/40" : "border-slate-200 dark:border-slate-700"} bg-white dark:bg-slate-900`}
+            className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 ${falta ? "border-red-300 dark:border-red-500/40" : "border-slate-200 dark:border-slate-600"} bg-slate-50 dark:bg-slate-700`}
           >
             <span className={`text-sm font-medium ${file ? "text-emerald-700 dark:text-emerald-400" : "text-slate-700 dark:text-slate-200"}`}>
               {file ? "✓ " : "• "}
@@ -223,6 +230,25 @@ export default function NuevoProcesoPage() {
     ? `${clienteNuevo.nombre} (nuevo)`
     : clientes.find((c) => c.id === clienteId)?.nombre ?? "";
 
+  // Título auto del proceso laboral: "Proceso Laboral — Demandante vs. Demandado".
+  // Como es un litigio entre dos partes, se ordena siempre demandante-primero usando el
+  // campo `rol` (a quién representamos): si representamos al demandado, el cliente va de
+  // segundo. La contraparte sale de las partes (la marcada DEMANDADO, o la primera).
+  // Si aún no hay contraparte (es opcional al crear), queda solo el cliente.
+  function tituloLaboral(tipo: TipoProceso, datos: Record<string, unknown>): string {
+    const nombreCliente = clienteNuevo
+      ? clienteNuevo.nombre.trim()
+      : clientes.find((c) => c.id === clienteId)?.nombre.trim() ?? "";
+    const contraparte = (
+      partes.find((p) => p.rol === "DEMANDADO") ?? partes[0]
+    )?.litigante.nombre.trim() ?? "";
+    const representamosDemandado = String(datos.rol ?? "") === "Demandado";
+    const demandante = representamosDemandado ? contraparte : nombreCliente;
+    const demandado = representamosDemandado ? nombreCliente : contraparte;
+    const partesTit = [demandante, demandado].filter(Boolean).join(" vs. ");
+    return [tipo.nombre, partesTit].filter(Boolean).join(" — ");
+  }
+
   function limpiarCliente() {
     setClienteId("");
     setClienteNuevo(null);
@@ -247,14 +273,29 @@ export default function NuevoProcesoPage() {
   async function guardar() {
     if (!tipo) return;
     // En no-judiciales (DdP) el cliente es el "peticionario": no hay rol procesal →
-    // se guarda "OTRO" con etiqueta "Peticionario". En judiciales, el rol elegido.
-    const rolCliente: RolParte = tipo.esJudicial ? clienteRol : "OTRO";
+    // se guarda "OTRO" con etiqueta "Peticionario". En la tutela ofensiva el cliente es
+    // el accionante (rol fijo, sin selector). En el resto de judiciales, el rol elegido.
+    const esTutelaOfensiva = tipo.grupo === "CONSTITUCIONAL" && !tipo.clienteOpcional;
+    // En el laboral el lado se elige UNA sola vez en "Rol en el proceso" (datos.rol);
+    // el rol procesal del cliente se deriva de ahí (no se pregunta dos veces).
+    const rolCliente: RolParte = esTutelaOfensiva
+      ? "ACCIONANTE"
+      : tipo.grupo === "LABORAL"
+        ? (String(datos.rol) === "Demandado" ? "DEMANDADO" : "DEMANDANTE")
+        : tipo.esJudicial
+          ? clienteRol
+          : "OTRO";
     const etiquetaCliente = tipo.esJudicial ? undefined : "Peticionario";
     // Trámites ante entidad (DdP) y acciones constitucionales (tutela): el título se
-    // auto-genera "Tipo — Entidad" y el campo va oculto. En el resto de judiciales
-    // (laboral/civil…) sigue siendo manual ("Pérez vs. XYZ").
-    const tituloAuto = !tipo.esJudicial || tipo.grupo === "CONSTITUCIONAL";
-    const tituloFinal = tituloAuto ? tituloGenerado(tipo, datos) : titulo.trim();
+    // auto-genera "Tipo — Entidad" y el campo va oculto. Los procesos laborales también
+    // se auto-generan, pero como litigio entre dos partes: "Proceso Laboral — Demandante
+    // vs. Demandado" (ver tituloLaboral). El resto de judiciales (civil…) sigue manual.
+    const tituloAuto = !tipo.esJudicial || tipo.grupo === "CONSTITUCIONAL" || tipo.grupo === "LABORAL";
+    const tituloFinal = tipo.grupo === "LABORAL"
+      ? tituloLaboral(tipo, datos)
+      : tituloAuto
+        ? tituloGenerado(tipo, datos)
+        : titulo.trim();
     const tituloOk = tituloFinal.length > 0;
     setTituloError(!tituloOk);
     // El cliente puede ser opcional para trámites dirigidos al despacho (p. ej. DdP
@@ -274,7 +315,7 @@ export default function NuevoProcesoPage() {
     setErrores(keysFaltantes);
     // Documentos OBLIGATORIOS (petición, poder si requiere, respuesta si contestó):
     // deben estar adjuntos para crear. Los opcionales (reiteración) no bloquean.
-    const docsFaltan = documentosRequeridosDeEtapas(tipo.etapas, datos).filter((d) => !archivos[d]);
+    const docsFaltan = documentosRequeridosDeEtapas(etapasDeCreacion(tipo.etapas), datos).filter((d) => !archivos[d]);
     setDocsError(docsFaltan.length ? `Faltan documentos obligatorios: ${docsFaltan.map(etiquetaDoc).join(", ")}.` : null);
     if (!ok || !tituloOk || (clienteRequerido && !hayCliente) || !hayResponsable || docsFaltan.length > 0) return;
 
@@ -311,7 +352,8 @@ export default function NuevoProcesoPage() {
               rolEtiqueta: p.rolEtiqueta,
               esNuestroCliente: false,
             })),
-          // Co-peticionarios → parte OTRO + etiqueta "Peticionario" (nuestro).
+          // Co-peticionarios (DdP) → parte OTRO + etiqueta "Peticionario"; co-accionantes
+          // (tutela, litisconsorcio) → parte ACCIONANTE. Ambos son "nuestros".
           ...peticionarios
             .filter((p) => p.litigante.nombre.trim().length > 0)
             .map((p) => ({
@@ -323,17 +365,25 @@ export default function NuevoProcesoPage() {
                 telefono: p.litigante.telefono,
                 correos: (p.litigante.correos ?? []).map((c) => c.trim()).filter(Boolean),
               },
-              rol: "OTRO" as RolParte,
-              rolEtiqueta: "Peticionario",
+              // Tutela → ACCIONANTE; laboral → mismo lado que el cliente (litisconsorcio:
+              // co-demandante/co-demandado); DdP → OTRO con etiqueta "Peticionario".
+              rol: (esTutelaOfensiva ? "ACCIONANTE" : tipo.grupo === "LABORAL" ? rolCliente : "OTRO") as RolParte,
+              rolEtiqueta: (esTutelaOfensiva || tipo.grupo === "LABORAL") ? undefined : "Peticionario",
               esNuestroCliente: true,
             })),
         ],
       };
       const creado = await crearProceso(body);
       // Los documentos solo se pueden vincular una vez existe el proceso: se suben
-      // ahora, solo los que siguen aplicando según los datos finales. Si alguna
-      // subida falla, el proceso ya quedó creado y se reintenta desde su ficha.
-      for (const nombre of documentosRequeridosDeEtapas(tipo.etapas, datos)) {
+      // ahora los que siguen aplicando según los datos finales — obligatorios Y
+      // opcionales (p. ej. pruebas/anexos de la tutela), para no perder los adjuntos
+      // optativos. Si alguna subida falla, el proceso ya quedó creado y se reintenta
+      // desde su ficha.
+      const docsASubir = [
+        ...documentosRequeridosDeEtapas(etapasDeCreacion(tipo.etapas), datos),
+        ...documentosOpcionalesDeEtapas(etapasDeCreacion(tipo.etapas), datos),
+      ];
+      for (const nombre of docsASubir) {
         const file = archivos[nombre];
         if (!file) continue;
         try {
@@ -351,10 +401,10 @@ export default function NuevoProcesoPage() {
     }
   }
 
-  // Catálogo del wizard genérico /procesos = solo judicial del grupo JUDICIAL. Las
-  // peticiones (trámite ante entidad), las acciones constitucionales y los procesos
-  // laborales tienen su propia sección y se crean desde ahí (con ?tipo=ID pre-bloqueado).
-  const tiposJudiciales = (tipos ?? []).filter((t) => t.esJudicial && t.grupo === "JUDICIAL");
+  // Catálogo del wizard genérico: TODOS los tipos (procesos unificados por jurisdicción).
+  // Antes se acotaba a grupo JUDICIAL; ahora peticiones, acciones y laborales también se
+  // crean desde aquí, agrupados por su jurisdicción.
+  const tiposCatalogo = tipos ?? [];
 
   // Sección a la que pertenece el tipo pre-bloqueado (peticiones / acciones / laborales):
   // los enlaces "volver" y "cancelar" apuntan ahí en vez de a /procesos.
@@ -363,7 +413,7 @@ export default function NuevoProcesoPage() {
 
   // --- Paso 1: jurisdicción (6 fijas; solo las que tienen tipos en el catálogo) ---
   if (!jurisdiccion) {
-    const conteo = tiposJudiciales.reduce<Record<string, number>>((acc, t) => {
+    const conteo = tiposCatalogo.reduce<Record<string, number>>((acc, t) => {
       acc[t.jurisdiccion] = (acc[t.jurisdiccion] ?? 0) + 1;
       return acc;
     }, {});
@@ -393,7 +443,7 @@ export default function NuevoProcesoPage() {
 
   // --- Paso 2: tipo de proceso (filtrado por la jurisdicción elegida) ---
   if (!tipo) {
-    const tiposJur = tiposJudiciales.filter((t) => t.jurisdiccion === jurisdiccion);
+    const tiposJur = tiposCatalogo.filter((t) => t.jurisdiccion === jurisdiccion);
     return (
       <div>
         <PageHeader
@@ -426,6 +476,21 @@ export default function NuevoProcesoPage() {
   }
 
   // --- Paso 3: formulario ---
+  // Tutela ofensiva = la "Acción de tutela" que presentamos (grupo CONSTITUCIONAL, con
+  // cliente obligatorio). Su formulario sigue el doc Juan David: sin rol procesal (el
+  // cliente es el accionante), sin datos judiciales (no hay cuantía; el "radicado de la
+  // tutela" es seguimiento) y sin contraparte (el accionado va en `entidadAccionada`).
+  // Deja fuera la "Acción de Tutela (Recibida)" defensiva (clienteOpcional).
+  const esTutelaOfensiva = tipo.grupo === "CONSTITUCIONAL" && !tipo.clienteOpcional;
+  // Laboral: puede haber litisconsorcio (varios demandantes o demandados que
+  // representamos). Se reusa la sección de co-peticionarios, con el sustantivo según
+  // el rol elegido.
+  const esLaboral = tipo.grupo === "LABORAL";
+  const coParteNoun = esTutelaOfensiva
+    ? "accionante"
+    : esLaboral
+      ? (String(datos.rol) === "Demandado" ? "demandado" : "demandante")
+      : "peticionario";
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeader
@@ -445,10 +510,10 @@ export default function NuevoProcesoPage() {
       />
 
       <div className="space-y-5">
-        {/* Título manual solo en judiciales NO constitucionales ("Pérez vs. XYZ").
-            En trámites ante entidad (DdP) y acciones constitucionales (tutela) se
-            auto-genera "Tipo — Entidad" y se oculta; queda editable luego en la ficha. */}
-        {tipo.esJudicial && tipo.grupo !== "CONSTITUCIONAL" && (
+        {/* Título manual solo en judiciales NO constitucionales NI laborales ("Pérez vs. XYZ").
+            En trámites ante entidad (DdP), acciones constitucionales (tutela) y procesos
+            laborales se auto-genera y se oculta; queda editable luego en la ficha. */}
+        {tipo.esJudicial && tipo.grupo !== "CONSTITUCIONAL" && tipo.grupo !== "LABORAL" && (
         <Card>
           <Field label="Título del caso" requerido error={tituloError ? "Obligatorio" : undefined}>
             <Input value={titulo} onChange={setTitulo} placeholder="Ej. Pérez vs. Aseguradora XYZ" />
@@ -482,13 +547,15 @@ export default function NuevoProcesoPage() {
                 </button>
               </div>
               {/* El rol procesal solo aplica a procesos judiciales; en un DdP el
-                  cliente es el peticionario (sin rol de parte). */}
-              {tipo.esJudicial && (
+                  cliente es el peticionario (sin rol de parte). En la tutela el cliente
+                  es siempre el accionante → tampoco se ofrece elegir rol. En el laboral el
+                  lado se elige en "Rol en el proceso" (datos.rol) → no se pregunta acá. */}
+              {tipo.esJudicial && !esTutelaOfensiva && tipo.grupo !== "LABORAL" && (
                 <Field label="Rol procesal del cliente">
                   <Select
                     value={clienteRol}
                     onChange={(v) => setClienteRol(v as RolParte)}
-                    opciones={ROLES}
+                    opciones={rolesDisponibles(tipo)}
                     placeholder="Rol"
                   />
                 </Field>
@@ -530,30 +597,37 @@ export default function NuevoProcesoPage() {
         </Card>
         )}
 
-        {/* Otros peticionarios: solo en peticiones (trámite ante entidad con cliente).
-            El cliente de arriba es el peticionario principal; aquí se agregan los
-            co-peticionarios (cada uno con sus propios correos). No entran al CRM. */}
-        {!tipo.esJudicial && !tipo.clienteOpcional && (
+        {/* Otros peticionarios / accionantes: en peticiones (trámite ante entidad) son
+            co-peticionarios; en la tutela son co-accionantes (litisconsorcio: varias
+            personas presentan UNA tutela). El cliente de arriba es el principal; aquí van
+            los demás (cada uno con sus correos). No entran al CRM. */}
+        {((!tipo.esJudicial && !tipo.clienteOpcional) || esTutelaOfensiva || esLaboral) && (
           <Card>
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  Otros peticionarios <span className="font-normal text-slate-400">(opcional)</span>
+                  Otros {coParteNoun}s <span className="font-normal text-slate-400">(opcional)</span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Si la petición la presentan varias personas, agrégalas aquí — el cliente de arriba es el peticionario principal.
+                  {esLaboral
+                    ? `Si ${String(datos.rol) === "Demandado" ? "son varios demandados" : "demandan varias personas"} (litisconsorcio), agrégalas aquí — el cliente de arriba es el ${coParteNoun} principal.`
+                    : esTutelaOfensiva
+                      ? "Si la tutela la presentan varias personas (litisconsorcio), agrégalas aquí — el cliente de arriba es el accionante principal."
+                      : "Si la petición la presentan varias personas, agrégalas aquí — el cliente de arriba es el peticionario principal."}
                 </p>
               </div>
               <Button variant="ghost" onClick={() => setPeticionarios((p) => [...p, peticionarioVacio()])}>
-                + Agregar peticionario
+                + Agregar {coParteNoun}
               </Button>
             </div>
             {peticionarios.length === 0 ? (
-              <p className="text-sm text-slate-400 dark:text-slate-500">Sin peticionarios adicionales.</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500">
+                Sin {coParteNoun}s adicionales.
+              </p>
             ) : (
               <div className="space-y-4">
                 {peticionarios.map((p, i) => (
-                  <div key={p.litigante.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                  <div key={p.litigante.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-600">
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <Field label="Nombre / razón social">
                         <Input
@@ -655,7 +729,16 @@ export default function NuevoProcesoPage() {
             // poder desplegándose al marcar Sí. (El slot solo se pinta si el tipo tiene
             // ese campo; para los que no, va la sección de fallback de abajo.)
             slotDespuesDe={{
-              fechaRadicacion: <VencimientoHint tipoProcesoId={tipo.id} datos={datos} />,
+              // En el laboral, bajo "Fecha de radicación" va el adjunto de la radicación
+              // (no el hint de vencimiento: el plazo laboral no corre desde aquí).
+              fechaRadicacion: tipo.grupo === "LABORAL"
+                ? (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                    <p className="mb-2 text-sm font-medium text-amber-900 dark:text-amber-200">Documento de radicación</p>
+                    {listaDocs(["radicacion.pdf"], [])}
+                  </div>
+                )
+                : <VencimientoHint tipoProcesoId={tipo.id} datos={datos} />,
               // DdP recibido: el plazo corre desde la fecha de recepción, así que el
               // preview de vencimiento va debajo de ese campo (equivale a fechaRadicacion).
               fechaRecepcion: <VencimientoHint tipoProcesoId={tipo.id} datos={datos} />,
@@ -663,8 +746,14 @@ export default function NuevoProcesoPage() {
               // poder * si requiere), que NO dependen de la respuesta.
               requierePoder: (() => {
                 const neutro = { ...datos, contestaron: "" };
-                const req = documentosRequeridosDeEtapas(tipo.etapas, neutro);
-                const docs = [...req, ...documentosOpcionalesDeEtapas(tipo.etapas, neutro)];
+                const etapasCrea = etapasDeCreacion(tipo.etapas);
+                const req = documentosRequeridosDeEtapas(etapasCrea, neutro);
+                // En laboral, la radicación se adjunta bajo "Fecha de radicación" (arriba),
+                // así que no se repite en este bloque.
+                const opc = documentosOpcionalesDeEtapas(etapasCrea, neutro).filter(
+                  (d) => tipo.grupo !== "LABORAL" || d.toLowerCase() !== "radicacion.pdf",
+                );
+                const docs = [...req, ...opc];
                 if (docs.length === 0) return null;
                 return (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
@@ -693,11 +782,31 @@ export default function NuevoProcesoPage() {
           />
         </Card>
 
+        {/* Laboral: # radicado + juzgado en el orden del doc (justo tras la demanda),
+            no en el bloque "Datos judiciales" del fondo. Sin cuantía (la instancia se
+            elige directo). Mapean a las columnas reales radicado/despachoJuzgado. */}
+        {tipo.grupo === "LABORAL" && (
+          <Card>
+            <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Radicación <span className="font-normal text-slate-400">(opcional al crear)</span>
+            </h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="# Radicado de la demanda">
+                <Input value={radicado} onChange={setRadicado} placeholder="Aún sin radicar" />
+              </Field>
+              <Field label="Juzgado o corporación">
+                <Input value={despachoJuzgado} onChange={setDespachoJuzgado} placeholder="Ej. Juzgado 5º Laboral del Circuito" />
+              </Field>
+            </div>
+          </Card>
+        )}
+
         {/* Fallback: tipos SIN campo "¿Requiere poder?" muestran los documentos en
             sección aparte (los que sí lo tienen los muestran inline bajo el check). */}
         {!tipo.esquemaFormulario.some((c) => c.key === "requierePoder") && (() => {
-          const req = documentosRequeridosDeEtapas(tipo.etapas, datos);
-          const docs = [...req, ...documentosOpcionalesDeEtapas(tipo.etapas, datos)];
+          const etapasCrea = etapasDeCreacion(tipo.etapas);
+          const req = documentosRequeridosDeEtapas(etapasCrea, datos);
+          const docs = [...req, ...documentosOpcionalesDeEtapas(etapasCrea, datos)];
           if (docs.length === 0) return null;
           return (
             <Card>
@@ -715,8 +824,11 @@ export default function NuevoProcesoPage() {
         )}
 
         {/* Datos judiciales: solo para procesos que van ante un juez (no en trámites
-            ante entidad como el derecho de petición). */}
-        {tipo.esJudicial && (
+            ante entidad como el derecho de petición). La tutela ofensiva no tiene cuantía
+            ni radicado de 23 dígitos (su radicado es seguimiento), así que se omite. El
+            laboral los muestra arriba, en el orden del doc (radicado + juzgado), así que
+            aquí se excluye. */}
+        {tipo.esJudicial && !esTutelaOfensiva && tipo.grupo !== "LABORAL" && (
           <Card>
             <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
               Datos judiciales <span className="font-normal text-slate-400">(opcional)</span>
@@ -739,8 +851,9 @@ export default function NuevoProcesoPage() {
         )}
 
         {/* Partes (litigantes con rol procesal) solo para procesos judiciales;
-            un trámite ante una entidad (DdP) no tiene contraparte. */}
-        {tipo.esJudicial && (
+            un trámite ante una entidad (DdP) no tiene contraparte. En la tutela ofensiva
+            el accionado se captura en el campo "Autoridad o particular accionado". */}
+        {tipo.esJudicial && !esTutelaOfensiva && (
         <Card>
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -760,7 +873,7 @@ export default function NuevoProcesoPage() {
           ) : (
             <div className="space-y-4">
               {partes.map((p, i) => (
-                <div key={p.litigante.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                <div key={p.litigante.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-600">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Field label="Nombre / razón social">
                       <Input
@@ -773,7 +886,7 @@ export default function NuevoProcesoPage() {
                       <Select
                         value={p.rol}
                         onChange={(v) => actualizarParte(i, { rol: v as RolParte })}
-                        opciones={ROLES}
+                        opciones={rolesDisponibles(tipo)}
                         placeholder="Rol"
                       />
                     </Field>

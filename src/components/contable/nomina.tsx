@@ -43,7 +43,7 @@ export function NominaTab({ lookups }: { lookups: Lookups }) {
   const [contratoSel, setContratoSel] = useState<string>(""); // "" = sin elegir, MANUAL = excepción
   const [verFinalizados, setVerFinalizados] = useState(false); // mostrar no-activos (liquidación)
   const set = (k: keyof Form, v: string) => setForm((f) => ({ ...f, [k]: v }));
-  const cls = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
+  const cls = "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100";
 
   // Los contratos son confidenciales: el contable solo recibe la proyección mínima.
   useEffect(() => { contableApi.empleables().then(setEmpleables).catch(() => setEmpleables([])); }, []);
@@ -201,7 +201,7 @@ export function NominaTab({ lookups }: { lookups: Lookups }) {
             </select>
           </Field>
         </div>
-        <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm dark:bg-slate-800/40">
+        <div className="rounded-lg bg-slate-200 px-4 py-3 text-sm dark:bg-slate-600/40">
           <span className="text-slate-500 dark:text-slate-400">Neto a pagar: </span>
           <span className="font-semibold text-slate-800 dark:text-slate-100">{money(neto(form))}</span>
         </div>

@@ -1,18 +1,25 @@
-import type { ReactNode } from "react";
+"use client";
+
+import type { CSSProperties, ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 export function PageHeader({
   title,
   subtitle,
   action,
+  titleStyle,
 }: {
   title: string;
   subtitle?: string;
   action?: ReactNode;
+  // Opcional: estilo del <h2> del título. Se usa para el morph de View Transitions
+  // (view-transition-name compartido con la fila de la lista). Ver lib/view-transition.ts.
+  titleStyle?: CSSProperties;
 }) {
   return (
     <div className="mb-6 flex items-start justify-between gap-4">
       <div>
-        <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">{title}</h2>
+        <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100" style={titleStyle}>{title}</h2>
         {subtitle && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>}
       </div>
       {action}
@@ -38,7 +45,7 @@ export function Button({
   const styles =
     variant === "primary"
       ? "bg-indigo-600 text-white hover:bg-indigo-500"
-      : "border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800";
+      : "border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600";
   return (
     <button
       type={type}
@@ -60,7 +67,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-sm ${className}`}
+      className={`rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 p-4 sm:p-5 shadow-sm ${className}`}
     >
       {children}
     </div>
@@ -96,7 +103,7 @@ export function EmptyState({
 }) {
   return (
     <Card className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-600 text-slate-400 dark:text-slate-500">
         <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" />
           <path d="M12 8v8M8 12h8" />
@@ -124,9 +131,13 @@ export function Modal({
   footer?: ReactNode;
   size?: "md" | "lg";
 }) {
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
   const max = size === "lg" ? "max-w-2xl" : "max-w-md";
-  return (
+  // Portal a <body>: el overlay `fixed` debe medirse contra el viewport. Si se
+  // renderiza dentro del árbol, cualquier ancestro con `transform`/`will-change`
+  // (p. ej. una animación de aparición) lo confinaría a su caja (recuadro gris sobre
+  // el campo en vez de pantalla completa).
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60"
       onClick={(e) => {
@@ -138,7 +149,8 @@ export function Modal({
         <div className="space-y-3">{children}</div>
         {footer && <div className="mt-5 flex justify-end gap-2">{footer}</div>}
       </Card>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -112,7 +112,7 @@ export function IngresosTab({ lookups }: { lookups: Lookups }) {
 
 // --- Selects nativos que muestran nombre pero envían id (el Select genérico solo usa strings sueltos) ---
 export function SelectCliente({ lookups, value, onChange, requerido }: { lookups: Lookups; value: string; onChange: (v: string) => void; requerido?: boolean }) {
-  const cls = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
+  const cls = "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100";
   return (
     <Field label="Cliente" requerido={requerido}>
       <select value={value} onChange={(e) => onChange(e.target.value)} className={cls}>
@@ -126,7 +126,7 @@ export function SelectCliente({ lookups, value, onChange, requerido }: { lookups
 export function ProcesoCuenta({ lookups, procesoId, cuentaId, onProceso, onCuenta }: {
   lookups: Lookups; procesoId: string; cuentaId: string; onProceso: (v: string) => void; onCuenta: (v: string) => void;
 }) {
-  const cls = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
+  const cls = "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100";
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <Field label="Proceso (opcional)">

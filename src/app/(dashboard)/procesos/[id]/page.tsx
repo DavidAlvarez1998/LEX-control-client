@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Card, PageHeader } from "@/components/ui";
+import { vtName } from "@/lib/view-transition";
 import { DocumentosProceso } from "@/components/documentos-proceso";
-import { DatosProceso } from "@/components/datos-proceso";
+import { DatosProceso, type DatosProcesoHandle } from "@/components/datos-proceso";
+import { PartesProceso } from "@/components/partes-proceso";
 import { CasoChain } from "@/components/caso-chain";
 import { ActuacionesProceso } from "@/components/actuaciones-proceso";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
-import { ESTADO_LABEL, JURISDICCION_LABEL, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, rutaProceso, type EtapaDef } from "@/lib/procesos";
+import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type Condicion, type EtapaDef } from "@/lib/procesos";
 import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, moverEtapa, type CasoNodo, type ProcesoDetalle } from "@/lib/procesos-api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
@@ -28,6 +30,11 @@ export default function ExpedientePage() {
   // Vencimiento ESTIMADO en vivo desde los datos, para mostrarlo en el recuadro de
   // arriba aunque aún no se haya guardado fechaLimite (al poner la fecha de radicación).
   const [vencEstimado, setVencEstimado] = useState<string | null>(null);
+  // Stepper laboral agrupado por fase: fases que el usuario abrió manualmente (la
+  // fase actual va abierta siempre).
+  const [fasesAbiertas, setFasesAbiertas] = useState<number[]>([]);
+  // Para guardar lo diligenciado (sin guardar) ANTES de avanzar de etapa.
+  const datosRef = useRef<DatosProcesoHandle>(null);
 
   const cargarCaso = () => getCasoChain(id).then(setCaso).catch(() => setCaso([]));
   useEffect(() => {
@@ -71,6 +78,25 @@ export default function ExpedientePage() {
     if (last && last.orden === e.orden) last.etapas.push(e);
     else pasos.push({ orden: e.orden, etapas: [e] });
   }
+  // Stepper agrupado por FASE (solo laboral): agrupa las etapas en 6 fases, oculta
+  // las ramas que ya NO pueden aplicar a este rol×instancia (no las atenúa), y muestra
+  // la fase actual expandida. Los demás tipos conservan el stepper plano.
+  const esLaboral = proceso.tipoProceso.grupo === "LABORAL";
+  const FASE_LABEL: Record<number, string> = {
+    1: "Demanda y admisión", 2: "Traslado y contestación", 3: "Audiencias",
+    4: "Sentencia y recurso", 5: "Segunda instancia", 6: "Terminación",
+  };
+  const aplicables = etapas.filter((e) => !e.disponibleSi || puedeSerVerdad(e.disponibleSi, proceso.datos));
+  const etapasPorFase = new Map<number, EtapaDef[]>();
+  for (const e of aplicables) {
+    const f = e.fase ?? 0;
+    (etapasPorFase.get(f) ?? etapasPorFase.set(f, []).get(f)!).push(e);
+  }
+  const fasesPresentes = [...etapasPorFase.keys()].sort((a, b) => a - b);
+  const faseActual = etapaActualDef?.fase ?? fasesPresentes[0] ?? 1;
+  const toggleFase = (f: number) =>
+    setFasesAbiertas((prev) => (prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]));
+
   const accionDerivar = etapaActualDef?.accion?.tipo === "crearDerivado" ? etapaActualDef.accion : null;
   // ¿El derivado de esta acción YA existe? (al cargar la página, no solo tras crearlo
   // en esta sesión): un hijo del caso colgado de este proceso con el tipo destino.
@@ -105,6 +131,15 @@ export default function ExpedientePage() {
     ) : null;
 
   async function irAEtapa(key: string) {
+    // Guarda primero lo diligenciado sin guardar, para que el avance evalúe lo último.
+    // El guardado dispara el auto-avance del motor: si ya dejó el proceso en la etapa
+    // pedida (o cerró el caso), no hace falta moverlo otra vez.
+    const flushed = await datosRef.current?.flush().catch(() => null);
+    if (flushed && (flushed.etapaActual === key || flushed.estado === "CERRADO" || flushed.estado === "ARCHIVADO")) {
+      setBloqueo(null);
+      setResaltarCampos(null);
+      return;
+    }
     try {
       const actualizado = await moverEtapa(proceso!.id, key);
       setProceso(actualizado);
@@ -152,7 +187,20 @@ export default function ExpedientePage() {
               : `Esta etapa solo aplica si "${label}" es ${esperado} — actualmente es "${Array.isArray(actual) ? actual.join(", ") : String(actual)}". Si corresponde, usa la otra opción disponible o corrige el campo ↓`,
           });
         } else {
-          setBloqueo({ etapa: key, faltantes: [], motivo: "Esta etapa no está disponible con los datos actuales del proceso." });
+          // Condición compuesta (todas/alguna): guía al primer campo referenciado
+          // que esté vacío; si todos tienen valor, mensaje genérico.
+          const campos = condicion ? camposDeCondicion(condicion as Condicion) : [];
+          const pendiente = campos.find((c) => {
+            const v = proceso!.datos[c];
+            return v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
+          });
+          if (pendiente) {
+            const label = (proceso!.tipoProceso.esquemaFormulario ?? []).find((c) => c.key === pendiente)?.label ?? pendiente;
+            setResaltarCampos({ keys: [pendiente], nonce: Date.now() });
+            setBloqueo({ etapa: key, faltantes: [], motivo: `Para habilitar esta etapa, completa "${label}" en el formulario ↓` });
+          } else {
+            setBloqueo({ etapa: key, faltantes: [], motivo: "Esta etapa no está disponible con los datos actuales del proceso." });
+          }
         }
       }
     }
@@ -179,11 +227,42 @@ export default function ExpedientePage() {
   const u = getUser();
   const puedeEditar = !!u?.esAdminEmpresa || (u?.roles ?? []).includes("JURIDICO");
 
+  // Fila de una etapa dentro de una fase (stepper laboral agrupado).
+  const renderEtapaBtn = (e: EtapaDef) => {
+    const disponible = !e.disponibleSi || evaluarCondicion(e.disponibleSi, proceso.datos);
+    const cur = e.key === proceso.etapaActual;
+    return (
+      <div key={e.key}>
+        <button
+          type="button"
+          disabled={!puedeEditar}
+          onClick={() => irAEtapa(e.key)}
+          className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm transition-colors ${
+            !puedeEditar ? "cursor-default" : disponible ? "hover:bg-slate-200 dark:hover:bg-slate-600" : "opacity-50 hover:opacity-90 hover:bg-slate-200 dark:hover:bg-slate-600"
+          } ${cur ? "bg-indigo-50 dark:bg-indigo-500/10" : ""}`}
+        >
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cur ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"}`} />
+          <span className={cur ? "font-medium text-slate-800 dark:text-slate-100" : "text-slate-600 dark:text-slate-300"}>
+            {e.nombre}
+            {e.terminal && <span className="ml-2 text-xs text-slate-400">(final)</span>}
+          </span>
+          {plazoSpan(e)}
+        </button>
+        {cur && (() => {
+          const v = vencimientoActivo(proceso.fechaLimite);
+          return v ? <div className={`ml-6 mt-1 text-xs font-medium ${v.cls}`}>⏱ {v.texto}</div> : null;
+        })()}
+        {bloqueoMsg(e.key)}
+      </div>
+    );
+  };
+
   return (
     <RolEmpresaGuard roles={["JURIDICO", "COMERCIAL"]}>
     <div className="mx-auto max-w-6xl">
       <PageHeader
         title={proceso.titulo}
+        titleStyle={{ viewTransitionName: vtName("proceso-titulo", proceso.id) }}
         subtitle={`${proceso.tipoProceso.nombre} · ${JURISDICCION_LABEL[proceso.jurisdiccion]}`}
         action={(() => {
           const back = {
@@ -207,7 +286,7 @@ export default function ExpedientePage() {
 
       {/* Fallback: si por algo no cargó la cadena pero sí hay caso base, enlace simple. */}
       {caso.length < 2 && proceso.casoRelacionadoId && (
-        <div className="mb-4 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+        <div className="mb-4 rounded-md bg-slate-200 px-3 py-2 text-xs text-slate-600 dark:bg-slate-600 dark:text-slate-300">
           Este proceso deriva de un caso base.{" "}
           <Link
             href={rutaProceso({ id: proceso.casoRelacionadoId, grupo: proceso.tipoProceso.grupo })}
@@ -246,13 +325,43 @@ export default function ExpedientePage() {
           <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
             Etapas del proceso
           </h3>
+          {esLaboral ? (
+            // Stepper agrupado por fase (1..6): la fase actual va abierta; las demás se
+            // pueden desplegar. Dentro de cada fase solo se ven las etapas que aplican.
+            <ol className="space-y-1">
+              {fasesPresentes.map((fase) => {
+                const list = etapasPorFase.get(fase)!;
+                const estado = fase < faseActual ? "done" : fase === faseActual ? "current" : "future";
+                const abierta = estado === "current" || fasesAbiertas.includes(fase);
+                const circle = `flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
+                  estado === "done" ? "bg-emerald-500 text-white" : estado === "current" ? "bg-indigo-600 text-white" : "border border-slate-300 text-slate-400 dark:border-slate-600"
+                }`;
+                return (
+                  <li key={fase}>
+                    <button
+                      type="button"
+                      onClick={() => toggleFase(fase)}
+                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-600 ${estado === "current" ? "bg-indigo-50 dark:bg-indigo-500/10" : ""}`}
+                    >
+                      <span className={circle}>{estado === "done" ? "✓" : fase}</span>
+                      <span className={estado === "current" ? "font-medium text-slate-800 dark:text-slate-100" : estado === "future" ? "text-slate-400 dark:text-slate-500" : "text-slate-600 dark:text-slate-300"}>
+                        {FASE_LABEL[fase] ?? `Fase ${fase}`}
+                      </span>
+                      <span className="ml-auto text-xs text-slate-400">{abierta ? "▾" : "▸"}</span>
+                    </button>
+                    {abierta && <div className="ml-9 mt-1 space-y-1">{list.map(renderEtapaBtn)}</div>}
+                  </li>
+                );
+              })}
+            </ol>
+          ) : (
           <ol className="space-y-1">
             {pasos.map((paso, pi) => {
               const numero = pi + 1;
               const current = paso.etapas.some((e) => e.key === proceso.etapaActual);
               const done = paso.orden < ordenActual;
               const numCls = `flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-                done ? "bg-emerald-500 text-white" : current ? "bg-indigo-600 text-white" : "border border-slate-300 text-slate-400 dark:border-slate-700"
+                done ? "bg-emerald-500 text-white" : current ? "bg-indigo-600 text-white" : "border border-slate-300 text-slate-400 dark:border-slate-600"
               }`;
 
               // Paso simple (una sola etapa).
@@ -266,7 +375,7 @@ export default function ExpedientePage() {
                       disabled={!puedeEditar}
                       onClick={() => irAEtapa(e.key)}
                       className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                        !puedeEditar ? "cursor-default" : disponible ? "hover:bg-slate-50 dark:hover:bg-slate-800" : "opacity-50 hover:opacity-90 hover:bg-slate-50 dark:hover:bg-slate-800"
+                        !puedeEditar ? "cursor-default" : disponible ? "hover:bg-slate-200 dark:hover:bg-slate-600" : "opacity-50 hover:opacity-90 hover:bg-slate-200 dark:hover:bg-slate-600"
                       } ${current ? "bg-indigo-50 dark:bg-indigo-500/10" : ""}`}
                     >
                       <span className={numCls}>{done ? "✓" : numero}</span>
@@ -305,7 +414,7 @@ export default function ExpedientePage() {
                             disabled={!puedeEditar}
                             onClick={() => irAEtapa(rama.key)}
                             className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm transition-colors ${
-                              !puedeEditar ? "cursor-default" : disp ? "hover:bg-slate-50 dark:hover:bg-slate-800" : "opacity-50 hover:opacity-90 hover:bg-slate-50 dark:hover:bg-slate-800"
+                              !puedeEditar ? "cursor-default" : disp ? "hover:bg-slate-200 dark:hover:bg-slate-600" : "opacity-50 hover:opacity-90 hover:bg-slate-200 dark:hover:bg-slate-600"
                             } ${ramaCurrent ? "bg-indigo-50 dark:bg-indigo-500/10" : ""}`}
                           >
                             <span className="text-slate-400">→</span>
@@ -321,6 +430,7 @@ export default function ExpedientePage() {
               );
             })}
           </ol>
+          )}
           {puedeEditar && (
             <p className="mt-3 text-xs text-slate-400">
               Haz clic en un paso para mover el proceso. Los pasos con reglas se bloquean si faltan datos.
@@ -373,29 +483,7 @@ export default function ExpedientePage() {
 
         <div className="space-y-5">
           <Card>
-            <h3 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Partes</h3>
-            <ul className="space-y-3 text-sm">
-              {proceso.partes.map((p) => (
-                <li key={p.id}>
-                  <div className="font-medium text-slate-800 dark:text-slate-100">
-                    {p.litigante.nombre}
-                    {p.esNuestroCliente && (
-                      <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">
-                        Nuestro cliente
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    {p.rol}
-                    {p.litigante.tipoDocumento &&
-                      ` · ${p.litigante.tipoDocumento} ${p.litigante.numeroDocumento ?? ""}`}
-                  </div>
-                </li>
-              ))}
-              {proceso.partes.length === 0 && (
-                <li className="text-slate-400">Sin partes registradas.</li>
-              )}
-            </ul>
+            <PartesProceso proceso={proceso} onChange={setProceso} readOnly={!puedeEditar} />
           </Card>
 
           <Card>
@@ -408,7 +496,7 @@ export default function ExpedientePage() {
                 proceso.datos,
               );
               return sugeridos.length > 0 ? (
-                <p className="mb-3 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                <p className="mb-3 rounded-md bg-slate-200 px-3 py-2 text-xs text-slate-600 dark:bg-slate-600 dark:text-slate-300">
                   Puedes adjuntar (opcional):{" "}
                   <span className="font-medium">{sugeridos.map(etiquetaDoc).join(", ")}</span>.
                 </p>
@@ -419,6 +507,7 @@ export default function ExpedientePage() {
               docs={proceso.documentos ?? []}
               onDocsChange={(documentos) => setProceso((p) => (p ? { ...p, documentos } : p))}
               readOnly={!puedeEditar}
+              ocultarPlantillas={proceso.tipoProceso.grupo === "LABORAL"}
             />
           </Card>
 
@@ -440,8 +529,11 @@ export default function ExpedientePage() {
           Formulario del proceso
         </h3>
         <DatosProceso
+          ref={datosRef}
           procesoId={proceso.id}
           tipoProcesoId={proceso.tipoProceso.id}
+          grupo={proceso.tipoProceso.grupo}
+          etapaActual={proceso.etapaActual}
           esquema={proceso.tipoProceso.esquemaFormulario ?? []}
           etapas={proceso.tipoProceso.etapas ?? []}
           datos={proceso.datos}
@@ -453,6 +545,9 @@ export default function ExpedientePage() {
                 ? { ...p, documentos: [doc, ...(p.documentos ?? []).filter((d) => d.nombre.trim().toLowerCase() !== doc.nombre.trim().toLowerCase())] }
                 : p,
             )
+          }
+          onDocEliminado={(id) =>
+            setProceso((p) => (p ? { ...p, documentos: (p.documentos ?? []).filter((d) => d.id !== id) } : p))
           }
           resaltarCampos={resaltarCampos ?? undefined}
           readOnly={!puedeEditar}
@@ -520,7 +615,7 @@ function TituloEditable({
                 setEditando(false);
               }
             }}
-            className="w-full max-w-md rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full max-w-md rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-indigo-400 dark:border-slate-600 dark:bg-slate-600 dark:text-slate-100"
           />
           <button
             onClick={guardar}
@@ -601,7 +696,7 @@ function RadicadoDato({
               }
             }}
             placeholder="23 dígitos del juzgado"
-            className="w-full min-w-0 rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            className="w-full min-w-0 rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-indigo-400 dark:border-slate-600 dark:bg-slate-600 dark:text-slate-100"
           />
           <button
             onClick={guardar}

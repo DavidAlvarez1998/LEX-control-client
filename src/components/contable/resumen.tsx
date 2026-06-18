@@ -46,7 +46,7 @@ export function ResumenTab({ periodo }: { periodo: string }) {
 
 function Desglose({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/40">
+    <div className="rounded-lg border border-slate-100 bg-slate-200 px-4 py-3 dark:border-slate-600 dark:bg-slate-600/40">
       <dt className="text-xs text-slate-500 dark:text-slate-400">{label}</dt>
       <dd className="mt-1 font-semibold text-slate-800 dark:text-slate-100">{money(value)}</dd>
     </div>

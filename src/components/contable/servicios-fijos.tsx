@@ -34,7 +34,7 @@ export function ServiciosFijosTab({ lookups }: { lookups: Lookups }) {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const set = (k: keyof Form, v: string) => setForm((f) => ({ ...f, [k]: v }));
-  const cls = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
+  const cls = "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100";
 
   // --- plantillas recurrentes ---
   const [openRec, setOpenRec] = useState(false);
@@ -177,7 +177,7 @@ export function ServiciosFijosTab({ lookups }: { lookups: Lookups }) {
             ) },
           ]}
         />
-        <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-600">
           <Field label="Generar instancias del periodo">
             <Input value={genPeriodo} onChange={setGenPeriodo} placeholder="YYYY-MM" />
           </Field>

@@ -45,7 +45,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="min-h-full bg-white text-slate-800 dark:bg-slate-950 dark:text-slate-100">
+      <body className="min-h-full bg-slate-50 text-slate-800 dark:bg-slate-800 dark:text-slate-100">
         {children}
       </body>
     </html>

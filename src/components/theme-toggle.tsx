@@ -26,7 +26,7 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label={isDark ? "Activar tema claro" : "Activar tema oscuro"}
       title={isDark ? "Tema claro" : "Tema oscuro"}
-      className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+      className="rounded-lg p-2 text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-600"
     >
       {/* Antes de montar mostramos el icono de luna (neutral) para no parpadear. */}
       {isDark ? (

@@ -31,7 +31,7 @@ export function CasoChain({ nodos, actualId }: { nodos: CasoNodo[]; actualId: st
           return (
             <Fragment key={n.id}>
               {i > 0 && (
-                <div className="mx-1 mt-6 h-0.5 w-6 shrink-0 self-start bg-slate-200 dark:bg-slate-700 sm:w-10" />
+                <div className="mx-1 mt-6 h-0.5 w-6 shrink-0 self-start bg-slate-200 dark:bg-slate-600 sm:w-10" />
               )}
               <Link
                 href={rutaProceso(n)}
@@ -39,11 +39,11 @@ export function CasoChain({ nodos, actualId }: { nodos: CasoNodo[]; actualId: st
                 className={`block shrink-0 rounded-lg border px-3 py-2 transition-colors ${
                   actual
                     ? "border-indigo-400 bg-indigo-50 dark:border-indigo-500 dark:bg-indigo-500/10"
-                    : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600"
+                    : "border-slate-200 hover:border-slate-300 dark:border-slate-600 dark:hover:border-slate-600"
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-600 dark:text-slate-300">
                     {n.tipoProcesoNombre}
                   </span>
                   {actual && <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">actual</span>}

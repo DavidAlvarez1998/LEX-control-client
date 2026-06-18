@@ -108,7 +108,7 @@ export default function CuentaPage() {
       {/* Servicios contratados por la empresa. SOLO el administrador de empresa. */}
       {!loading && !error && empresa && user?.esAdminEmpresa && (
         <Card className="mt-4 p-0">
-          <div className="border-b border-slate-200 dark:border-slate-800 px-5 py-3">
+          <div className="border-b border-slate-200 dark:border-slate-600 px-5 py-3">
             <h3 className="font-medium text-slate-800 dark:text-slate-100">Servicios contratados</h3>
           </div>
           {(empresa.servicios ?? []).length === 0 ? (
@@ -130,7 +130,7 @@ export default function CuentaPage() {
                 {(empresa.servicios ?? []).map((s) => (
                   <tr
                     key={s.id}
-                    className="border-t border-slate-100 dark:border-slate-800 last:border-0"
+                    className="border-t border-slate-100 dark:border-slate-600 last:border-0"
                   >
                     <td className="px-5 py-3 font-medium text-slate-800 dark:text-slate-100">
                       {s.servicio.nombre}
@@ -180,7 +180,7 @@ type ContratoMio = {
 
 const ESTADO_STYLES: Record<Estado, string> = {
   ACTIVO: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
-  FINALIZADO: "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400",
+  FINALIZADO: "bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-400",
   SUSPENDIDO: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300",
 };
 const fecha = (iso: string | null) => (iso ? iso.slice(0, 10) : "—");
@@ -204,7 +204,7 @@ function MisContratos() {
 
   return (
     <Card className="mt-4 p-0">
-      <div className="border-b border-slate-200 px-5 py-3 dark:border-slate-800">
+      <div className="border-b border-slate-200 px-5 py-3 dark:border-slate-600">
         <h3 className="font-medium text-slate-800 dark:text-slate-100">Mi contrato</h3>
       </div>
 

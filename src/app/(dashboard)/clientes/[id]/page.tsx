@@ -152,7 +152,7 @@ function FunnelStepper({ clienteId, faseActual, estado, onChange }: { clienteId:
           return (
             <Fragment key={f}>
               {i > 0 && (
-                <div className={`mx-1 h-0.5 w-6 shrink-0 sm:w-10 ${cerrado || idxActual >= i ? "bg-indigo-400" : "bg-slate-200 dark:bg-slate-700"}`} />
+                <div className={`mx-1 h-0.5 w-6 shrink-0 sm:w-10 ${cerrado || idxActual >= i ? "bg-indigo-400" : "bg-slate-200 dark:bg-slate-600"}`} />
               )}
               <div className="flex shrink-0 flex-col items-center gap-1" style={{ minWidth: 62 }}>
                 <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
@@ -173,16 +173,16 @@ function FunnelStepper({ clienteId, faseActual, estado, onChange }: { clienteId:
       </div>
 
       {cerrado ? (
-        <p className="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
+        <p className="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-600 dark:text-slate-300">
           ✅ Negocio cerrado — ya es <strong>cliente</strong>. El caso continúa en{" "}
           <Link href="/procesos" className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">Procesos</Link>.
         </p>
       ) : perdido ? (
-        <p className="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        <p className="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-500 dark:border-slate-600 dark:text-slate-400">
           Marcado como perdido{faseActual?.motivoPerdida ? `: ${faseActual.motivoPerdida}` : "."}
         </p>
       ) : (
-        <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+        <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-600">
           <div className="w-44"><Field label="Avanzar a"><Select value={fase} onChange={setFase} opciones={FASES} /></Field></div>
           {fase === "PERDIDO" && (
             <div className="w-52"><Field label="Motivo" requerido><Input value={motivo} onChange={setMotivo} placeholder="Motivo de pérdida" /></Field></div>
@@ -227,7 +227,7 @@ function SeguimientoSection({ clienteId, seguimientos, onChange }: { clienteId: 
         <Button variant="ghost" onClick={() => setOpen(!open)}>{open ? "Cancelar" : "Registrar contacto"}</Button>
       </div>
       {open && (
-        <div className="mb-4 grid grid-cols-1 gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-800 sm:grid-cols-2">
+        <div className="mb-4 grid grid-cols-1 gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-600 sm:grid-cols-2">
           <Field label="Tipo de gestión"><Select value={tipoGestion} onChange={setTipo} opciones={GESTION} placeholder="—" /></Field>
           <Field label="Próxima tarea (fecha)"><Input type="date" value={fechaProximaTarea} onChange={setFecha} /></Field>
           <Field label="Motivo del contacto"><Input value={motivo} onChange={setMotivo} placeholder="Motivo" /></Field>
@@ -244,7 +244,7 @@ function SeguimientoSection({ clienteId, seguimientos, onChange }: { clienteId: 
       ) : (
         <ul className="space-y-2">
           {seguimientos.map((s) => (
-            <li key={s.id} className="flex items-start justify-between gap-3 border-b border-slate-100 pb-2 text-sm last:border-0 dark:border-slate-800">
+            <li key={s.id} className="flex items-start justify-between gap-3 border-b border-slate-100 pb-2 text-sm last:border-0 dark:border-slate-600">
               <div>
                 <span className="font-medium text-slate-700 dark:text-slate-200">{bonito(s.tipoGestion)}</span>
                 {s.motivoContacto && <span className="text-slate-500 dark:text-slate-400"> · {s.motivoContacto}</span>}
@@ -286,7 +286,7 @@ function CotizacionSection({ clienteId, cotizaciones, onChange }: { clienteId: s
         <Button variant="ghost" onClick={() => setOpen(!open)}>{open ? "Cancelar" : "Nueva cotización"}</Button>
       </div>
       {open && (
-        <div className="mb-4 grid grid-cols-1 gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-800 sm:grid-cols-3">
+        <div className="mb-4 grid grid-cols-1 gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-600 sm:grid-cols-3">
           <Field label="Servicio" requerido><Input value={tipoServicio} onChange={setServicio} placeholder="Ej. Tutela" /></Field>
           <Field label="Valor" requerido><MoneyInput value={valor} onChange={setValor} placeholder="0" /></Field>
           <Field label="Forma de pago"><Select value={formaPago} onChange={setForma} opciones={FORMA_PAGO} placeholder="—" /></Field>
@@ -303,12 +303,12 @@ function CotizacionSection({ clienteId, cotizaciones, onChange }: { clienteId: s
         <table className="w-full text-sm">
           <tbody>
             {cotizaciones.map((q) => (
-              <tr key={q.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
+              <tr key={q.id} className="border-b border-slate-100 last:border-0 dark:border-slate-600">
                 <td className="py-2 font-medium text-slate-700 dark:text-slate-200">{q.tipoServicio}</td>
                 <td className="py-2 text-slate-600 dark:text-slate-300">${formatMoney(q.valorCotizado)}</td>
                 <td className="py-2 capitalize text-slate-500 dark:text-slate-400">{bonito(q.formaPago).toLowerCase()}</td>
                 <td className="py-2 text-right">
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">{q.estadoPropuesta}</span>
+                  <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-600 dark:text-slate-300">{q.estadoPropuesta}</span>
                 </td>
               </tr>
             ))}
@@ -360,7 +360,7 @@ function ContratoSection({ clienteId, contratos, solicitudes, esAdmin, onChange 
     api.get<{ id: string; nombre: string }[]>("/catalogo/tipos-proceso").then(setTipos).catch(() => {});
   }, [esAdmin]);
 
-  const sel = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
+  const sel = "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100";
 
   return (
     <Card>
@@ -407,7 +407,7 @@ function ContratoSection({ clienteId, contratos, solicitudes, esAdmin, onChange 
           </div>
 
           {cobroOpen && (
-            <div className="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-800 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-600 sm:grid-cols-3">
               <Field label="Modalidad"><Select value={modalidad} onChange={setModalidad} opciones={MODALIDAD} placeholder="—" /></Field>
               <Field label="Valor fijo"><MoneyInput value={valorFijo} onChange={setValorFijo} placeholder="0" /></Field>
               <div className="flex items-end">
@@ -421,7 +421,7 @@ function ContratoSection({ clienteId, contratos, solicitudes, esAdmin, onChange 
 
           {/* Solicitud de asignación */}
           {solicitud && (
-            <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+            <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-600">
               <p className="text-slate-600 dark:text-slate-300">Solicitud de asignación: <strong>{solicitud.estado}</strong></p>
               {solicitud.estado === "ASIGNADA" && solicitud.procesoId && (
                 <Link href={`/procesos/${solicitud.procesoId}`} className="mt-1 inline-block font-medium text-indigo-600 hover:underline dark:text-indigo-400">Ver el proceso →</Link>
@@ -459,7 +459,7 @@ function ContratoSection({ clienteId, contratos, solicitudes, esAdmin, onChange 
 function Estado({ v }: { v: string }) {
   const cls = v === "FIRMADO" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
     : v === "ENVIADO" ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-    : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400";
+    : "bg-slate-200 text-slate-500 dark:bg-slate-600 dark:text-slate-400";
   return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{v}</span>;
 }
 
@@ -492,7 +492,7 @@ function CarteraSection({ clienteId }: { clienteId: string }) {
 const COMISION_ESTADO_CLS: Record<string, string> = {
   PENDIENTE: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
   PAGADA: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
-  ANULADA: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
+  ANULADA: "bg-slate-200 text-slate-500 dark:bg-slate-600 dark:text-slate-400",
 };
 
 // Comisiones internas del despacho. El ADMINISTRADOR las registra/edita; el
@@ -552,7 +552,7 @@ function ComisionSection({ clienteId, esAdmin }: { clienteId: string; esAdmin: b
       </div>
 
       {esAdmin && open && (
-        <div className="mb-4 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 p-3 sm:grid-cols-2">
+        <div className="mb-4 grid grid-cols-1 gap-3 rounded-lg bg-slate-200 dark:bg-slate-700/60 p-3 sm:grid-cols-2">
           <Field label="Comercial" requerido>
             <select value={comercialId} onChange={(e) => setComercialId(e.target.value)} className={inputClsLocal}>
               <option value="">Selecciona…</option>
@@ -576,7 +576,7 @@ function ComisionSection({ clienteId, esAdmin }: { clienteId: string; esAdmin: b
         <table className="w-full text-sm">
           <tbody>
             {comisiones.map((c) => (
-              <tr key={c.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+              <tr key={c.id} className="border-b border-slate-100 dark:border-slate-600 last:border-0">
                 <td className="py-2 font-medium text-slate-700 dark:text-slate-200">${formatMoney(Number(c.monto))}</td>
                 <td className="py-2 text-slate-500 dark:text-slate-400">{c.porcentaje != null ? `${Number(c.porcentaje)}% de $${formatMoney(Number(c.baseCalculo))}` : "monto fijo"}</td>
                 <td className="py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${COMISION_ESTADO_CLS[c.estado]}`}>{c.estado}</span></td>
@@ -597,7 +597,7 @@ function ComisionSection({ clienteId, esAdmin }: { clienteId: string; esAdmin: b
 }
 
 const inputClsLocal =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
+  "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100";
 
 function Dato({ label, value }: { label: string; value: string }) {
   return (

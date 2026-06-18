@@ -61,7 +61,7 @@ const VIABILIDAD = ["VIABLE", "NO_VIABLE", "EN_ESTUDIO"];
 const ESTADO_STYLES: Record<Estado, string> = {
   PROSPECTO: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300",
   CLIENTE: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
-  DESCARTADO: "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400",
+  DESCARTADO: "bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-400",
 };
 
 const bonito = (s: string | null) => (s ? s.replace(/_/g, " ").toLowerCase() : "—");
@@ -258,7 +258,7 @@ export default function ClientesPage() {
         </Card>
       )}
 
-      <div className="mb-4 inline-flex rounded-lg border border-slate-200 p-0.5 text-sm dark:border-slate-800">
+      <div className="mb-4 inline-flex rounded-lg border border-slate-200 p-0.5 text-sm dark:border-slate-600">
         {[
           { v: true, label: "Míos" },
           { v: false, label: "Todos" },
@@ -292,7 +292,7 @@ export default function ClientesPage() {
       ) : (
         <Card className="p-0 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 dark:border-slate-800 text-left text-slate-500 dark:text-slate-400">
+            <thead className="border-b border-slate-200 dark:border-slate-600 text-left text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="px-5 py-3 font-medium">Nombre</th>
                 <th className="px-5 py-3 font-medium">Documento</th>
@@ -304,7 +304,7 @@ export default function ClientesPage() {
             </thead>
             <tbody>
               {clientes.map((c) => (
-                <tr key={c.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                <tr key={c.id} className="border-b border-slate-100 dark:border-slate-600 last:border-0">
                   <td className="px-5 py-3">
                     <Link href={`/clientes/${c.id}`} className="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
                       {c.nombre}

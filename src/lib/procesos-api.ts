@@ -117,6 +117,9 @@ export type ParteDetalle = {
     tipoPersona: TipoPersona;
     tipoDocumento: TipoDocumento | null;
     numeroDocumento: string | null;
+    telefono: string | null;
+    email: string | null;
+    correos: string[];
   };
 };
 
@@ -202,8 +205,9 @@ export function adjuntarDocumento(
 export function calcularVencimiento(
   tipoProcesoId: string,
   datos: Record<string, unknown>,
+  desdeCampo?: string, // etapa cuyo plazo corre desde ese campo (p. ej. fechaNotificacion)
 ): Promise<{ fechaLimite: string | null; dias: number | null; tipoDias: "habiles" | "calendario" | null; etapaKey: string | null }> {
-  return api.post(`/procesos/calcular-vencimiento`, { tipoProcesoId, datos });
+  return api.post(`/procesos/calcular-vencimiento`, { tipoProcesoId, datos, desdeCampo });
 }
 
 /** Sube un archivo real (multipart) al expediente; el binario va a tecnovapp y en
@@ -335,6 +339,40 @@ export function actualizarProceso(
   body: { radicado?: string | null; titulo?: string },
 ): Promise<ProcesoDetalle> {
   return api.patch<ProcesoDetalle>(`/procesos/${id}`, body);
+}
+
+// --- Partes del proceso (contraparte / terceros, desde la ficha) ---
+// Datos de un litigante al agregar/editar una parte (mismo contrato del create).
+export type LitiganteInput = {
+  tipoPersona?: TipoPersona;
+  nombre?: string;
+  tipoDocumento?: TipoDocumento | null;
+  numeroDocumento?: string | null;
+  telefono?: string | null;
+  email?: string | null;
+  correos?: string[];
+};
+
+/** Agrega una contraparte/tercero a un proceso ya creado. */
+export function agregarParte(
+  id: string,
+  body: { litigante: LitiganteInput & { nombre: string; tipoPersona: TipoPersona }; rol: RolParte; rolEtiqueta?: string },
+): Promise<ProcesoDetalle> {
+  return api.post<ProcesoDetalle>(`/procesos/${id}/partes`, body);
+}
+
+/** Edita el rol/etiqueta y/o los datos del litigante de una parte. */
+export function editarParte(
+  id: string,
+  parteId: string,
+  body: { rol?: RolParte; rolEtiqueta?: string | null; litigante?: LitiganteInput },
+): Promise<ProcesoDetalle> {
+  return api.patch<ProcesoDetalle>(`/procesos/${id}/partes/${parteId}`, body);
+}
+
+/** Quita una parte del proceso (no aplica a nuestro cliente). */
+export function eliminarParte(id: string, parteId: string): Promise<ProcesoDetalle> {
+  return api.del<ProcesoDetalle>(`/procesos/${id}/partes/${parteId}`);
 }
 
 // --- Vencimientos (semáforo) ---

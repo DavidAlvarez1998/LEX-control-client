@@ -60,7 +60,7 @@ export default function ContablePage() {
       <div>
         <PageHeader title="Contable" subtitle={`Gestión financiera del despacho · ${periodo}`} />
 
-        <div className="mb-5 flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800">
+        <div className="mb-5 flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-600">
           {TABS.map((t) => (
             <button
               key={t}

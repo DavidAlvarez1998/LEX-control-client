@@ -35,16 +35,16 @@ type Factura = {
 type ClienteOption = { id: string; nombre: string };
 
 const ESTADO_STYLES: Record<EstadoPago, string> = {
-  BORRADOR: "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400",
+  BORRADOR: "bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-400",
   PENDIENTE: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300",
   PARCIAL: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300",
   PAGADA: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
   VENCIDA: "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300",
-  ANULADA: "bg-slate-100 dark:bg-slate-800 text-slate-400 line-through",
+  ANULADA: "bg-slate-200 dark:bg-slate-600 text-slate-400 line-through",
 };
 
 const METODOS = ["EFECTIVO", "TRANSFERENCIA", "CONSIGNACION", "TARJETA", "OTRO"];
-const inputCls = "w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100";
+const inputCls = "w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-slate-100";
 
 type FormItem = { descripcion: string; cantidad: string; valorUnitario: string };
 const ITEM_VACIO: FormItem = { descripcion: "", cantidad: "1", valorUnitario: "" };
@@ -290,7 +290,7 @@ export default function FacturacionPage() {
             value={filtro}
             onChange={(e) => setFiltro(e.target.value)}
             placeholder="Buscar por número o cliente…"
-            className="mb-4 w-full max-w-sm rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+            className="mb-4 w-full max-w-sm rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
           />
         )}
 
@@ -309,7 +309,7 @@ export default function FacturacionPage() {
         ) : (
           <Card className="p-0 overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 dark:border-slate-800 text-left text-slate-500 dark:text-slate-400">
+              <thead className="border-b border-slate-200 dark:border-slate-600 text-left text-slate-500 dark:text-slate-400">
                 <tr>
                   <th className="px-5 py-3 font-medium">Número</th>
                   <th className="px-5 py-3 font-medium">Cliente</th>
@@ -322,7 +322,7 @@ export default function FacturacionPage() {
               </thead>
               <tbody>
                 {facturasVisibles.map((f) => (
-                  <tr key={f.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                  <tr key={f.id} className="border-b border-slate-100 dark:border-slate-600 last:border-0">
                     <td className="px-5 py-3 font-medium text-slate-800 dark:text-slate-100">{f.numero ?? "Borrador"}</td>
                     <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{f.cliente?.nombre ?? "—"}</td>
                     <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{fecha(f.fechaEmision)}</td>
@@ -397,10 +397,10 @@ export default function FacturacionPage() {
             </Field>
           </div>
 
-          <div className="rounded-lg bg-slate-50 dark:bg-slate-800/60 px-4 py-3 text-sm">
+          <div className="rounded-lg bg-slate-200 dark:bg-slate-600/60 px-4 py-3 text-sm">
             <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>Subtotal</span><span>${formatMoney(preview.subtotal)}</span></div>
             <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>IVA ({iva || 0}%)</span><span>${formatMoney(preview.valorIva)}</span></div>
-            <div className="mt-1 flex justify-between border-t border-slate-200 dark:border-slate-700 pt-1 font-semibold text-slate-800 dark:text-slate-100"><span>Total</span><span>${formatMoney(preview.total)}</span></div>
+            <div className="mt-1 flex justify-between border-t border-slate-200 dark:border-slate-600 pt-1 font-semibold text-slate-800 dark:text-slate-100"><span>Total</span><span>${formatMoney(preview.total)}</span></div>
           </div>
 
           {formError && <p className="text-sm text-red-600 dark:text-red-400">{formError}</p>}
@@ -447,7 +447,7 @@ export default function FacturacionPage() {
                 </thead>
                 <tbody>
                   {detalle.items?.map((it) => (
-                    <tr key={it.id} className="border-t border-slate-100 dark:border-slate-800">
+                    <tr key={it.id} className="border-t border-slate-100 dark:border-slate-600">
                       <td className="py-1.5 text-slate-700 dark:text-slate-200">{it.descripcion}</td>
                       <td className="py-1.5 text-right text-slate-600 dark:text-slate-300">{it.cantidad}</td>
                       <td className="py-1.5 text-right text-slate-600 dark:text-slate-300">${formatMoney(it.valorUnitario)}</td>

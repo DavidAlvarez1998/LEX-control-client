@@ -122,7 +122,7 @@ export default function InicioPage() {
                 const destino = ["tareaVencida", "citaHoy", "prospectoSinSeguimiento"].includes(k) ? "/agenda" : "/clientes";
                 return n > 0 ? (
                   <li key={k}>
-                    <Link href={destino} className="flex items-center justify-between rounded-md px-1.5 py-1 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
+                    <Link href={destino} className="flex items-center justify-between rounded-md px-1.5 py-1 text-sm hover:bg-slate-200 dark:hover:bg-slate-600">
                       <span className="text-slate-600 dark:text-slate-300">{label}</span>
                       <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{n}</span>
                     </Link>
@@ -130,7 +130,7 @@ export default function InicioPage() {
                 ) : (
                   <li key={k} className="flex items-center justify-between px-1.5 py-1 text-sm">
                     <span className="text-slate-400">{label}</span>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-400 dark:bg-slate-800">{n}</span>
+                    <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-400 dark:bg-slate-600">{n}</span>
                   </li>
                 );
               })}

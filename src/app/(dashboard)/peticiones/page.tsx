@@ -54,7 +54,7 @@ export default function PeticionesPage() {
           {PETICIONES.map((p) =>
             p.href ? (
               <Link key={p.titulo} href={p.href} className="group">
-                <Card className="flex h-full flex-col transition-colors hover:border-indigo-300 hover:bg-slate-50 dark:hover:bg-slate-800">
+                <Card className="flex h-full flex-col transition-colors hover:border-indigo-300 hover:bg-slate-200 dark:hover:bg-slate-600">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-slate-800 dark:text-slate-100">{p.titulo}</h3>
                     <span className="text-indigo-500 transition-transform group-hover:translate-x-0.5 dark:text-indigo-400">
@@ -71,7 +71,7 @@ export default function PeticionesPage() {
               >
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-slate-800 dark:text-slate-100">{p.titulo}</h3>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                  <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-600 dark:text-slate-400">
                     Próximamente
                   </span>
                 </div>

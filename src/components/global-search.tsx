@@ -39,7 +39,7 @@ function hrefDe(r: Resultado): string {
 }
 
 const inputCls =
-  "w-64 rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm outline-none focus:border-indigo-400 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:bg-slate-800";
+  "w-64 rounded-lg border border-slate-200 bg-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-indigo-400 focus:bg-slate-100 dark:border-slate-600 dark:bg-slate-600 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:bg-slate-600";
 
 export function GlobalSearch() {
   const router = useRouter();
@@ -142,8 +142,8 @@ export function GlobalSearch() {
                 onClick={() => ir(r)}
                 className={`block w-full px-3 py-2 text-left text-sm ${
                   i === activo
-                    ? "bg-indigo-50 dark:bg-slate-800"
-                    : "hover:bg-slate-50 dark:hover:bg-slate-800"
+                    ? "bg-indigo-50 dark:bg-slate-600"
+                    : "hover:bg-slate-200 dark:hover:bg-slate-600"
                 }`}
               >
                 <span className="block truncate font-medium text-slate-800 dark:text-slate-100">
@@ -187,7 +187,7 @@ export function GlobalSearch() {
       </svg>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-1 w-80 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+        <div className="absolute right-0 z-50 mt-1 w-80 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-lg dark:border-slate-600 dark:bg-slate-700">
           {renderResultados()}
         </div>
       )}
@@ -198,7 +198,7 @@ export function GlobalSearch() {
       type="button"
       aria-label="Buscar"
       onClick={() => setMobileOpen(true)}
-      className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:hidden"
+      className="rounded-lg p-2 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-600 sm:hidden"
     >
       <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
         <circle cx="11" cy="11" r="7" />
@@ -207,7 +207,7 @@ export function GlobalSearch() {
     </button>
     {mobileOpen && (
       <div className="fixed inset-0 z-50 bg-slate-900/40 sm:hidden" onClick={cerrarMobile}>
-        <div className="bg-white p-3 shadow-lg dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-slate-50 p-3 shadow-lg dark:bg-slate-700" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <input
@@ -229,7 +229,7 @@ export function GlobalSearch() {
             </button>
           </div>
           {q.trim().length >= 2 && (
-            <div className="mt-2 max-h-[70vh] overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="mt-2 max-h-[70vh] overflow-auto rounded-lg border border-slate-200 dark:border-slate-600">
               {renderResultados()}
             </div>
           )}

@@ -138,7 +138,7 @@ function PasswordField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           autoComplete="new-password"
-          className="w-full rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-2 pr-10 text-sm outline-none focus:border-indigo-400"
+          className="w-full rounded-lg border border-slate-200 dark:border-slate-600 px-3 py-2 pr-10 text-sm outline-none focus:border-indigo-400"
           placeholder={placeholder}
         />
         <button
@@ -221,7 +221,7 @@ function Message({
 
 export default function ActivarPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+    <main className="flex min-h-screen items-center justify-center bg-slate-300 dark:bg-slate-800 p-4">
       <Suspense fallback={<Card className="w-full max-w-sm text-sm text-slate-500 dark:text-slate-400">Cargando…</Card>}>
         <ActivarForm />
       </Suspense>

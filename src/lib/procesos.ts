@@ -32,8 +32,15 @@ export type CampoTipo =
   | "multiselect"
   | "listaCorreos"; // varios correos (string[]); p. ej. correos de la entidad
 
-// Condición de igualdad sobre otro campo (mostrarSi / requeridoSi / disponibleSi).
-export type Condicion = { campo: string; igualA: string | string[] };
+// Condición sobre los datos (mostrarSi / requeridoSi / disponibleSi). Tres formas:
+//  - Hoja `{campo, igualA}`: igualdad (array-aware para multiselect).
+//  - AND `{todas:[...]}`: todas las sub-condiciones se cumplen.
+//  - OR  `{alguna:[...]}`: alguna sub-condición se cumple.
+// Las hojas son retro-compatibles con el formato anterior.
+export type Condicion =
+  | { campo: string; igualA: string | string[] }
+  | { todas: Condicion[] }
+  | { alguna: Condicion[] };
 
 export type CampoEsquema = {
   key: string;
@@ -46,6 +53,7 @@ export type CampoEsquema = {
   requeridoSi?: Condicion; // requerido (además) cuando la condición se cumple
   auto?: boolean; // lo genera el servidor al crear; en el form se muestra solo lectura
   soloFicha?: boolean; // no se muestra al CREAR; se llena en la ficha al avanzar de etapa
+  negrita?: boolean; // resalta el label en negrita
 };
 
 // --- Flujo / etapas ---
@@ -75,6 +83,7 @@ export type EtapaDef = {
   terminal?: boolean;
   resultado?: string;
   reglas?: ReglasEtapa;
+  fase?: number; // agrupación de alto nivel (1..6) para el stepper laboral; no afecta el motor
   disponibleSi?: Condicion; // la etapa solo se ofrece como destino si se cumple
   accion?: AccionEtapa; // acción al entrar (p. ej. crear proceso derivado)
 };
@@ -92,6 +101,7 @@ export type TipoProceso = {
   jurisdiccion: Jurisdiccion;
   esJudicial: boolean; // true = va ante un juez (radicado 23díg/juzgado/cuantía); false = trámite ante entidad (DdP)
   grupo: GrupoProceso; // sección del portal donde vive el tipo
+  actualizado?: boolean; // ¿el flujo ya fue curado? false → badge "No actualizado". Default API: no-judiciales = true
   clienteOpcional?: boolean; // true = dirigido al despacho (DdP recibido): el cliente no se exige
   areaSlugs: string[]; // etiquetas de área de práctica
   esquemaFormulario: CampoEsquema[];
@@ -174,10 +184,30 @@ export type Proceso = {
  *  con `igualA: "true"`. Si el campo es un multiselect (array), se cumple cuando
  *  el array CONTIENE alguno de los objetivos (p. ej. "Otro" entre lo elegido). */
 export function evaluarCondicion(cond: Condicion, datos: Record<string, unknown>): boolean {
+  if ("todas" in cond) return cond.todas.every((c) => evaluarCondicion(c, datos));
+  if ("alguna" in cond) return cond.alguna.some((c) => evaluarCondicion(c, datos));
   const objetivos = Array.isArray(cond.igualA) ? cond.igualA : [cond.igualA];
   const valor = datos[cond.campo];
   if (Array.isArray(valor)) return valor.some((v) => objetivos.includes(String(v)));
   return objetivos.includes(String(valor ?? ""));
+}
+
+/** ¿La condición PODRÍA volverse verdadera llenando los campos hoy vacíos? Un campo
+ *  vacío es comodín (podría tomar cualquier valor); uno lleno ya está decidido. Sirve
+ *  para distinguir "rama aún posible" (mostrar) de "rama N/A definitiva" (ocultar). */
+export function puedeSerVerdad(cond: Condicion, datos: Record<string, unknown>): boolean {
+  if ("todas" in cond) return cond.todas.every((c) => puedeSerVerdad(c, datos));
+  if ("alguna" in cond) return cond.alguna.some((c) => puedeSerVerdad(c, datos));
+  const v = datos[cond.campo];
+  const vacio = v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
+  return vacio ? true : evaluarCondicion(cond, datos);
+}
+
+/** Campos que referencia una condición (hoja o compuesta), recursivamente. */
+export function camposDeCondicion(cond: Condicion): string[] {
+  if ("todas" in cond) return cond.todas.flatMap(camposDeCondicion);
+  if ("alguna" in cond) return cond.alguna.flatMap(camposDeCondicion);
+  return [cond.campo];
 }
 
 /** ¿El campo es visible dado el estado actual de `datos`? */
@@ -213,6 +243,19 @@ export function etiquetasPlazoOpciones(etapas: EtapaDef[]): Record<string, Recor
     }
   }
   return out;
+}
+
+/**
+ * Etapas de CREACIÓN: las del nivel de entrada (orden mínimo). Al crear, los
+ * documentos que se adjuntan son los de la(s) etapa(s) de entrada (p. ej. la
+ * demanda/pruebas/anexos), NO los de todo el flujo — las posteriores se suben en
+ * la ficha al avanzar. Para tipos cuyas etapas posteriores están bloqueadas por
+ * campos vacíos (DdP/tutela) el resultado es el mismo que considerar todas.
+ */
+export function etapasDeCreacion(etapas: EtapaDef[]): EtapaDef[] {
+  if (etapas.length === 0) return [];
+  const min = Math.min(...etapas.map((e) => e.orden));
+  return etapas.filter((e) => e.orden === min);
 }
 
 /**
@@ -280,6 +323,30 @@ const DOC_ETIQUETAS: Record<string, string> = {
   tutela: "Tutela",
   sentencia: "Sentencia",
   impugnacion: "Impugnación",
+  // Laboral
+  "auto-calificacion": "Auto de calificación de la demanda",
+  "auto-recurso-rechazo": "Auto que resuelve el recurso",
+  "auto-citacion": "Auto de citación a audiencia",
+  "auto-silencio": "Constancia de silencio (no contestó)",
+  notificacion: "Notificación de la demanda",
+  subsanacion: "Escrito de subsanación",
+  "demanda-reformada": "Demanda reformada",
+  reconvencion: "Demanda de reconvención",
+  "auto-reconvencion": "Auto sobre la reconvención",
+  "subsanacion-reconvencion": "Subsanación de la reconvención",
+  "auto-admision-reconvencion": "Auto de admisión de la reconvención",
+  "auto-rechazo-reconvencion": "Auto de rechazo de la reconvención",
+  "notificacion-reconvencion": "Notificación de la reconvención",
+  "contestacion-reconvencion": "Contestación de la reconvención",
+  "auto-silencio-reconvencion": "Constancia de silencio (reconvención)",
+  contestacion: "Contestación de la demanda",
+  "documentos-audiencia": "Documentos para la audiencia",
+  "acta-audiencia": "Acta de la audiencia",
+  "acta-art77": "Acta audiencia art. 77",
+  "acta-art80": "Acta audiencia art. 80",
+  pruebas: "Pruebas",
+  anexos: "Anexos",
+  radicacion: "Radicación",
 };
 export function etiquetaDoc(nombre: string): string {
   const base = nombre.replace(/\.[^.]+$/, "").trim();

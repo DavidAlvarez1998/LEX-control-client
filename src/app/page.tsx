@@ -72,9 +72,9 @@ export default function LandingPage() {
     setDemo((d) => ({ ...d, [k]: e.target.value }));
 
   return (
-    <div className="min-h-screen bg-white text-slate-800 dark:bg-slate-950 dark:text-slate-200">
+    <div className="min-h-screen bg-slate-50 text-slate-800 dark:bg-slate-800 dark:text-slate-200">
       {/* ───────── Header ───────── */}
-      <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
+      <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-slate-50/80 backdrop-blur dark:border-slate-600 dark:bg-slate-800/80">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 font-bold text-white">LX</div>
@@ -115,7 +115,7 @@ export default function LandingPage() {
             >
               {user ? "Ir a mi portal" : "Ingresar"}
             </Link>
-            <a href="#cuenta" className="rounded-lg border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">
+            <a href="#cuenta" className="rounded-lg border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300 hover:bg-slate-200 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">
               Crear cuenta
             </a>
           </div>
@@ -123,7 +123,7 @@ export default function LandingPage() {
       </section>
 
       {/* ───────── Módulos ───────── */}
-      <section className="border-t border-slate-100 bg-slate-50/60 py-16 dark:border-slate-900 dark:bg-slate-900/30">
+      <section className="border-t border-slate-100 bg-slate-200/60 py-16 dark:border-slate-900 dark:bg-slate-700/30">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <Reveal>
             <h2 className="text-center text-2xl font-bold sm:text-3xl">Todo lo que tu despacho necesita</h2>
@@ -134,7 +134,7 @@ export default function LandingPage() {
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {MODULOS.map((m, i) => (
               <Reveal key={m.titulo} delay={i * 70}>
-                <div className="lex-card group h-full rounded-xl border border-slate-200 bg-white p-5 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-500/10 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/40">
+                <div className="lex-card group h-full rounded-xl border border-slate-200 bg-slate-50 p-5 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-500/10 dark:border-slate-600 dark:bg-slate-700 dark:hover:border-indigo-500/40">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 transition-transform duration-300 group-hover:scale-110 dark:bg-indigo-500/10 dark:text-indigo-300">
                     <Icono>{m.icon}</Icono>
                   </div>
@@ -166,7 +166,7 @@ export default function LandingPage() {
       </section>
 
       {/* ───────── Planes ───────── */}
-      <section className="border-t border-slate-100 bg-slate-50/60 py-16 dark:border-slate-900 dark:bg-slate-900/30">
+      <section className="border-t border-slate-100 bg-slate-200/60 py-16 dark:border-slate-900 dark:bg-slate-700/30">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <Reveal>
             <h2 className="text-center text-2xl font-bold sm:text-3xl">Planes para cada tamaño de despacho</h2>
@@ -181,7 +181,7 @@ export default function LandingPage() {
                 const cupos = Object.entries(p.cuotas).filter(([, v]) => v !== 0);
                 return (
                   <Reveal key={p.clave} delay={i * 80}>
-                    <div className="lex-card lex-sheen relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-6 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-500/10 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/40">
+                    <div className="lex-card lex-sheen relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-6 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-500/10 dark:border-slate-600 dark:bg-slate-700 dark:hover:border-indigo-500/40">
                       <h3 className="text-base font-semibold">{p.nombre}</h3>
                       {p.descripcion && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{p.descripcion}</p>}
                       <p className="mt-4 text-2xl font-bold">
@@ -211,7 +211,7 @@ export default function LandingPage() {
       </section>
 
       {/* ───────── Crear cuenta ───────── */}
-      <section id="cuenta" className="border-t border-slate-100 bg-slate-50/60 py-16 dark:border-slate-900 dark:bg-slate-900/30">
+      <section id="cuenta" className="border-t border-slate-100 bg-slate-200/60 py-16 dark:border-slate-900 dark:bg-slate-700/30">
         <div className="mx-auto max-w-2xl px-4 sm:px-6">
           <Reveal>
             <h2 className="text-center text-2xl font-bold sm:text-3xl">Crea tu cuenta</h2>
@@ -231,7 +231,7 @@ export default function LandingPage() {
               <input type="text" name="website" value={demo.website} onChange={set("website")} tabIndex={-1} autoComplete="off" aria-hidden className="hidden" />
 
               {/* Datos del despacho */}
-              <fieldset className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+              <fieldset className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-600 dark:bg-slate-700">
                 <legend className="px-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">Datos del despacho</legend>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Campo label="Nombre del despacho / empresa" value={demo.nombreEmpresa} onChange={set("nombreEmpresa")} required />
@@ -242,7 +242,7 @@ export default function LandingPage() {
               </fieldset>
 
               {/* Usuario administrador */}
-              <fieldset className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+              <fieldset className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-600 dark:bg-slate-700">
                 <legend className="px-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">Usuario administrador</legend>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Campo label="Nombre del administrador" value={demo.nombreContacto} onChange={set("nombreContacto")} required />
@@ -256,7 +256,7 @@ export default function LandingPage() {
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Plan de interés</label>
                 <select value={demo.planClave} onChange={set("planClave")}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-900">
+                  className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-700">
                   <option value="">Sin definir / que me asesoren</option>
                   {(planes ?? []).map((p) => (
                     <option key={p.clave} value={p.clave}>{p.nombre} — ${formatMoney(p.precioMensual)}/mes</option>
@@ -278,7 +278,7 @@ export default function LandingPage() {
       </section>
 
       {/* ───────── Footer ───────── */}
-      <footer className="border-t border-slate-200 py-10 dark:border-slate-800">
+      <footer className="border-t border-slate-200 py-10 dark:border-slate-600">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">LX</div>
@@ -306,7 +306,7 @@ function Campo({ label, value, onChange, type = "text", required }: {
         {required && <span className="text-red-500"> *</span>}
       </label>
       <input type={type} value={value} onChange={onChange} required={required}
-        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-900" />
+        className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-700" />
     </div>
   );
 }

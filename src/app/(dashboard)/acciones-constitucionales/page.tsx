@@ -95,7 +95,7 @@ export default function AccionesConstitucionalesPage() {
                   type="button"
                   disabled={!id}
                   onClick={() => id && router.push(`/acciones-constitucionales/nueva?tipo=${id}`)}
-                  className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-indigo-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
+                  className="flex h-full flex-col rounded-xl border border-slate-200 bg-slate-50 p-4 text-left shadow-sm transition-colors hover:border-indigo-300 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600"
                 >
                   <span className="font-medium text-slate-800 dark:text-slate-100">{a.titulo}</span>
                   <span className="mt-1 text-xs text-slate-500 dark:text-slate-400">{a.desc}</span>
@@ -120,7 +120,7 @@ export default function AccionesConstitucionalesPage() {
                   className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                     tipoFiltro === v
                       ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                      : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300"
                   }`}
                 >
                   {label}
@@ -139,7 +139,7 @@ export default function AccionesConstitucionalesPage() {
         ) : (
           <Card className="overflow-x-auto p-0">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 text-left text-slate-500 dark:border-slate-800">
+              <thead className="border-b border-slate-200 text-left text-slate-500 dark:border-slate-600">
                 <tr>
                   <th className="px-5 py-3 font-medium">Acción</th>
                   <th className="px-5 py-3 font-medium">Tipo</th>
@@ -156,7 +156,7 @@ export default function AccionesConstitucionalesPage() {
                     <tr
                       key={t.id}
                       onClick={() => router.push(rutaProceso(t))}
-                      className="group cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                      className="group cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-200 dark:border-slate-600 dark:hover:bg-slate-600/50"
                     >
                       <td className="px-5 py-3 align-top">
                         <div className="font-medium text-indigo-600 group-hover:underline dark:text-indigo-400">{t.titulo}</div>
@@ -197,7 +197,7 @@ function EstadoBadge({ estado }: { estado: EstadoProceso }) {
         ? "bg-indigo-50 text-indigo-700"
         : estado === "SUSPENDIDO"
           ? "bg-amber-50 text-amber-700"
-          : "bg-slate-100 text-slate-500";
+          : "bg-slate-200 text-slate-500";
   return (
     <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${color}`}>
       {ESTADO_LABEL[estado]}

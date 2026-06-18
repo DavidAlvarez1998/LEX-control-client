@@ -81,7 +81,7 @@ export function ActuacionesProceso({
       ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
       : mensaje?.tipo === "error"
         ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300"
-        : "bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+        : "bg-slate-200 text-slate-600 dark:bg-slate-600 dark:text-slate-300";
 
   return (
     <div>
@@ -95,7 +95,7 @@ export function ActuacionesProceso({
       </div>
 
       {!radicado && (
-        <p className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+        <p className="rounded-md bg-slate-200 px-3 py-2 text-xs text-slate-500 dark:bg-slate-600 dark:text-slate-400">
           Registra el número de radicado para consultar las actuaciones del proceso ante el juzgado.
         </p>
       )}
@@ -113,7 +113,7 @@ export function ActuacionesProceso({
       ) : (
         <ol className="space-y-2">
           {actuaciones.map((a) => (
-            <li key={a.id} className="rounded-md border border-slate-100 px-3 py-2 dark:border-slate-700">
+            <li key={a.id} className="rounded-md border border-slate-100 px-3 py-2 dark:border-slate-600">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{a.actuacion}</span>
                 <span className="shrink-0 text-xs text-slate-400">{fmtFecha(a.fechaActuacion)}</span>

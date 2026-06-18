@@ -66,7 +66,7 @@ const UNIDAD_LABEL: Record<string, string> = { DIA: "Días", MES: "Meses", AÑO:
 
 const ESTADO_STYLES: Record<Estado, string> = {
   ACTIVO: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
-  FINALIZADO: "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400",
+  FINALIZADO: "bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-400",
   SUSPENDIDO: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300",
 };
 
@@ -308,7 +308,7 @@ function ContratosContent() {
           value={filtro}
           onChange={(e) => setFiltro(e.target.value)}
           placeholder="Buscar por nombre, cargo o documento…"
-          className="mb-4 w-full max-w-sm rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+          className="mb-4 w-full max-w-sm rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
         />
       )}
 
@@ -332,7 +332,7 @@ function ContratosContent() {
         <Card className="overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-600 dark:text-slate-400">
                 <th className="px-4 py-3 font-medium">Nombre</th>
                 <th className="px-4 py-3 font-medium">Cargo</th>
                 <th className="px-4 py-3 font-medium">Tipo</th>
@@ -344,7 +344,7 @@ function ContratosContent() {
             </thead>
             <tbody>
               {contratosVisibles.map((c) => (
-                <tr key={c.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800/60">
+                <tr key={c.id} className="border-b border-slate-100 last:border-0 dark:border-slate-600/60">
                   <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{c.nombreCompleto}</td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{c.cargo ?? "—"}</td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{c.tipoContrato ?? "—"}</td>
@@ -391,7 +391,7 @@ function ContratosContent() {
         }
       >
         {/* Pestañas */}
-        <div className="flex flex-wrap gap-1 border-b border-slate-200 pb-2 dark:border-slate-800">
+        <div className="flex flex-wrap gap-1 border-b border-slate-200 pb-2 dark:border-slate-600">
           {TABS.map((t) => {
             const disabled = t === "Documentos" && !editId;
             return (
@@ -404,7 +404,7 @@ function ContratosContent() {
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-40 ${
                   tab === t
                     ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
-                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                    : "text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-600"
                 }`}
               >
                 {t}
@@ -424,7 +424,7 @@ function ContratosContent() {
                   <select
                     value={form.usuarioId ?? ""}
                     onChange={(e) => vincular(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
                   >
                     <option value="">— Sin vincular (personal externo) —</option>
                     {miembros.map((m) => (
@@ -461,7 +461,7 @@ function ContratosContent() {
                   readOnly
                   disabled
                   title="Tomado del usuario vinculado"
-                  className="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 outline-none dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400"
+                  className="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-200 px-3 py-2 text-sm text-slate-500 outline-none dark:border-slate-600 dark:bg-slate-600/50 dark:text-slate-400"
                 />
               ) : (
                 <Input value={form.email ?? ""} onChange={(v) => set("email", v)} />

@@ -12,9 +12,13 @@ import { calcularVencimiento } from "@/lib/procesos-api";
 export function VencimientoHint({
   tipoProcesoId,
   datos,
+  etiqueta = "Vence el",
+  desdeCampo,
 }: {
   tipoProcesoId: string;
   datos: Record<string, unknown>;
+  etiqueta?: string; // p. ej. "Plazo para subsanar:" en la inadmisión laboral
+  desdeCampo?: string; // etapa cuyo plazo corre desde ese campo (laboral: varios plazos)
 }) {
   const [venc, setVenc] = useState<{ fechaLimite: string | null; dias: number | null; tipoDias: string | null } | null>(null);
   const key = JSON.stringify(datos); // dep estable (evita refetch por identidad de objeto)
@@ -22,12 +26,12 @@ export function VencimientoHint({
   useEffect(() => {
     let cancel = false;
     const t = setTimeout(() => {
-      calcularVencimiento(tipoProcesoId, JSON.parse(key))
+      calcularVencimiento(tipoProcesoId, JSON.parse(key), desdeCampo)
         .then((r) => { if (!cancel) setVenc(r); })
         .catch(() => { if (!cancel) setVenc(null); });
     }, 350);
     return () => { cancel = true; clearTimeout(t); };
-  }, [tipoProcesoId, key]);
+  }, [tipoProcesoId, key, desdeCampo]);
 
   if (!venc?.fechaLimite) return null;
   const fmt = new Date(venc.fechaLimite).toLocaleDateString("es-CO", {
@@ -37,7 +41,7 @@ export function VencimientoHint({
   const detalle = venc.dias != null ? ` (${venc.dias} ${unidad})` : "";
   return (
     <p className="mt-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">
-      ⏱ Vence el {fmt}{detalle}.
+      ⏱ {etiqueta} {fmt}{detalle}.
     </p>
   );
 }

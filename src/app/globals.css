@@ -63,6 +63,42 @@ html.dark *::-webkit-scrollbar-thumb:hover {
   background-color: #64748b;
 }
 
+/* ── Transiciones de ruta (View Transitions API) ─────────────────────────────
+   Profesional = sutil + corto + opacity/transform. El crossfade de página lo
+   dispara el <ViewTransition> de template.tsx en cada navegación del dashboard.
+   Tokens compartidos para que toda la app anime con la misma duración/easing. */
+:root {
+  --lex-transition-dur: 200ms;
+  --lex-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Crossfade corto para el snapshot de página (y cualquier elemento nombrado).
+   El comodín (*) cubre `root` y los nombres del helper vtName(). */
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: var(--lex-transition-dur);
+  animation-timing-function: var(--lex-ease);
+}
+
+/* Fallback: navegadores SIN View Transitions. La app igual "entra" con un fade
+   suave (la transición de ruta no anima de fábrica ahí). Va guardado para que NO
+   se aplique cuando el navegador sí soporta View Transitions (evita doble animación). */
+@supports not (view-transition-name: none) {
+  .lex-page {
+    animation: lex-page-in var(--lex-transition-dur) var(--lex-ease) both;
+  }
+  @keyframes lex-page-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
 /* ───────── Landing: animaciones y efectos ───────── */
 html { scroll-behavior: smooth; }
 
@@ -137,13 +173,39 @@ html { scroll-behavior: smooth; }
 }
 .lex-sheen:hover::after { animation: lex-sheen 0.9s ease; }
 
+/* ── Aparición suave de campos condicionales (mostrarSi) ─────────────────────
+   Cuando una opción de un formulario despliega otros campos, estos entran con un
+   fade + leve descenso en vez de aparecer "de golpe". La animación corre SOLO al
+   montar: React conserva por `key` los campos que ya estaban (no re-animan); solo
+   anima el que recién se desprende de la opción elegida. Mismo easing que el resto. */
+@keyframes lex-campo-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  /* Termina en `none` (no `translateY(0)`): con `both` el campo conserva el estado
+     final, y un `transform` ≠ none lo volvería bloque contenedor de los `position:
+     fixed` descendientes (confinaba el modal de subir documento a la caja del campo). */
+  to   { opacity: 1; transform: none; }
+}
+.lex-campo-reveal {
+  animation: lex-campo-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .lex-reveal, .lex-fade-up, .lex-blob, .lex-blob-slow,
-  .lex-gradient-text, .lex-card, .lex-sheen::after {
+  .lex-gradient-text, .lex-card, .lex-sheen::after, .lex-campo-reveal {
     animation: none !important;
     transition: none !important;
     opacity: 1 !important;
     transform: none !important;
+  }
+  /* Transiciones de ruta: swap instantáneo si el usuario pide menos movimiento. */
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+  .lex-page {
+    animation: none !important;
   }
 }

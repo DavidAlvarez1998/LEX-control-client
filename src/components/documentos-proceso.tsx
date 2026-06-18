@@ -78,6 +78,7 @@ export function DocumentosProceso({
   docs,
   onDocsChange,
   readOnly = false,
+  ocultarPlantillas = false,
 }: {
   procesoId: string;
   // Controlado: la lista vive en la página (misma fuente que el panel "Documentos
@@ -85,6 +86,8 @@ export function DocumentosProceso({
   docs: DocumentoProceso[];
   onDocsChange: (docs: DocumentoProceso[]) => void;
   readOnly?: boolean;
+  // Oculta el bloque "Generar desde plantilla" (p. ej. en Proceso Laboral).
+  ocultarPlantillas?: boolean;
 }) {
   const [plantillas, setPlantillas] = useState<PlantillaItem[]>([]);
   const [plantillaId, setPlantillaId] = useState("");
@@ -159,7 +162,7 @@ export function DocumentosProceso({
       {/* Lista */}
       <ul className="space-y-2 text-sm">
         {docs.map((doc) => (
-          <li key={doc.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+          <li key={doc.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-600">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <div className="truncate font-medium text-slate-800 dark:text-slate-100">{doc.nombre}</div>
@@ -233,14 +236,15 @@ export function DocumentosProceso({
 
       {readOnly ? null : (
         <>
-      {/* Generar desde plantilla */}
-      <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
+      {/* Generar desde plantilla (oculto p. ej. en Proceso Laboral) */}
+      {!ocultarPlantillas && (
+      <div className="border-t border-slate-100 pt-4 dark:border-slate-600">
         <Field label="Generar desde plantilla">
           <select
             value={plantillaId}
             onChange={(e) => setPlantillaId(e.target.value)}
             disabled={plantillas.length === 0}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
           >
             <option value="">
               {plantillas.length === 0 ? "Este tipo no tiene plantillas" : "Selecciona una plantilla…"}
@@ -264,9 +268,10 @@ export function DocumentosProceso({
           </p>
         </Field>
       </div>
+      )}
 
       {/* Adjuntar por enlace */}
-      <div className="space-y-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+      <div className="space-y-2 border-t border-slate-100 pt-4 dark:border-slate-600">
         <Field label="Adjuntar archivo (enlace)">
           <Input value={adjNombre} onChange={setAdjNombre} placeholder="Nombre del documento" />
         </Field>

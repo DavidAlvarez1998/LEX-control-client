@@ -99,7 +99,7 @@ export default function ProcesosLaboralesPage() {
         ) : (
           <Card className="overflow-x-auto p-0">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 text-left text-slate-500 dark:border-slate-800">
+              <thead className="border-b border-slate-200 text-left text-slate-500 dark:border-slate-600">
                 <tr>
                   <th className="px-5 py-3 font-medium">Proceso</th>
                   <th className="px-5 py-3 font-medium">Cliente</th>
@@ -115,7 +115,7 @@ export default function ProcesosLaboralesPage() {
                     <tr
                       key={t.id}
                       onClick={() => router.push(rutaProceso(t))}
-                      className="group cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                      className="group cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-200 dark:border-slate-600 dark:hover:bg-slate-600/50"
                     >
                       <td className="px-5 py-3 align-top">
                         <div className="font-medium text-indigo-600 group-hover:underline dark:text-indigo-400">{t.titulo}</div>
@@ -155,7 +155,7 @@ function EstadoBadge({ estado }: { estado: EstadoProceso }) {
         ? "bg-indigo-50 text-indigo-700"
         : estado === "SUSPENDIDO"
           ? "bg-amber-50 text-amber-700"
-          : "bg-slate-100 text-slate-500";
+          : "bg-slate-200 text-slate-500";
   return (
     <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${color}`}>
       {ESTADO_LABEL[estado]}

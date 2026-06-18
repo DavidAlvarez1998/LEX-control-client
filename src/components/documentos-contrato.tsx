@@ -96,7 +96,7 @@ export function DocumentosContrato({
       {docs.length === 0 ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">Aún no hay documentos cargados.</p>
       ) : (
-        <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+        <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-600">
           {docs.map((d) => (
             <li key={d.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
               <div className="min-w-0">
@@ -118,13 +118,13 @@ export function DocumentosContrato({
         </ul>
       )}
 
-      <div className="rounded-lg border border-dashed border-slate-300 p-3 dark:border-slate-700">
+      <div className="rounded-lg border border-dashed border-slate-300 p-3 dark:border-slate-600">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Categoría">
             <select
               value={categoria}
               onChange={(e) => setCategoria(e.target.value as Categoria)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
             >
               {CATEGORIAS.map((c) => (
                 <option key={c.value} value={c.value}>

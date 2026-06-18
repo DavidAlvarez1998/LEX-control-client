@@ -73,7 +73,7 @@ function ServiciosContent() {
       ) : (
         <Card className="p-0 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 dark:border-slate-800 text-left text-slate-500 dark:text-slate-400">
+            <thead className="border-b border-slate-200 dark:border-slate-600 text-left text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="px-5 py-3 font-medium">Servicio</th>
                 <th className="px-5 py-3 font-medium">Precio base</th>
@@ -84,7 +84,7 @@ function ServiciosContent() {
             </thead>
             <tbody>
               {servicios.map((s) => (
-                <tr key={s.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                <tr key={s.id} className="border-b border-slate-100 dark:border-slate-600 last:border-0">
                   <td className="px-5 py-3">
                     <div className="font-medium text-slate-800 dark:text-slate-100">
                       {s.servicio.nombre}
@@ -109,7 +109,7 @@ function ServiciosContent() {
                       className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                         s.activo
                           ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                          : "bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-400"
                       }`}
                     >
                       {s.activo ? "Activo" : "Inactivo"}

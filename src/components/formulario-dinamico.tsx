@@ -6,7 +6,7 @@
 
 import { type ReactNode } from "react";
 import type { CampoEsquema } from "@/lib/procesos";
-import { campoEfectivamenteRequerido, campoVisible } from "@/lib/procesos";
+import { campoEfectivamenteRequerido, campoVisible, camposDeCondicion } from "@/lib/procesos";
 import {
   Checkbox,
   CorreosInput,
@@ -25,6 +25,7 @@ export function FormularioDinamico({
   errores = [],
   className = "space-y-4",
   slotDespuesDe,
+  slotAntesDe,
   etiquetasOpcion,
 }: {
   esquema: CampoEsquema[];
@@ -35,10 +36,56 @@ export function FormularioDinamico({
   // Contenido extra a insertar JUSTO DESPUÉS de un campo (por su key). P. ej. el
   // uploader del poder tras "requierePoder". Mantiene el componente genérico.
   slotDespuesDe?: Partial<Record<string, ReactNode>>;
+  // Igual que `slotDespuesDe` pero ANTES del campo (p. ej. subir la notificación
+  // arriba de su fecha: primero el documento, luego se fecha).
+  slotAntesDe?: Partial<Record<string, ReactNode>>;
   // Etiquetas de opción a MOSTRAR por campo (value→label), p. ej. el tipo de
   // petición con su plazo. El valor guardado no cambia.
   etiquetasOpcion?: Record<string, Record<string, string>>;
 }) {
+  // Nivel de indentación de cada campo = profundidad de su cadena de `mostrarSi`.
+  // Sin `mostrarSi` → 0; si su condición referencia un campo de nivel N → N+1. Así los
+  // campos que se despliegan al elegir una opción quedan indentados bajo ella (jerarquía
+  // visual, solo presentación). Memoizado y anti-ciclos.
+  const porKey = new Map(esquema.map((c) => [c.key, c]));
+  const nivelCache = new Map<string, number>();
+  const nivelDe = (key: string, visitando: Set<string> = new Set()): number => {
+    if (nivelCache.has(key)) return nivelCache.get(key)!;
+    const campo = porKey.get(key);
+    if (!campo?.mostrarSi || visitando.has(key)) return 0;
+    visitando.add(key);
+    // Solo cuentan los campos que están EN ESTE formulario: si el `mostrarSi` apunta a
+    // un campo de otra sección (p. ej. la instancia), aquí es un campo raíz (nivel 0).
+    const refs = camposDeCondicion(campo.mostrarSi).filter((r) => porKey.has(r));
+    const nivel = refs.length ? 1 + Math.max(...refs.map((r) => nivelDe(r, visitando))) : 0;
+    visitando.delete(key);
+    nivelCache.set(key, nivel);
+    return nivel;
+  };
+
+  // Indentación EFECTIVA: la sangría solo tiene sentido si el campo aparece pegado a
+  // aquello de lo que depende. Recorriendo los campos visibles en orden, un campo
+  // condicional se indenta solo si el campo inmediatamente anterior es su padre (lo
+  // referencia su `mostrarSi`) o un hermano/descendiente del mismo grupo (nivel ≥).
+  // Si entre el padre y el campo se cuela otro campo no relacionado (p. ej. "Fecha de
+  // radicación" depende de `rol`, pero la separan "instancia" y "requiere poder"), NO
+  // se indenta: dibujarla escalonada bajo el campo de arriba haría creer que depende de él.
+  const visibles = esquema.filter((c) => campoVisible(c, datos));
+  const effDe = new Map<string, number>();
+  let prevKey: string | null = null;
+  for (const campo of visibles) {
+    const nivel = nivelDe(campo.key);
+    let eff = 0;
+    if (nivel > 0 && prevKey && campo.mostrarSi) {
+      const refs = camposDeCondicion(campo.mostrarSi).filter((r) => porKey.has(r));
+      const prevEff = effDe.get(prevKey) ?? 0;
+      const conectado = refs.includes(prevKey) || prevEff >= nivel;
+      eff = conectado ? nivel : 0;
+    }
+    effDe.set(campo.key, eff);
+    prevKey = campo.key;
+  }
+
   return (
     <div className={className}>
       {esquema.map((campo) => {
@@ -58,7 +105,7 @@ export function FormularioDinamico({
               value={(v as string) ?? ""}
               disabled
               placeholder="Se generará automáticamente"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400"
+              className="w-full rounded-lg border border-slate-200 bg-slate-200 px-3 py-2 text-sm text-slate-500 dark:border-slate-600 dark:bg-slate-600/50 dark:text-slate-400"
             />
           );
         } else
@@ -130,7 +177,7 @@ export function FormularioDinamico({
         const elemento =
           sinLabelWrap ? (
             <div className="pt-1">
-              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
+              <span className={`mb-1 block text-sm text-slate-700 dark:text-slate-200 ${campo.negrita ? "font-bold" : "font-medium"}`}>
                 {campo.label}
                 {requerido && <span className="ml-0.5 text-red-500">*</span>}
               </span>
@@ -143,7 +190,7 @@ export function FormularioDinamico({
               )}
             </div>
           ) : (
-            <Field label={campo.label} requerido={requerido} error={error}>
+            <Field label={campo.label} requerido={requerido} error={error} negrita={campo.negrita}>
               {control}
               {campo.ayuda && (
                 <span className="mt-1 block text-xs text-slate-400">{campo.ayuda}</span>
@@ -155,12 +202,29 @@ export function FormularioDinamico({
         // (uploader del poder, hint de vencimiento…) quede DEBAJO del campo y con el
         // ancho de su columna — no como otra celda a la derecha ni a fila completa.
         const slot = slotDespuesDe?.[campo.key];
+        const slotAntes = slotAntesDe?.[campo.key];
         // Solo los controles de chips (multiselect, correos) ocupan la fila completa:
         // de verdad necesitan el ancho. El resto (fecha, select, texto, texto largo)
         // queda compacto en una columna para no verse estirado.
         const anchoCompleto = campo.tipo === "multiselect" || campo.tipo === "listaCorreos";
+        // Indentación: los campos que aparecen por una condición quedan escalonados bajo
+        // el campo que los desprende (borde guía + sangría proporcional al nivel), pero
+        // solo si están pegados a su padre (ver `effDe`).
+        const nivel = effDe.get(campo.key) ?? 0;
         return (
-          <div key={campo.key} data-campo={campo.key} className={anchoCompleto ? "sm:col-span-2" : undefined}>
+          <div
+            key={campo.key}
+            data-campo={campo.key}
+            className={[
+              anchoCompleto ? "sm:col-span-2" : "",
+              nivel > 0 ? "border-l-2 border-indigo-100 pl-3 dark:border-indigo-500/20" : "",
+              // Campos que se despliegan por una condición entran con un fade suave
+              // (solo al montar). Los campos base no se animan al cargar el form.
+              campo.mostrarSi ? "lex-campo-reveal" : "",
+            ].filter(Boolean).join(" ") || undefined}
+            style={nivel > 0 ? { marginLeft: `${nivel * 0.85}rem` } : undefined}
+          >
+            {slotAntes && <div className="mb-2">{slotAntes}</div>}
             {elemento}
             {slot && <div className="mt-2">{slot}</div>}
           </div>

@@ -32,8 +32,10 @@ export function Sidebar() {
     router.replace("/login");
   }
 
+  // Activo si es la ruta exacta o una sub-ruta (href + "/…"). Se evita `startsWith(href)`
+  // a secas porque marcaría "/procesos" estando en "/procesos-laborales".
   const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 
   // Visibilidad de un ítem: los `adminOnly` solo para el admin de empresa; los
   // que declaran `roles` para el admin o quien tenga alguno de esos roles; el

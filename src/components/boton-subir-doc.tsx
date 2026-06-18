@@ -11,12 +11,14 @@ import { Button, Modal } from "@/components/ui";
 export function BotonSubirDoc({
   etiqueta,
   yaSubido = false,
+  url = null,
   onSubir,
   disabled = false,
   className = "text-xs font-medium text-indigo-600 hover:underline disabled:opacity-50 dark:text-indigo-400",
 }: {
   etiqueta: string;
   yaSubido?: boolean;
+  url?: string | null; // si el doc ya está subido, enlace para ver/descargar
   onSubir: (file: File) => Promise<void> | void;
   disabled?: boolean;
   className?: string;
@@ -49,9 +51,21 @@ export function BotonSubirDoc({
 
   return (
     <>
-      <button type="button" disabled={disabled} onClick={abrir} className={className}>
-        {yaSubido ? "Reemplazar" : "Subir"}
-      </button>
+      <span className="inline-flex items-center gap-2">
+        {url && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+          >
+            Ver
+          </a>
+        )}
+        <button type="button" disabled={disabled} onClick={abrir} className={className}>
+          {yaSubido ? "Reemplazar" : "Subir"}
+        </button>
+      </span>
 
       <Modal
         open={open}
