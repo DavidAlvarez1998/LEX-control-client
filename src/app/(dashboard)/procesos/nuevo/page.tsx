@@ -420,7 +420,15 @@ export default function NuevoProcesoPage() {
     const jurisdicciones = (Object.keys(JURISDICCION_LABEL) as Jurisdiccion[]).filter((j) => conteo[j]);
     return (
       <div>
-        <PageHeader title="Nuevo proceso" subtitle="Paso 1 de 3 · Elige la jurisdicción." />
+        <PageHeader
+          title="Nuevo proceso"
+          subtitle="Paso 1 de 3 · Elige la jurisdicción."
+          action={
+            <Link href={seccionBloqueada}>
+              <Button variant="ghost">← {seccionBloqueadaLabel}</Button>
+            </Link>
+          }
+        />
         {tipos === null ? (
           <Card className="text-sm text-slate-500">Cargando catálogo…</Card>
         ) : jurisdicciones.length === 0 ? (

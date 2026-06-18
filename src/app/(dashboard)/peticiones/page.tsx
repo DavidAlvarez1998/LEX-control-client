@@ -4,13 +4,13 @@ import Link from "next/link";
 import { Card, PageHeader } from "@/components/ui";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
-// Tipos de petición (trámites ante entidad, no judiciales). Por ahora solo el
-// Derecho de Petición está implementado; los otros dos quedan como placeholders
-// "Próximamente" hasta que se modele su flujo en el catálogo.
+// Tipos de petición (trámites ante entidad, no judiciales). Los tres están
+// cableados al catálogo (Derecho de Petición, Reclamación Administrativa y
+// Constitución de Renuencia); el flujo de creación es el form genérico por tipo.
 type Peticion = {
   titulo: string;
   descripcion: string;
-  href?: string; // sin href ⇒ deshabilitada (Próximamente)
+  href?: string; // sin href ⇒ deshabilitada (Próximamente) — reservado para tipos futuros
 };
 
 const PETICIONES: Peticion[] = [
