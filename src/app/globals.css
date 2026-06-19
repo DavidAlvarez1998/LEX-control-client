@@ -6,6 +6,53 @@
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* ── Sistema de color: tokens semánticos → utilidades Tailwind ──────────────
+     Una sola fuente de verdad para AMBOS portales (cliente + admin). Los
+     componentes usan `bg-surface`, `text-muted`, `border-line`… en vez de tonos
+     `slate-*`/`indigo-*` crudos. `inline` resuelve el var en el punto de uso, así
+     respeta el override de `html.dark`. Valores en :root / html.dark (abajo). */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-subtle: var(--surface-muted);
+  --color-chrome: var(--chrome);
+  --color-line: var(--border);
+  --color-hover: var(--hover);
+  --color-foreground: var(--text);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+}
+
+/* Paleta theme-aware. Índigo = único acento (confianza/competencia, ideal legal).
+   Slate (gris frío) = profesional; la calidez la dan superficies suaves, esquinas
+   redondeadas y bajo contraste (nada de negro/blanco puros). Profundidad:
+   claro  bg(slate-100) → surface(white) → subtle(slate-50),  borde slate-200.
+   oscuro bg(slate-950) → surface(slate-800) → subtle/chrome(slate-900), borde slate-700. */
+:root {
+  --bg: #f1f5f9;            /* slate-100 — fondo de página */
+  --surface: #ffffff;       /* white     — tarjetas */
+  --surface-muted: #f8fafc; /* slate-50  — inputs, zonas atenuadas */
+  --chrome: #ffffff;        /* white     — topbar */
+  --border: #e2e8f0;        /* slate-200 — bordes/divisores */
+  --hover: #e2e8f0;         /* slate-200 — hover de superficies neutras */
+  --text: #1e293b;          /* slate-800 — texto principal (no negro puro) */
+  --text-muted: #64748b;    /* slate-500 — texto secundario (AA sobre claro) */
+  --accent: #4f46e5;        /* indigo-600 */
+  --accent-hover: #6366f1;  /* indigo-500 */
+}
+
+html.dark {
+  --bg: #020617;            /* slate-950 */
+  --surface: #1e293b;       /* slate-800 */
+  --surface-muted: #0f172a; /* slate-900 */
+  --chrome: #0f172a;        /* slate-900 — chrome más profundo que las tarjetas */
+  --border: #334155;        /* slate-700 */
+  --hover: #334155;         /* slate-700 */
+  --text: #f1f5f9;          /* slate-100 */
+  --text-muted: #94a3b8;    /* slate-400 */
+  --accent: #6366f1;        /* indigo-500 */
+  --accent-hover: #818cf8;  /* indigo-400 */
 }
 
 html,

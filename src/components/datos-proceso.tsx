@@ -288,7 +288,7 @@ export const DatosProceso = forwardRef<
         slots[campo] = (
           <>
             {prev}
-            <span className="mt-1 inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-500/15 dark:text-red-300">
+            <span className="mt-1 inline-block rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-500/15 dark:text-red-300">
               Reconvención archivada (rechazada por el juez)
             </span>
           </>
@@ -310,6 +310,40 @@ export const DatosProceso = forwardRef<
         />
       );
     }
+  } else if (grupo === "JUDICIAL") {
+    // Verbal civil (Proceso verbal / sumario): documentos INLINE bajo su campo, igual
+    // que el laboral. `anclasPorCampo` los ancla al primer campo requerido de cada
+    // etapa; para la PRESENTACIÓN re-mapeamos al criterio confirmado con el usuario
+    // (idéntico al formulario de creación): Demanda/Pruebas/Anexos → "Síntesis de la
+    // demanda", Soporte de radicación → "Medio de radicación", Poder → "Calidad". El
+    // resto de etapas conserva su anclaje. Solo mueve docs cuyo campo destino exista.
+    const a = anclasPorCampo(etapas, borrador, tieneCampo);
+    const mapaPresentacion: Record<string, string> = {
+      "demanda.pdf": "sintesis",
+      "pruebas.pdf": "sintesis",
+      "anexos.pdf": "sintesis",
+      "soporte-radicacion.pdf": "medioRadicacion",
+      "poder.pdf": "calidad",
+    };
+    const reqSet = new Set(documentosRequeridosDeEtapas(etapas, borrador).map((d) => d.toLowerCase()));
+    const porCampo: Record<string, { docs: string[]; req: string[] }> = {};
+    for (const [campo, info] of Object.entries(a.porCampo)) {
+      for (const doc of info.docs) {
+        const low = doc.toLowerCase();
+        const destino =
+          mapaPresentacion[low] && tieneCampo(mapaPresentacion[low]) ? mapaPresentacion[low] : campo;
+        const b = (porCampo[destino] ??= { docs: [], req: [] });
+        if (!b.docs.some((d) => d.toLowerCase() === low)) {
+          b.docs.push(doc);
+          if (reqSet.has(low)) b.req.push(doc);
+        }
+      }
+    }
+    for (const [campo, info] of Object.entries(porCampo)) {
+      slots[campo] = bloqueDocs("Documentos a adjuntar", info.docs, info.req);
+    }
+    docsSinAnclar = a.sinAnclar;
+    reqSinAnclar = a.sinAnclarReq;
   } else {
     // DdP enviado usa requierePoder/contestaron; el recibido no tiene requierePoder y
     // su "respuesta" es `contestada`. Se elige el campo que EXISTA en el esquema.
@@ -387,7 +421,10 @@ export const DatosProceso = forwardRef<
           datos={borrador}
           onChange={(k, v) => setBorrador((d) => ({ ...d, [k]: v }))}
           errores={erroresVivos}
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+          // Pila vertical SIN grilla (space-y-4): sin grilla no hay columnas posibles,
+          // así NINGÚN campo (base ni desplegado por condición) puede irse al costado;
+          // todo se lee de arriba hacia abajo. Igual que el formulario de creación.
+          className="space-y-4"
           // Documentos INLINE bajo su campo (suben al instante): los base bajo
           // requierePoder/queSolicita y los de la respuesta bajo contestaron/contestada.
           slotDespuesDe={slots}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button, Card, Modal, PageHeader } from "@/components/ui";
 import { BuscadorSelect, CorreosInput, Field, Input, MoneyInput, Select, SelectableCard } from "@/components/form-ui";
 import { FormularioDinamico } from "@/components/formulario-dinamico";
@@ -90,6 +90,12 @@ function peticionarioVacio(): ParteProceso {
     esNuestroCliente: true,
   };
 }
+
+// Procesos de LITIGIO con título "Demandante vs. Demandado": el laboral y los verbales
+// civiles (CGP). Comparten el patrón "Tipo — X vs. Y" (a diferencia de DdP/tutela = "Tipo —
+// Entidad", y del resto de judiciales que va con título manual).
+const esLitigioVs = (tipo: TipoProceso) =>
+  tipo.grupo === "LABORAL" || ["Proceso verbal", "Proceso verbal sumario"].includes(tipo.nombre);
 
 // Título auto-generado para trámites ante entidad (DdP) y acciones constitucionales
 // (tutela): "Tipo — Entidad" (p. ej. "Derecho de Petición — Colpensiones",
@@ -212,6 +218,14 @@ export default function NuevoProcesoPage() {
       })}
     </ul>
   );
+  // Bloque de adjuntos INLINE: para anclar los documentos justo debajo del campo
+  // que genera su necesidad (vía slotDespuesDe), en vez de agruparlos al final.
+  const slotDocs = (docs: string[], requeridos: string[] = []) => (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+      <p className="mb-2 text-sm font-medium text-amber-900 dark:text-amber-200">Documentos a adjuntar</p>
+      {listaDocs(docs, requeridos)}
+    </div>
+  );
   function actualizarParte(i: number, patch: Partial<ParteProceso>) {
     setPartes((ps) => ps.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   }
@@ -224,6 +238,33 @@ export default function NuevoProcesoPage() {
     setPeticionarios((ps) =>
       ps.map((p, idx) => (idx === i ? { ...p, litigante: { ...p.litigante, ...patch } } : p)),
     );
+  }
+
+  // Los verbales civiles anclan sus adjuntos de creación INLINE bajo el campo que
+  // los pide (Demanda/Pruebas/Anexos bajo "Síntesis", Soporte bajo "Medio de
+  // radicación", Poder bajo "Calidad") en vez del bloque agrupado del final.
+  // Data-driven: reparte los documentos REALES de las etapas de creación por campo,
+  // así sirve igual para "Proceso verbal" y "Proceso verbal sumario" (que no lleva
+  // demanda.pdf → su slot de Síntesis solo mostrará Pruebas/Anexos).
+  const esVerbal =
+    !!tipo && ["Proceso verbal", "Proceso verbal sumario"].includes(tipo.nombre);
+
+  const slotsVerbal: Record<string, ReactNode> = {};
+  const ancladosVerbal = new Set<string>();
+  if (esVerbal && tipo) {
+    const etapasCrea = etapasDeCreacion(tipo.etapas);
+    const req = documentosRequeridosDeEtapas(etapasCrea, datos);
+    const todos = [...req, ...documentosOpcionalesDeEtapas(etapasCrea, datos)];
+    const tomar = (...nombres: string[]) =>
+      todos.filter((d) => nombres.includes(d.toLowerCase()));
+    const anclar = (campo: string, docs: string[]) => {
+      if (!docs.length) return;
+      slotsVerbal[campo] = slotDocs(docs, req);
+      docs.forEach((d) => ancladosVerbal.add(d.toLowerCase()));
+    };
+    anclar("sintesis", tomar("demanda.pdf", "pruebas.pdf", "anexos.pdf"));
+    anclar("medioRadicacion", tomar("soporte-radicacion.pdf"));
+    anclar("calidad", tomar("poder.pdf"));
   }
 
   const clienteSeleccionado = clienteNuevo
@@ -280,7 +321,7 @@ export default function NuevoProcesoPage() {
     // el rol procesal del cliente se deriva de ahí (no se pregunta dos veces).
     const rolCliente: RolParte = esTutelaOfensiva
       ? "ACCIONANTE"
-      : tipo.grupo === "LABORAL"
+      : esLitigioVs(tipo)
         ? (String(datos.rol) === "Demandado" ? "DEMANDADO" : "DEMANDANTE")
         : tipo.esJudicial
           ? clienteRol
@@ -290,8 +331,8 @@ export default function NuevoProcesoPage() {
     // auto-genera "Tipo — Entidad" y el campo va oculto. Los procesos laborales también
     // se auto-generan, pero como litigio entre dos partes: "Proceso Laboral — Demandante
     // vs. Demandado" (ver tituloLaboral). El resto de judiciales (civil…) sigue manual.
-    const tituloAuto = !tipo.esJudicial || tipo.grupo === "CONSTITUCIONAL" || tipo.grupo === "LABORAL";
-    const tituloFinal = tipo.grupo === "LABORAL"
+    const tituloAuto = !tipo.esJudicial || tipo.grupo === "CONSTITUCIONAL" || esLitigioVs(tipo);
+    const tituloFinal = esLitigioVs(tipo)
       ? tituloLaboral(tipo, datos)
       : tituloAuto
         ? tituloGenerado(tipo, datos)
@@ -367,8 +408,8 @@ export default function NuevoProcesoPage() {
               },
               // Tutela → ACCIONANTE; laboral → mismo lado que el cliente (litisconsorcio:
               // co-demandante/co-demandado); DdP → OTRO con etiqueta "Peticionario".
-              rol: (esTutelaOfensiva ? "ACCIONANTE" : tipo.grupo === "LABORAL" ? rolCliente : "OTRO") as RolParte,
-              rolEtiqueta: (esTutelaOfensiva || tipo.grupo === "LABORAL") ? undefined : "Peticionario",
+              rol: (esTutelaOfensiva ? "ACCIONANTE" : esLitigioVs(tipo) ? rolCliente : "OTRO") as RolParte,
+              rolEtiqueta: (esTutelaOfensiva || esLitigioVs(tipo)) ? undefined : "Peticionario",
               esNuestroCliente: true,
             })),
         ],
@@ -521,7 +562,7 @@ export default function NuevoProcesoPage() {
         {/* Título manual solo en judiciales NO constitucionales NI laborales ("Pérez vs. XYZ").
             En trámites ante entidad (DdP), acciones constitucionales (tutela) y procesos
             laborales se auto-genera y se oculta; queda editable luego en la ficha. */}
-        {tipo.esJudicial && tipo.grupo !== "CONSTITUCIONAL" && tipo.grupo !== "LABORAL" && (
+        {tipo.esJudicial && tipo.grupo !== "CONSTITUCIONAL" && !esLitigioVs(tipo) && (
         <Card>
           <Field label="Título del caso" requerido error={tituloError ? "Obligatorio" : undefined}>
             <Input value={titulo} onChange={setTitulo} placeholder="Ej. Pérez vs. Aseguradora XYZ" />
@@ -556,9 +597,10 @@ export default function NuevoProcesoPage() {
               </div>
               {/* El rol procesal solo aplica a procesos judiciales; en un DdP el
                   cliente es el peticionario (sin rol de parte). En la tutela el cliente
-                  es siempre el accionante → tampoco se ofrece elegir rol. En el laboral el
-                  lado se elige en "Rol en el proceso" (datos.rol) → no se pregunta acá. */}
-              {tipo.esJudicial && !esTutelaOfensiva && tipo.grupo !== "LABORAL" && (
+                  es siempre el accionante → tampoco se ofrece elegir rol. En los procesos de
+                  LITIGIO (laboral y verbales civiles) el lado se elige en "Rol en el proceso"
+                  (datos.rol) → no se pregunta acá el rol procesal genérico. */}
+              {tipo.esJudicial && !esTutelaOfensiva && !esLitigioVs(tipo) && (
                 <Field label="Rol procesal del cliente">
                   <Select
                     value={clienteRol}
@@ -737,6 +779,9 @@ export default function NuevoProcesoPage() {
             // poder desplegándose al marcar Sí. (El slot solo se pinta si el tipo tiene
             // ese campo; para los que no, va la sección de fallback de abajo.)
             slotDespuesDe={{
+              // Verbal civil: cada adjunto justo debajo del campo que lo pide
+              // (mapeo confirmado con el usuario; ver slotsVerbal arriba).
+              ...slotsVerbal,
               // En el laboral, bajo "Fecha de radicación" va el adjunto de la radicación
               // (no el hint de vencimiento: el plazo laboral no corre desde aquí).
               fechaRadicacion: tipo.grupo === "LABORAL"
@@ -810,11 +855,14 @@ export default function NuevoProcesoPage() {
         )}
 
         {/* Fallback: tipos SIN campo "¿Requiere poder?" muestran los documentos en
-            sección aparte (los que sí lo tienen los muestran inline bajo el check). */}
+            sección aparte (los que sí lo tienen los muestran inline bajo el check).
+            En el verbal/sumario los anclados ya van inline; aquí solo quedarían los
+            que no se anclaron a ningún campo (normalmente ninguno). */}
         {!tipo.esquemaFormulario.some((c) => c.key === "requierePoder") && (() => {
           const etapasCrea = etapasDeCreacion(tipo.etapas);
           const req = documentosRequeridosDeEtapas(etapasCrea, datos);
-          const docs = [...req, ...documentosOpcionalesDeEtapas(etapasCrea, datos)];
+          let docs = [...req, ...documentosOpcionalesDeEtapas(etapasCrea, datos)];
+          if (esVerbal) docs = docs.filter((d) => !ancladosVerbal.has(d.toLowerCase()));
           if (docs.length === 0) return null;
           return (
             <Card>

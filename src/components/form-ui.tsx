@@ -8,7 +8,7 @@
 import { useState, type ReactNode } from "react";
 
 const base =
-  "w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100";
+  "w-full rounded-lg border border-line bg-subtle px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/20";
 
 /** Envuelve un campo con su label (asterisco rojo si es requerido) y error. */
 export function Field({
@@ -26,7 +26,7 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className={`mb-1 block text-sm text-slate-700 dark:text-slate-200 ${negrita ? "font-bold" : "font-medium"}`}>
+      <span className={`mb-1 block text-sm text-foreground ${negrita ? "font-bold" : "font-medium"}`}>
         {label}
         {requerido && <span className="ml-0.5 text-red-500">*</span>}
       </span>
@@ -168,20 +168,20 @@ export function BuscadorSelect({
         className={base}
       />
       {abierto && (
-        <ul className="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-slate-50 py-1 shadow-lg dark:border-slate-600 dark:bg-slate-700">
+        <ul className="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-line bg-surface py-1 shadow-lg">
           {filtradas.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-slate-400">Sin resultados</li>
+            <li className="px-3 py-2 text-sm text-muted">Sin resultados</li>
           ) : (
             filtradas.map((o) => (
               <li key={o.id}>
                 <button
                   type="button"
                   onMouseDown={(e) => { e.preventDefault(); onChange(o.id); setAbierto(false); }}
-                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10 ${o.id === value ? "font-medium text-indigo-600 dark:text-indigo-400" : "text-slate-700 dark:text-slate-200"}`}
+                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10 ${o.id === value ? "font-medium text-accent" : "text-foreground"}`}
                 >
                   {o.nombre}
                   {o.sub && (
-                    <span className="block text-xs text-slate-400 dark:text-slate-500">{o.sub}</span>
+                    <span className="block text-xs text-muted">{o.sub}</span>
                   )}
                 </button>
               </li>
@@ -229,7 +229,7 @@ export function CorreosInput({
               type="button"
               onClick={() => onChange(filas.filter((_, idx) => idx !== i))}
               aria-label="Quitar correo"
-              className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-2 text-sm text-slate-400 transition-colors hover:border-red-300 hover:text-red-500 dark:border-slate-600"
+              className="shrink-0 rounded-lg border border-line px-2.5 py-2 text-sm text-muted transition-colors hover:border-red-300 hover:text-red-500"
             >
               ✕
             </button>
@@ -239,7 +239,7 @@ export function CorreosInput({
       <button
         type="button"
         onClick={() => onChange([...filas, ""])}
-        className="text-xs font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+        className="text-xs font-medium text-accent hover:text-accent-hover"
       >
         + Agregar otro correo
       </button>
@@ -270,8 +270,8 @@ export function MultiSelect({
             onClick={() => toggle(o)}
             className={`rounded-full border px-3 py-1 text-sm transition-colors ${
               on
-                ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10"
-                : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
+                : "border-line bg-subtle text-muted hover:bg-hover"
             }`}
           >
             {o}
@@ -292,12 +292,12 @@ export function Checkbox({
   label: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+    <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400"
+        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400 dark:border-slate-600"
       />
       {label}
     </label>
@@ -347,12 +347,12 @@ export function SelectableCard({
       className={`flex h-full flex-col rounded-xl border p-4 text-left shadow-sm transition-colors ${
         selected
           ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10"
-          : "border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600"
+          : "border-line bg-subtle hover:border-accent/40 hover:bg-hover"
       }`}
     >
-      <span className="font-medium text-slate-800 dark:text-slate-100">{title}</span>
+      <span className="font-medium text-foreground">{title}</span>
       {subtitle && (
-        <span className="mt-1 text-xs text-slate-500 dark:text-slate-400">{subtitle}</span>
+        <span className="mt-1 text-xs text-muted">{subtitle}</span>
       )}
     </button>
   );

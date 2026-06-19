@@ -162,20 +162,17 @@ function ProcesosInner() {
   const conteoTiposPorGrupo = useMemo(() => {
     const m: Record<string, number> = {};
     for (const t of tipos) {
-      // Un tipo judicial ya curado "se gradúa": sale del bucket genérico "Procesos judiciales".
-      if (t.grupo === "JUDICIAL" && esCurado(t)) continue;
+      // Los JUDICIAL (con o sin curar) viven en "Procesos judiciales": no tienen otra
+      // sección a la cual "graduarse" (las familias con sección usan otro `grupo`).
       m[t.grupo] = (m[t.grupo] ?? 0) + 1;
     }
     return m;
   }, [tipos]);
   // Tipos del nodo de nivel 1 abierto (por jurisdicción o por grupo según la vista).
-  // En la vista Sección, "Procesos judiciales" excluye los ya curados (se graduaron).
   const tiposDeNivel1 = useMemo(
     () =>
       tipos.filter((t) =>
-        vista === "seccion"
-          ? t.grupo === grupoSel && !(t.grupo === "JUDICIAL" && esCurado(t))
-          : t.jurisdiccion === jurSel,
+        vista === "seccion" ? t.grupo === grupoSel : t.jurisdiccion === jurSel,
       ),
     [tipos, vista, grupoSel, jurSel],
   );
@@ -293,29 +290,25 @@ function ProcesosInner() {
                   <Link
                     key={t.id}
                     href={hrefTipo(t.id)}
-                    className={`lex-card group rounded-xl border p-5 ${
-                      noActualizado
-                        ? "border-slate-200 bg-slate-100 dark:border-slate-700/60 dark:bg-slate-800/40"
-                        : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800"
+                    className={`lex-card group rounded-xl border border-line p-5 ${
+                      noActualizado ? "bg-bg" : "bg-surface"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div
-                        className={`font-medium group-hover:text-indigo-600 dark:group-hover:text-indigo-400 ${
-                          noActualizado
-                            ? "text-slate-500 dark:text-slate-400"
-                            : "text-slate-800 dark:text-slate-100"
+                        className={`font-medium group-hover:text-accent ${
+                          noActualizado ? "text-muted" : "text-foreground"
                         }`}
                       >
                         {sinPrefijoProceso(t.nombre)}
                       </div>
                       {noActualizado && (
-                        <span className="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-600 dark:text-slate-400">
+                        <span className="shrink-0 rounded-full bg-hover px-2 py-0.5 text-[11px] font-medium text-muted">
                           No actualizado
                         </span>
                       )}
                     </div>
-                    <div className="mt-1 h-5 text-sm text-slate-400">
+                    <div className="mt-1 h-5 text-sm text-muted">
                       {loading ? "" : `${n} ${n === 1 ? "proceso" : "procesos"}`}
                     </div>
                   </Link>
@@ -490,12 +483,12 @@ export default function ProcesosPage() {
 function EstadoBadge({ estado }: { estado: EstadoProceso }) {
   const color =
     estado === "ABIERTO"
-      ? "bg-sky-50 text-sky-700"
+      ? "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300"
       : estado === "EN_PROCESO"
-        ? "bg-indigo-50 text-indigo-700"
+        ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
         : estado === "SUSPENDIDO"
-          ? "bg-amber-50 text-amber-700"
-          : "bg-slate-200 text-slate-500";
+          ? "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+          : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
   return (
     <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${color}`}>
       {ESTADO_LABEL[estado]}

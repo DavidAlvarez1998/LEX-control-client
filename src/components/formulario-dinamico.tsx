@@ -203,10 +203,13 @@ export function FormularioDinamico({
         // ancho de su columna — no como otra celda a la derecha ni a fila completa.
         const slot = slotDespuesDe?.[campo.key];
         const slotAntes = slotAntesDe?.[campo.key];
-        // Solo los controles de chips (multiselect, correos) ocupan la fila completa:
-        // de verdad necesitan el ancho. El resto (fecha, select, texto, texto largo)
-        // queda compacto en una columna para no verse estirado.
-        const anchoCompleto = campo.tipo === "multiselect" || campo.tipo === "listaCorreos";
+        // Ocupan la fila completa: (a) los chips (multiselect, correos), que necesitan
+        // el ancho; y (b) TODO campo que se despliega por una condición (`mostrarSi`).
+        // Lo segundo evita que, en grillas de 2 columnas, las opciones reveladas (p. ej.
+        // las de la medida cautelar al elegir "Sí") salten a la columna de al lado: así
+        // quedan SIEMPRE apiladas justo debajo del campo que las disparó.
+        const anchoCompleto =
+          campo.tipo === "multiselect" || campo.tipo === "listaCorreos" || !!campo.mostrarSi;
         // Indentación: los campos que aparecen por una condición quedan escalonados bajo
         // el campo que los desprende (borde guía + sangría proporcional al nivel), pero
         // solo si están pegados a su padre (ver `effDe`).

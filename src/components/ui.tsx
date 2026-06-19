@@ -20,8 +20,8 @@ export function PageHeader({
   return (
     <div className="mb-6 flex items-start justify-between gap-4">
       <div>
-        <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100" style={titleStyle}>{title}</h2>
-        {subtitle && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>}
+        <h2 className="text-xl font-semibold text-foreground" style={titleStyle}>{title}</h2>
+        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
       </div>
       {action}
     </div>
@@ -45,8 +45,8 @@ export function Button({
 }) {
   const styles =
     variant === "primary"
-      ? "bg-indigo-600 text-white hover:bg-indigo-500"
-      : "border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600";
+      ? "bg-accent text-white hover:bg-accent-hover"
+      : "border border-line bg-subtle text-foreground hover:bg-hover";
   return (
     <button
       type={type}
@@ -68,7 +68,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 sm:p-5 shadow-sm ${className}`}
+      className={`rounded-xl border border-line bg-surface p-4 sm:p-5 shadow-sm ${className}`}
     >
       {children}
     </div>
@@ -89,17 +89,17 @@ export function StatCard({
 }) {
   const cuerpo = (
     <>
-      <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-slate-800 dark:text-slate-100">{value}</p>
+      <p className="text-sm text-muted">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
       {hint && <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">{hint}</p>}
     </>
   );
   if (!href) return <Card>{cuerpo}</Card>;
   return (
     <Link href={href} className="group block">
-      <Card className="transition-colors hover:border-indigo-300 hover:bg-slate-50 dark:hover:border-indigo-500/40 dark:hover:bg-slate-700/60">
+      <Card className="transition-colors hover:border-accent/40 hover:bg-subtle">
         {cuerpo}
-        <span className="mt-2 inline-block text-xs font-medium text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100 dark:text-indigo-400">
+        <span className="mt-2 inline-block text-xs font-medium text-accent opacity-0 transition-opacity group-hover:opacity-100">
           Ver →
         </span>
       </Card>
@@ -118,14 +118,14 @@ export function EmptyState({
 }) {
   return (
     <Card className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-600 text-slate-400 dark:text-slate-500">
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-hover text-muted">
         <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" />
           <path d="M12 8v8M8 12h8" />
         </svg>
       </div>
-      <p className="font-medium text-slate-700 dark:text-slate-200">{title}</p>
-      <p className="mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">{description}</p>
+      <p className="font-medium text-foreground">{title}</p>
+      <p className="mt-1 max-w-sm text-sm text-muted">{description}</p>
       {action && <div className="mt-4">{action}</div>}
     </Card>
   );
@@ -160,7 +160,7 @@ export function Modal({
       }}
     >
       <Card className={`max-h-[90vh] w-full ${max} overflow-y-auto`}>
-        <h3 className="mb-4 text-lg font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
+        <h3 className="mb-4 text-lg font-semibold text-foreground">{title}</h3>
         <div className="space-y-3">{children}</div>
         {footer && <div className="mt-5 flex justify-end gap-2">{footer}</div>}
       </Card>
