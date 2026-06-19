@@ -9,6 +9,8 @@ import { api, errorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { comercialApi, listComerciales, type CarteraResumen, type ComisionDespacho, type MiembroMin } from "@/lib/comercial-api";
+import { listProcesos, type ProcesoListItem } from "@/lib/procesos-api";
+import { ESTADO_LABEL, rutaProceso } from "@/lib/procesos";
 
 type Cliente = {
   id: string; nombre: string; estado: string; email: string | null;
@@ -107,6 +109,7 @@ export default function ClienteDetallePage() {
         </div>
       </Card>
 
+      <ProcesosClienteSection clienteId={id} />
       <SeguimientoSection clienteId={id} seguimientos={seguimientos} onChange={cargar} />
       <CotizacionSection clienteId={id} cotizaciones={cotizaciones} onChange={cargar} />
       <ContratoSection clienteId={id} contratos={contratos} solicitudes={solicitudes} esAdmin={!!getUser()?.esAdminEmpresa} onChange={cargar} />
@@ -117,6 +120,51 @@ export default function ClienteDetallePage() {
 }
 
 // ---------- Camino hacia la firma (stepper) ----------
+// Procesos del cliente: lista los procesos vinculados a este cliente (clienteId),
+// resaltando los que son del usuario (responsable = yo) y permitiendo abrirlos.
+// Cubre el camino "desde un cliente mío, ver/abrir sus procesos". Lectura para todos
+// (sin muro); el badge "Mío" marca los asignados al usuario actual.
+function ProcesosClienteSection({ clienteId }: { clienteId: string }) {
+  const [procesos, setProcesos] = useState<ProcesoListItem[] | null>(null);
+  const miId = getUser()?.id;
+  useEffect(() => {
+    listProcesos({ clienteId }).then((r) => setProcesos(r.items)).catch(() => setProcesos([]));
+  }, [clienteId]);
+  return (
+    <Card>
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Procesos de este cliente</h3>
+      {procesos === null ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400">Cargando…</p>
+      ) : procesos.length === 0 ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400">Este cliente aún no tiene procesos.</p>
+      ) : (
+        <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+          {procesos.map((p) => {
+            const mio = !!miId && p.responsableId === miId;
+            return (
+              <li key={p.id} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <Link href={rutaProceso({ id: p.id, grupo: p.grupo })} className="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+                    {p.titulo || p.codigoInterno}
+                  </Link>
+                  {mio && <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">Mío</span>}
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                    {p.tipoProcesoNombre} · {p.codigoInterno}
+                    {p.responsableNombre ? ` · ${p.responsableNombre}${mio ? " (tú)" : ""}` : ""}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                  {ESTADO_LABEL[p.estado]}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
 function FunnelStepper({ clienteId, faseActual, estado, onChange }: { clienteId: string; faseActual?: Fase; estado: string; onChange: () => void }) {
   const [fase, setFase] = useState("");
   const [motivo, setMotivo] = useState("");

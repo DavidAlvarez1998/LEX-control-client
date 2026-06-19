@@ -93,6 +93,7 @@ export function listProcesos(filtros: {
   estado?: string;
   q?: string;
   responsableId?: string;
+  clienteId?: string;
   page?: number;
 } = {}): Promise<ListaProcesos> {
   const qs = new URLSearchParams();
@@ -100,6 +101,7 @@ export function listProcesos(filtros: {
   if (filtros.estado) qs.set("estado", filtros.estado);
   if (filtros.q) qs.set("q", filtros.q);
   if (filtros.responsableId) qs.set("responsableId", filtros.responsableId);
+  if (filtros.clienteId) qs.set("clienteId", filtros.clienteId);
   if (filtros.page) qs.set("page", String(filtros.page));
   const q = qs.toString();
   return api.get<ListaProcesos>(`/procesos${q ? `?${q}` : ""}`);
