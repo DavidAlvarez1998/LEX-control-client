@@ -17,6 +17,11 @@ import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, g
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
+// "Actuaciones del juzgado": OCULTO temporalmente (a pedido). Se conserva el código
+// para reactivarlo luego — poner en `true` para volver a mostrar el bloque.
+// (Tipado `boolean` a propósito: un literal `false` rompería el narrowing de `proceso`.)
+const MOSTRAR_ACTUACIONES_JUZGADO: boolean = false;
+
 export default function ExpedientePage() {
   const { id } = useParams<{ id: string }>();
   const [proceso, setProceso] = useState<ProcesoDetalle | null | undefined>(undefined);
@@ -503,7 +508,7 @@ export default function ExpedientePage() {
             />
           </Card>
 
-          {proceso.tipoProceso.esJudicial && (
+          {MOSTRAR_ACTUACIONES_JUZGADO && proceso.tipoProceso.esJudicial && (
             <Card>
               <ActuacionesProceso
                 procesoId={proceso.id}
