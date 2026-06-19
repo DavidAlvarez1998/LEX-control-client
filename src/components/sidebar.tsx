@@ -88,22 +88,50 @@ export function Sidebar() {
       <nav className="flex-1 space-y-1 px-3 py-4">
         {NAV_ITEMS.filter(puedeVer).map((item) => {
           const active = isActive(item.href);
+          // Sub-ítems visibles, pintados indentados bajo el padre (p. ej. "Mis
+          // procesos" dentro de "Procesos"). Heredan las mismas reglas de visibilidad.
+          const hijos = (item.children ?? []).filter(puedeVer);
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={[
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-indigo-500/15 text-indigo-300"
-                  : "text-slate-300 hover:bg-slate-800 hover:text-white",
-              ].join(" ")}
-            >
-              <span className={active ? "text-indigo-300" : "text-slate-400"}>
-                {item.icon}
-              </span>
-              {item.label}
-            </Link>
+            <div key={item.href}>
+              <Link
+                href={item.href}
+                className={[
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-indigo-500/15 text-indigo-300"
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white",
+                ].join(" ")}
+              >
+                <span className={active ? "text-indigo-300" : "text-slate-400"}>
+                  {item.icon}
+                </span>
+                {item.label}
+              </Link>
+              {hijos.length > 0 && (
+                <div className="mt-1 space-y-1 border-l border-slate-700 pl-3 ml-5">
+                  {hijos.map((hijo) => {
+                    const hActive = isActive(hijo.href);
+                    return (
+                      <Link
+                        key={hijo.href}
+                        href={hijo.href}
+                        className={[
+                          "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                          hActive
+                            ? "bg-indigo-500/15 font-medium text-indigo-300"
+                            : "text-slate-400 hover:bg-slate-800 hover:text-white",
+                        ].join(" ")}
+                      >
+                        <span className={hActive ? "text-indigo-300" : "text-slate-500"}>
+                          {hijo.icon}
+                        </span>
+                        {hijo.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>
