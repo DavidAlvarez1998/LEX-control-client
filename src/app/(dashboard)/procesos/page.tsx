@@ -7,6 +7,7 @@ import { Button, Card, EmptyState, PageHeader, PlusIcon } from "@/components/ui"
 import { vtName } from "@/lib/view-transition";
 import { Input, Select } from "@/components/form-ui";
 import {
+  esCurado,
   ESTADO_LABEL,
   JURISDICCION_LABEL,
   type AreaPractica,
@@ -19,6 +20,52 @@ import { errorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 import { VencimientosBanner } from "@/components/vencimientos-banner";
+
+/**
+ * Botón "Nuevo proceso" que despliega dos modos: **Avanzado** (el formulario
+ * completo con etapas y flujo, lo único disponible hoy → navega a `href`) y
+ * **Sencillo** (aún no implementado: queda visible como "Pendiente", sin acción).
+ * Se usa en la landing (a nivel de jurisdicciones) y en la lista de cada tipo.
+ */
+function NuevoProcesoMenu({ href }: { href: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const cerrar = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", cerrar);
+    return () => document.removeEventListener("mousedown", cerrar);
+  }, [open]);
+  return (
+    <div ref={ref} className="relative">
+      <Button onClick={() => setOpen((o) => !o)}>
+        <PlusIcon /> Nuevo proceso
+      </Button>
+      {open && (
+        <div className="absolute right-0 z-30 mt-1 w-64 overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
+          <Link href={href} onClick={() => setOpen(false)} className="block px-3 py-2.5 transition-colors hover:bg-hover">
+            <div className="text-sm font-medium text-foreground">Avanzado</div>
+            <div className="text-xs text-muted">Formulario completo con etapas y flujo</div>
+          </Link>
+          <button
+            type="button"
+            disabled
+            title="Próximamente"
+            className="block w-full cursor-not-allowed border-t border-line px-3 py-2.5 text-left opacity-60"
+          >
+            <div className="text-sm font-medium text-foreground">
+              Sencillo
+              <span className="ml-1.5 rounded-full bg-hover px-1.5 py-0.5 text-[10px] font-normal text-muted">Pendiente</span>
+            </div>
+            <div className="text-xs text-muted">Aún no disponible</div>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Mapa label → enum para los filtros (los Select muestran etiquetas legibles).
 const ESTADO_POR_LABEL = Object.fromEntries(
@@ -45,11 +92,6 @@ const GRUPO_LABEL: Record<string, string> = {
   LABORAL: "Procesos Laborales",
   JUDICIAL: "Procesos judiciales",
 };
-
-// ¿El tipo ya fue curado contra su procedimiento real? Si la API aún no manda el
-// flag (transición), cae al criterio viejo (no-judicial = curado); con flag, manda él.
-const esCurado = (t: { actualizado?: boolean; grupo: string }) =>
-  t.actualizado === undefined ? t.grupo !== "JUDICIAL" : t.actualizado;
 
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 
@@ -186,11 +228,7 @@ function ProcesosInner() {
   const puedeEditar = !!u?.esAdminEmpresa || (u?.roles ?? []).includes("JURIDICO");
 
   const accionNuevo = puedeEditar ? (
-    <Link href="/procesos/nuevo">
-      <Button>
-        <PlusIcon /> Nuevo proceso
-      </Button>
-    </Link>
+    <NuevoProcesoMenu href="/procesos/nuevo" />
   ) : undefined;
 
   // Toggle de vista (arriba a la derecha): agrupar por Jurisdicción ↔ por Sección.
@@ -336,11 +374,7 @@ function ProcesosInner() {
         subtitle={puedeEditar ? "Procesos legales de tu despacho." : "Procesos de tus clientes (solo lectura)."}
         action={
           puedeEditar ? (
-            <Link href={`/procesos/nuevo?tipo=${tipoSel}`}>
-              <Button>
-                <PlusIcon /> Nuevo proceso
-              </Button>
-            </Link>
+            <NuevoProcesoMenu href={`/procesos/nuevo?tipo=${tipoSel}`} />
           ) : undefined
         }
       />
@@ -392,11 +426,7 @@ function ProcesosInner() {
           description={puedeEditar ? "Crea tu primer proceso para empezar a gestionar un proceso legal." : "Aún no hay procesos de tus clientes."}
           action={
             puedeEditar ? (
-              <Link href={`/procesos/nuevo?tipo=${tipoSel}`}>
-                <Button>
-                  <PlusIcon /> Nuevo proceso
-                </Button>
-              </Link>
+              <NuevoProcesoMenu href={`/procesos/nuevo?tipo=${tipoSel}`} />
             ) : undefined
           }
         />

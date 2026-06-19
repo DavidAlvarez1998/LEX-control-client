@@ -333,11 +333,14 @@ export function SelectableCard({
   title,
   subtitle,
   selected = false,
+  badge,
   onClick,
 }: {
   title: string;
   subtitle?: string;
   selected?: boolean;
+  // Píldora gris arriba a la derecha (p. ej. "No actualizado" en tipos sin curar).
+  badge?: string;
   onClick: () => void;
 }) {
   return (
@@ -350,7 +353,14 @@ export function SelectableCard({
           : "border-line bg-subtle hover:border-accent/40 hover:bg-hover"
       }`}
     >
-      <span className="font-medium text-foreground">{title}</span>
+      <span className="flex items-start justify-between gap-2">
+        <span className="font-medium text-foreground">{title}</span>
+        {badge && (
+          <span className="shrink-0 rounded-full bg-hover px-2 py-0.5 text-[11px] font-medium text-muted">
+            {badge}
+          </span>
+        )}
+      </span>
       {subtitle && (
         <span className="mt-1 text-xs text-muted">{subtitle}</span>
       )}

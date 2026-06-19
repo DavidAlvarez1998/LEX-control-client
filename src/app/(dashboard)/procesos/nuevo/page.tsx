@@ -11,6 +11,7 @@ import { BotonSubirDoc } from "@/components/boton-subir-doc";
 import { errorMessage } from "@/lib/api";
 import { getUser, type AuthUser } from "@/lib/auth";
 import {
+  esCurado,
   documentosRequeridosDeEtapas,
   documentosOpcionalesDeEtapas,
   etapasDeCreacion,
@@ -515,6 +516,7 @@ export default function NuevoProcesoPage() {
                 key={t.id}
                 title={t.nombre}
                 subtitle={t.descripcion}
+                badge={esCurado(t) ? undefined : "No actualizado"}
                 onClick={() => setTipo(t)}
               />
             ))}

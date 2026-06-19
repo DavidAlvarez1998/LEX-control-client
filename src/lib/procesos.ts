@@ -109,6 +109,15 @@ export type TipoProceso = {
   empresaId: string | null; // null = global; set = del despacho
 };
 
+/**
+ * ¿El flujo del tipo ya fue curado? Si el tipo no trae `actualizado`, los
+ * no-judiciales se consideran curados y los JUDICIAL no (convención del seed:
+ * `actualizado = t.actualizado ?? grupo !== "JUDICIAL"`). Los no curados se
+ * marcan con la píldora "No actualizado" tanto en la lista como al crear.
+ */
+export const esCurado = (t: { actualizado?: boolean; grupo: string }): boolean =>
+  t.actualizado === undefined ? t.grupo !== "JUDICIAL" : t.actualizado;
+
 // --- Litigantes / partes ---
 export type TipoPersona = "NATURAL" | "JURIDICA";
 export type TipoDocumento = "CC" | "CE" | "NIT" | "TI" | "PASAPORTE" | "PEP_PPT";
