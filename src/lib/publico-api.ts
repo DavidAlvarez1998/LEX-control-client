@@ -35,3 +35,17 @@ export type SolicitudCuenta = {
 export function solicitudCuenta(body: SolicitudCuenta): Promise<{ ok: boolean }> {
   return api.post<{ ok: boolean }>("/publico/solicitud-cuenta", body);
 }
+
+export type Contacto = {
+  nombreContacto: string;
+  email?: string;
+  telefono?: string;
+  nombreEmpresa?: string;
+  mensaje?: string;
+  website?: string; // honeypot
+};
+
+/** "Habla con un asesor": crea un Prospecto WEB sin asignar para que un comercial lo contacte. */
+export function enviarContacto(body: Contacto): Promise<{ ok: boolean }> {
+  return api.post<{ ok: boolean }>("/publico/contacto", body);
+}

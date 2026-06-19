@@ -6,7 +6,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Reveal } from "@/components/reveal";
 import { formatMoney } from "@/lib/format";
 import { getUser, type AuthUser } from "@/lib/auth";
-import { getPlanesPublicos, solicitudCuenta, type PlanPublico } from "@/lib/publico-api";
+import { enviarContacto, getPlanesPublicos, solicitudCuenta, type PlanPublico } from "@/lib/publico-api";
 
 // Módulos de la plataforma (los mismos del portal). Icono = SVG inline minimal.
 const MODULOS: { titulo: string; desc: string; icon: React.ReactNode }[] = [
@@ -70,6 +70,30 @@ export default function LandingPage() {
 
   const set = (k: keyof typeof demo) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setDemo((d) => ({ ...d, [k]: e.target.value }));
+
+  // "Habla con un asesor": contacto liviano → Prospecto WEB sin asignar.
+  const [contacto, setContacto] = useState({ nombreContacto: "", email: "", telefono: "", nombreEmpresa: "", mensaje: "", website: "" });
+  const [contactoEstado, setContactoEstado] = useState<"idle" | "enviando" | "ok" | "error">("idle");
+  const [contactoError, setContactoError] = useState<string | null>(null);
+  const setC = (k: keyof typeof contacto) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setContacto((c) => ({ ...c, [k]: e.target.value }));
+
+  async function enviarContactoForm(e: React.FormEvent) {
+    e.preventDefault();
+    if (!contacto.email.trim() && !contacto.telefono.trim()) {
+      setContactoError("Déjanos al menos un correo o un teléfono.");
+      return;
+    }
+    setContactoEstado("enviando");
+    setContactoError(null);
+    try {
+      await enviarContacto(contacto);
+      setContactoEstado("ok");
+    } catch {
+      setContactoEstado("error");
+      setContactoError("No pudimos enviar tu mensaje. Intenta de nuevo.");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 dark:bg-slate-800 dark:text-slate-200">
@@ -211,6 +235,47 @@ export default function LandingPage() {
       </section>
 
       {/* ───────── Crear cuenta ───────── */}
+      {/* ───────── Contacto: habla con un asesor (crea un prospecto sin asignar) ───────── */}
+      <section id="contacto" className="py-16">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6">
+          <Reveal>
+            <h2 className="text-center text-2xl font-bold sm:text-3xl">Habla con un asesor</h2>
+            <p className="mt-3 text-center text-slate-600 dark:text-slate-400">
+              ¿Tienes dudas o quieres una demo? Déjanos tus datos y un asesor comercial te contacta.
+            </p>
+          </Reveal>
+
+          {contactoEstado === "ok" ? (
+            <div className="lex-fade-up mt-8 rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+              <p className="font-semibold">¡Gracias! Recibimos tu mensaje.</p>
+              <p className="mt-1 text-sm">Un asesor comercial te contactará pronto.</p>
+            </div>
+          ) : (
+            <form onSubmit={enviarContactoForm} className="mt-8 space-y-4">
+              {/* Honeypot anti-spam */}
+              <input type="text" name="website" value={contacto.website} onChange={setC("website")} tabIndex={-1} autoComplete="off" aria-hidden className="hidden" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Campo label="Tu nombre" value={contacto.nombreContacto} onChange={setC("nombreContacto")} required />
+                <Campo label="Empresa / despacho" value={contacto.nombreEmpresa} onChange={setC("nombreEmpresa")} />
+                <Campo label="Correo" type="email" value={contacto.email} onChange={setC("email")} />
+                <Campo label="Teléfono / WhatsApp" value={contacto.telefono} onChange={setC("telefono")} />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Mensaje</label>
+                <textarea value={contacto.mensaje} onChange={setC("mensaje")} rows={3} placeholder="Cuéntanos qué necesitas (opcional)"
+                  className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-700" />
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Déjanos al menos un correo o un teléfono para poder contactarte.</p>
+              {contactoError && <p className="text-sm text-red-600 dark:text-red-400">{contactoError}</p>}
+              <button type="submit" disabled={contactoEstado === "enviando"}
+                className="w-full rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/30 active:translate-y-0 disabled:opacity-60">
+                {contactoEstado === "enviando" ? "Enviando…" : "Quiero que me contacten"}
+              </button>
+            </form>
+          )}
+        </div>
+      </section>
+
       <section id="cuenta" className="border-t border-slate-100 bg-slate-200/60 py-16 dark:border-slate-900 dark:bg-slate-700/30">
         <div className="mx-auto max-w-2xl px-4 sm:px-6">
           <Reveal>
