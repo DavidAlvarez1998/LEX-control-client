@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 
@@ -72,6 +73,83 @@ export function Card({
     >
       {children}
     </div>
+  );
+}
+
+/**
+ * Tooltip reutilizable (estándar del proyecto — preferir sobre el atributo `title`).
+ * Envuelve cualquier `children` y muestra `content` al hacer hover o al enfocar con
+ * teclado (accesible: `role="tooltip"`). Se renderiza en un PORTAL a `document.body`
+ * con `position: fixed` + z-index alto para que NO quede tapado por el sidebar/topbar
+ * (escapa el stacking context del contenido). No bloquea clics. Aparece tras un breve
+ * retardo (~700ms) como un tooltip nativo. `side` controla la posición (default arriba).
+ */
+export function Tooltip({
+  content,
+  children,
+  side = "top",
+  className = "",
+}: {
+  content: ReactNode;
+  children: ReactNode;
+  side?: "top" | "bottom" | "left" | "right";
+  className?: string;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [show, setShow] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number; transform: string } | null>(null);
+
+  function place() {
+    const r = ref.current?.getBoundingClientRect();
+    if (!r) return;
+    const gap = 8;
+    const map = {
+      top: { top: r.top - gap, left: r.left + r.width / 2, transform: "translate(-50%, -100%)" },
+      bottom: { top: r.bottom + gap, left: r.left + r.width / 2, transform: "translate(-50%, 0)" },
+      left: { top: r.top + r.height / 2, left: r.left - gap, transform: "translate(-100%, -50%)" },
+      right: { top: r.top + r.height / 2, left: r.right + gap, transform: "translate(0, -50%)" },
+    } as const;
+    setPos(map[side]);
+  }
+  function open() {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      place();
+      setShow(true);
+    }, 700);
+  }
+  function close() {
+    if (timer.current) clearTimeout(timer.current);
+    setShow(false);
+  }
+
+  const estilo: CSSProperties = pos
+    ? { position: "fixed", top: pos.top, left: pos.left, transform: pos.transform, zIndex: 1000 }
+    : {};
+
+  return (
+    <span
+      ref={ref}
+      className={`relative inline-flex ${className}`}
+      onMouseEnter={open}
+      onMouseLeave={close}
+      onFocus={open}
+      onBlur={close}
+    >
+      {children}
+      {show && pos && typeof document !== "undefined" &&
+        createPortal(
+          <span
+            role="tooltip"
+            style={estilo}
+            className="pointer-events-none w-max max-w-xs whitespace-normal rounded-md bg-slate-900 px-2.5 py-1.5 text-xs font-normal leading-snug text-white shadow-lg dark:bg-slate-700"
+          >
+            {content}
+          </span>,
+          document.body,
+        )}
+    </span>
   );
 }
 

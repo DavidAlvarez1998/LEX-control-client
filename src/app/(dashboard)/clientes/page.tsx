@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button, Card, EmptyState, PageHeader, PlusIcon } from "@/components/ui";
+import { Button, Card, EmptyState, PageHeader, PlusIcon, Tooltip } from "@/components/ui";
 import { CorreosInput, Field, Input, Select, Textarea } from "@/components/form-ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { api, errorMessage } from "@/lib/api";
@@ -260,21 +260,21 @@ export default function ClientesPage() {
 
       <div className="mb-4 inline-flex rounded-lg border border-slate-200 p-0.5 text-sm dark:border-slate-600">
         {[
-          { v: true, label: "Míos", tip: "Clientes que llevas tú: eres su responsable comercial o el abogado responsable de alguno de sus procesos (al crear un cliente quedas como su responsable)." },
+          { v: true, label: "Míos", tip: "Clientes que llevas tú: eres su responsable comercial o el responsable jurídico de alguno de sus procesos (al crear un cliente quedas como su responsable)." },
           { v: false, label: "Todos", tip: "Toda la cartera del despacho. No hay muro: puedes ver y abrir cualquier cliente (útil para cobertura y conflictos de interés)." },
         ].map((o) => (
-          <button
-            key={o.label}
-            onClick={() => cambiarVista(o.v)}
-            title={o.tip}
-            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-              mios === o.v
-                ? "bg-indigo-600 text-white"
-                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            }`}
-          >
-            {o.label}
-          </button>
+          <Tooltip key={o.label} content={o.tip}>
+            <button
+              onClick={() => cambiarVista(o.v)}
+              className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                mios === o.v
+                  ? "bg-indigo-600 text-white"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+            >
+              {o.label}
+            </button>
+          </Tooltip>
         ))}
       </div>
 
