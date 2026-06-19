@@ -381,7 +381,28 @@ function ProcesosInner() {
 
       <VencimientosBanner />
 
-      <div className="mb-4 flex flex-wrap gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        {/* "Míos" = procesos donde soy el responsable (mi usuario). Un clic, sin muro:
+            "Todos" sigue mostrando los del despacho. Aplica para admin y JURÍDICO. */}
+        {u?.id && (
+          <div className="inline-flex rounded-lg border border-line p-0.5 text-sm">
+            {[
+              { mio: true, label: "Míos" },
+              { mio: false, label: "Todos" },
+            ].map((o) => {
+              const activo = o.mio ? responsableId === u.id : responsableId === "";
+              return (
+                <button
+                  key={o.label}
+                  onClick={() => setResponsableId(o.mio ? u.id : "")}
+                  className={`rounded-md px-3 py-1.5 font-medium transition-colors ${activo ? "bg-indigo-600 text-white" : "text-muted hover:bg-hover"}`}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div className="w-64">
           <Input value={qInput} onChange={setQInput} placeholder="Buscar por código, título, cliente o radicado…" />
         </div>
