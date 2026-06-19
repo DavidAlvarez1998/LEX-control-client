@@ -349,6 +349,8 @@ const DOC_ETIQUETAS: Record<string, string> = {
   "contestacion-reconvencion": "Contestación de la reconvención",
   "auto-silencio-reconvencion": "Constancia de silencio (reconvención)",
   contestacion: "Contestación de la demanda",
+  // Tutela recibida: se prefiere "respuesta" (suena mejor que "contestación").
+  contestacion_tutela: "Respuesta de la tutela",
   "documentos-audiencia": "Documentos para la audiencia",
   "acta-audiencia": "Acta de la audiencia",
   "acta-art77": "Acta audiencia art. 77",

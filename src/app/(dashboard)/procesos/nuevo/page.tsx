@@ -417,16 +417,11 @@ export default function NuevoProcesoPage() {
       };
       const creado = await crearProceso(body);
       // Los documentos solo se pueden vincular una vez existe el proceso: se suben
-      // ahora los que siguen aplicando según los datos finales — obligatorios Y
-      // opcionales (p. ej. pruebas/anexos de la tutela), para no perder los adjuntos
-      // optativos. Si alguna subida falla, el proceso ya quedó creado y se reintenta
-      // desde su ficha.
-      const docsASubir = [
-        ...documentosRequeridosDeEtapas(etapasDeCreacion(tipo.etapas), datos),
-        ...documentosOpcionalesDeEtapas(etapasDeCreacion(tipo.etapas), datos),
-      ];
-      for (const nombre of docsASubir) {
-        const file = archivos[nombre];
+      // TODOS los que el usuario adjuntó (cada slot solo deja adjuntar lo pertinente,
+      // incl. los de la respuesta como la contestación de la tutela recibida). Así no
+      // se pierde ningún adjunto. Si alguna subida falla, el proceso ya quedó creado y
+      // se reintenta desde su ficha.
+      for (const [nombre, file] of Object.entries(archivos)) {
         if (!file) continue;
         try {
           await subirArchivoProceso(creado.id, file, nombre);
@@ -822,6 +817,22 @@ export default function NuevoProcesoPage() {
               // diferencia entre los docs con la respuesta actual y sin ella.
               contestaron: (() => {
                 const neutro = { ...datos, contestaron: "" };
+                const reqResp = documentosRequeridosDeEtapas(tipo.etapas, datos).filter((d) => !documentosRequeridosDeEtapas(tipo.etapas, neutro).includes(d));
+                const optResp = documentosOpcionalesDeEtapas(tipo.etapas, datos).filter((d) => !documentosOpcionalesDeEtapas(tipo.etapas, neutro).includes(d));
+                const docs = [...reqResp, ...optResp];
+                if (docs.length === 0) return null;
+                return (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                    <p className="mb-2 text-sm font-medium text-amber-900 dark:text-amber-200">Documentos de la respuesta</p>
+                    {listaDocs(docs, reqResp)}
+                  </div>
+                );
+              })(),
+              // Igual que `contestaron`, pero para los tipos que usan `contestada`
+              // (p. ej. Tutela/DdP recibidos): bajo "¿Se contestó la tutela?" = Sí
+              // se despliega el cuadro para subir la contestación.
+              contestada: (() => {
+                const neutro = { ...datos, contestada: "" };
                 const reqResp = documentosRequeridosDeEtapas(tipo.etapas, datos).filter((d) => !documentosRequeridosDeEtapas(tipo.etapas, neutro).includes(d));
                 const optResp = documentosOpcionalesDeEtapas(tipo.etapas, datos).filter((d) => !documentosOpcionalesDeEtapas(tipo.etapas, neutro).includes(d));
                 const docs = [...reqResp, ...optResp];
