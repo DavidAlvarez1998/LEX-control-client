@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, EmptyState, PageHeader } from "@/components/ui";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 import { getUser } from "@/lib/auth";
@@ -45,6 +46,9 @@ export default function MisProcesosPage() {
   return (
     <RolEmpresaGuard roles={["JURIDICO"]}>
       <div>
+        <Link href="/procesos" className="mb-3 inline-block text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+          ← Procesos
+        </Link>
         <PageHeader title="Mis procesos" subtitle="Los procesos en los que eres el abogado responsable." />
 
         {error ? (

@@ -8,9 +8,6 @@ export type NavItem = {
   // Roles de empresa (RolEmpresa) que ven el ítem. El admin de empresa los ve
   // todos. Sin `roles` ni `adminOnly` ⇒ visible para todos (ítems base).
   roles?: string[];
-  // Sub-ítems anidados (se pintan indentados bajo el ítem padre). Heredan la misma
-  // forma; su visibilidad se evalúa con las mismas reglas (roles/adminOnly).
-  children?: NavItem[];
 };
 
 const ic = "h-5 w-5 shrink-0";
@@ -62,19 +59,6 @@ export const NAV_ITEMS: NavItem[] = [
         <path d="M9 13h6M9 17h6" />
       </svg>
     ),
-    children: [
-      {
-        href: "/mis-procesos",
-        label: "Mis procesos",
-        roles: ["JURIDICO"],
-        icon: (
-          <svg className={ic} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 11l3 3L22 4" />
-            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-          </svg>
-        ),
-      },
-    ],
   },
   {
     href: "/servicios",
