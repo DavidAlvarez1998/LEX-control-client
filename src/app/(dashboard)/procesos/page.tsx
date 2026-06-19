@@ -266,6 +266,7 @@ function ProcesosInner() {
             subtitle={vista === "seccion" ? "Elige una sección para ver sus procesos." : "Elige una jurisdicción para ver sus procesos."}
             action={
               <div className="flex items-center gap-2">
+                <Link href="/mis-procesos"><Button variant="ghost">Mis procesos</Button></Link>
                 {toggleVista}
                 {accionNuevo}
               </div>
