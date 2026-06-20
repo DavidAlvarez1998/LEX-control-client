@@ -5,6 +5,7 @@ import { api, uploadFile } from "./api";
 import type {
   AreaPractica,
   CampoEsquema,
+  CategoriaProceso,
   CuantiaTipo,
   EstadoProceso,
   EtapaDef,
@@ -20,6 +21,10 @@ import type {
 // --- Catálogo ---
 export function getAreas(): Promise<AreaPractica[]> {
   return api.get<AreaPractica[]>("/catalogo/areas");
+}
+
+export function getCategorias(): Promise<CategoriaProceso[]> {
+  return api.get<CategoriaProceso[]>("/catalogo/categorias");
 }
 
 export function getTipos(areaSlug?: string): Promise<TipoProceso[]> {

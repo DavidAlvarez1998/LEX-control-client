@@ -11,11 +11,12 @@ import {
   ESTADO_LABEL,
   JURISDICCION_LABEL,
   type AreaPractica,
+  type CategoriaProceso,
   type EstadoProceso,
   type Jurisdiccion,
   type TipoProceso,
 } from "@/lib/procesos";
-import { getAreas, getTipos, listProcesos, type ProcesoListItem } from "@/lib/procesos-api";
+import { getAreas, getCategorias, getTipos, listProcesos, type ProcesoListItem } from "@/lib/procesos-api";
 import { errorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
@@ -84,6 +85,14 @@ const sinPrefijoProceso = (s: string) => {
   return r !== s ? r.charAt(0).toUpperCase() + r.slice(1) : s;
 };
 
+// Nombre de tipo para mostrar: el `nombreVisual` del catálogo si existe; si no,
+// quita el prefijo "Proceso ".
+const tipoLabel = (t: TipoProceso) => t.nombreVisual ?? sinPrefijoProceso(t.nombre);
+
+// Bucket sintético para tipos de una jurisdicción que no tienen categoría (no se
+// pierden: caen bajo "Otros"). No existe en el catálogo.
+const OTROS_CAT = "__otros__";
+
 // Vista "Sección": agrupa el nivel 1 por `grupo` (las viejas pestañas). Orden + etiqueta.
 const GRUPOS = ["PETICION", "CONSTITUCIONAL", "LABORAL", "JUDICIAL"] as const;
 const GRUPO_LABEL: Record<string, string> = {
@@ -124,7 +133,10 @@ function ProcesosInner() {
   // Vista del nivel 1: por jurisdicción (default) o por sección (grupo = vieja pestaña).
   const vista = searchParams.get("vista") === "seccion" ? "seccion" : "jurisdiccion";
   const grupoSel = searchParams.get("grupo");
+  // Categoría del sub-árbol civil (Declarativo/Ejecutivo/…). Solo aplica a Civil.
+  const catSel = searchParams.get("cat");
   const [areas, setAreas] = useState<AreaPractica[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaProceso[]>([]);
   const [tipos, setTipos] = useState<TipoProceso[]>([]);
   const [items, setItems] = useState<ProcesoListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,6 +153,7 @@ function ProcesosInner() {
 
   useEffect(() => {
     getAreas().then(setAreas).catch(() => {});
+    getCategorias().then(setCategorias).catch(() => {});
     getTipos().then(setTipos).catch(() => {});
   }, []);
 
@@ -301,12 +314,150 @@ function ProcesosInner() {
         ? sinJurisdiccion(JURISDICCION_LABEL[nivel1Sel as Jurisdiccion])
         : "Procesos";
   const hrefNivel1 = vista === "seccion" ? "/procesos?vista=seccion" : "/procesos";
-  const hrefNivel2 = vista === "seccion" ? `/procesos?vista=seccion&grupo=${nivel1Sel}` : `/procesos?jurisdiccion=${nivel1Sel}`;
+  // El "volver" desde el nivel 3 regresa a la categoría civil cuando hay una (cat).
+  const hrefNivel2 =
+    vista === "seccion"
+      ? `/procesos?vista=seccion&grupo=${nivel1Sel}`
+      : catSel
+        ? `/procesos?jurisdiccion=${nivel1Sel}&cat=${catSel}`
+        : `/procesos?jurisdiccion=${nivel1Sel}`;
   const hrefTipo = (id: string) =>
-    vista === "seccion" ? `/procesos?vista=seccion&grupo=${nivel1Sel}&tipo=${id}` : `/procesos?jurisdiccion=${nivel1Sel}&tipo=${id}`;
+    vista === "seccion"
+      ? `/procesos?vista=seccion&grupo=${nivel1Sel}&tipo=${id}`
+      : catSel
+        ? `/procesos?jurisdiccion=${nivel1Sel}&cat=${catSel}&tipo=${id}`
+        : `/procesos?jurisdiccion=${nivel1Sel}&tipo=${id}`;
+  // ── Categorías (clase de proceso) de la jurisdicción abierta ──
+  // Data-driven: si la jurisdicción tiene categorías, se inserta el nivel de
+  // categoría; si no, lista plana. Aplica a CUALQUIER jurisdicción (sin hardcode).
+  const categoriasJur =
+    vista === "jurisdiccion" && jurSel ? categorias.filter((c) => c.jurisdiccion === jurSel) : [];
+  const usaCategorias = categoriasJur.length > 0;
+  const slugsCat = new Set(categoriasJur.map((c) => c.slug));
+  // Tipos de la jurisdicción sin categoría conocida → bucket "Otros" (no se pierden).
+  const tiposSinCat = tiposDeNivel1.filter((t) => !t.categoriaSlug || !slugsCat.has(t.categoriaSlug));
+  const tiposDeCategoria = (slug: string) =>
+    slug === OTROS_CAT ? tiposSinCat : tiposDeNivel1.filter((t) => t.categoriaSlug === slug);
+  // Categoría seleccionada (?cat=): objeto del catálogo o el bucket sintético "Otros".
+  const catObjActual = catSel
+    ? catSel === OTROS_CAT
+      ? { slug: OTROS_CAT, nombre: "Otros", proximamente: false }
+      : categoriasJur.find((c) => c.slug === catSel) ?? null
+    : null;
+  const nivel2BackLabel = catObjActual?.nombre ?? nivel1Label;
+
+  // Tarjeta de un tipo de proceso (reutilizada en lista plana y hojas de categoría).
+  const tipoCard = (t: TipoProceso) => {
+    const n = conteoPorTipo[t.nombre] ?? 0;
+    // Tipos aún sin curar → tarjeta en tono gris + badge "No actualizado".
+    const noActualizado = !esCurado(t);
+    return (
+      <Link
+        key={t.id}
+        href={hrefTipo(t.id)}
+        className={`lex-card group rounded-xl border border-line p-5 ${noActualizado ? "bg-bg" : "bg-surface"}`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className={`font-medium group-hover:text-accent ${noActualizado ? "text-muted" : "text-foreground"}`}>
+            {tipoLabel(t)}
+          </div>
+          {noActualizado && (
+            <span className="shrink-0 rounded-full bg-hover px-2 py-0.5 text-[11px] font-medium text-muted">
+              No actualizado
+            </span>
+          )}
+        </div>
+        <div className="mt-1 h-5 text-sm text-muted">
+          {loading ? "" : `${n} ${n === 1 ? "proceso" : "procesos"}`}
+        </div>
+      </Link>
+    );
+  };
 
   // ── NIVEL 2: tarjetas de cada tipo del nodo elegido ──
   if (!tipoSel) {
+    // ── NIVEL 2.5: tipos de una categoría seleccionada ──
+    if (usaCategorias && catObjActual) {
+      const hojas = tiposDeCategoria(catObjActual.slug);
+      return (
+        <RolEmpresaGuard roles={["JURIDICO"]}>
+          <div>
+            <Link
+              href={`/procesos?jurisdiccion=${nivel1Sel}`}
+              className="mb-3 inline-block text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+            >
+              ← {nivel1Label}
+            </Link>
+            <PageHeader title={catObjActual.nombre} subtitle="Elige un tipo de proceso." action={accionNuevo} />
+            {hojas.length === 0 ? (
+              <Card className="text-sm text-muted">
+                Próximamente. Aún no hay tipos de proceso configurados en esta categoría.
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{hojas.map(tipoCard)}</div>
+            )}
+          </div>
+        </RolEmpresaGuard>
+      );
+    }
+
+    // ── NIVEL 2 (con categorías): tarjetas de categoría ──
+    if (usaCategorias) {
+      const cards = [
+        ...categoriasJur.map((c) => ({ slug: c.slug, nombre: c.nombre, proximamente: c.proximamente, n: tiposDeCategoria(c.slug).length })),
+        ...(tiposSinCat.length > 0 ? [{ slug: OTROS_CAT, nombre: "Otros", proximamente: false, n: tiposSinCat.length }] : []),
+      ];
+      return (
+        <RolEmpresaGuard roles={["JURIDICO"]}>
+          <div>
+            <Link
+              href={hrefNivel1}
+              className="mb-3 inline-block text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+            >
+              ← Jurisdicciones
+            </Link>
+            <PageHeader title={nivel1Label} subtitle="Elige una categoría." action={accionNuevo} />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {cards.map((c) => {
+                const vacia = c.proximamente || c.n === 0;
+                const contenido = (
+                  <>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className={`font-medium ${vacia ? "text-muted" : "text-foreground group-hover:text-accent"}`}>
+                        {c.nombre}
+                      </div>
+                      {c.proximamente && (
+                        <span className="shrink-0 rounded-full bg-hover px-2 py-0.5 text-[11px] font-medium text-muted">
+                          Próximamente
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 h-5 text-sm text-muted">
+                      {vacia ? "" : `${c.n} ${c.n === 1 ? "tipo" : "tipos"}`}
+                    </div>
+                  </>
+                );
+                return vacia ? (
+                  <div key={c.slug} className="rounded-xl border border-line bg-bg p-5 opacity-70">
+                    {contenido}
+                  </div>
+                ) : (
+                  <Link
+                    key={c.slug}
+                    href={`/procesos?jurisdiccion=${nivel1Sel}&cat=${c.slug}`}
+                    className="lex-card group rounded-xl border border-line bg-surface p-5"
+                  >
+                    {contenido}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </RolEmpresaGuard>
+      );
+    }
+
+    // ── NIVEL 2 (sin categorías): lista plana de tipos ──
     return (
       <RolEmpresaGuard roles={["JURIDICO"]}>
         <div>
@@ -320,40 +471,7 @@ function ProcesosInner() {
           {tiposDeNivel1.length === 0 ? (
             <Card className="text-sm text-slate-500">No hay tipos de proceso aquí.</Card>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {tiposDeNivel1.map((t) => {
-                const n = conteoPorTipo[t.nombre] ?? 0;
-                // Tipos aún sin curar → tarjeta en tono gris + badge "No actualizado".
-                const noActualizado = !esCurado(t);
-                return (
-                  <Link
-                    key={t.id}
-                    href={hrefTipo(t.id)}
-                    className={`lex-card group rounded-xl border border-line p-5 ${
-                      noActualizado ? "bg-bg" : "bg-surface"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div
-                        className={`font-medium group-hover:text-accent ${
-                          noActualizado ? "text-muted" : "text-foreground"
-                        }`}
-                      >
-                        {sinPrefijoProceso(t.nombre)}
-                      </div>
-                      {noActualizado && (
-                        <span className="shrink-0 rounded-full bg-hover px-2 py-0.5 text-[11px] font-medium text-muted">
-                          No actualizado
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 h-5 text-sm text-muted">
-                      {loading ? "" : `${n} ${n === 1 ? "proceso" : "procesos"}`}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{tiposDeNivel1.map(tipoCard)}</div>
           )}
         </div>
       </RolEmpresaGuard>
@@ -368,10 +486,10 @@ function ProcesosInner() {
         href={hrefNivel2}
         className="mb-3 inline-block text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
       >
-        ← {nivel1Label}
+        ← {nivel2BackLabel}
       </Link>
       <PageHeader
-        title={tipoSelObj ? sinPrefijoProceso(tipoSelObj.nombre) : "Procesos"}
+        title={tipoSelObj ? tipoLabel(tipoSelObj) : "Procesos"}
         subtitle={puedeEditar ? "Procesos legales de tu despacho." : "Procesos de tus clientes (solo lectura)."}
         action={
           puedeEditar ? (

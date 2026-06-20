@@ -106,16 +106,24 @@ export function Select({
   value,
   onChange,
   opciones,
+  grupos,
   placeholder = "Selecciona…",
   etiquetas,
 }: {
   value: string;
   onChange: (v: string) => void;
-  opciones: string[];
+  opciones?: string[];
+  // Opciones agrupadas (optgroups). Si se pasa, tiene prioridad sobre `opciones`.
+  grupos?: { label: string; opciones: string[] }[];
   placeholder?: string;
   // Etiqueta a MOSTRAR por valor (el value guardado no cambia). Opcional.
   etiquetas?: Record<string, string>;
 }) {
+  const opcion = (o: string) => (
+    <option key={o} value={o}>
+      {etiquetas?.[o] ?? o}
+    </option>
+  );
   return (
     <select
       value={value}
@@ -123,11 +131,13 @@ export function Select({
       className={base}
     >
       <option value="">{placeholder}</option>
-      {opciones.map((o) => (
-        <option key={o} value={o}>
-          {etiquetas?.[o] ?? o}
-        </option>
-      ))}
+      {grupos
+        ? grupos.map((g) => (
+            <optgroup key={g.label} label={g.label}>
+              {g.opciones.map(opcion)}
+            </optgroup>
+          ))
+        : (opciones ?? []).map(opcion)}
     </select>
   );
 }

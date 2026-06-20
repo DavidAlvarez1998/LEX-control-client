@@ -9,18 +9,12 @@ import { DocumentosProceso } from "@/components/documentos-proceso";
 import { DatosProceso, type DatosProcesoHandle } from "@/components/datos-proceso";
 import { PartesProceso } from "@/components/partes-proceso";
 import { CasoChain } from "@/components/caso-chain";
-import { ActuacionesProceso } from "@/components/actuaciones-proceso";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type Condicion, type EtapaDef } from "@/lib/procesos";
 import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, moverEtapa, type CasoNodo, type ProcesoDetalle } from "@/lib/procesos-api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
-
-// "Actuaciones del juzgado": OCULTO temporalmente (a pedido). Se conserva el código
-// para reactivarlo luego — poner en `true` para volver a mostrar el bloque.
-// (Tipado `boolean` a propósito: un literal `false` rompería el narrowing de `proceso`.)
-const MOSTRAR_ACTUACIONES_JUZGADO: boolean = false;
 
 export default function ExpedientePage() {
   const { id } = useParams<{ id: string }>();
@@ -507,16 +501,6 @@ export default function ExpedientePage() {
               ocultarPlantillas={proceso.tipoProceso.grupo === "LABORAL"}
             />
           </Card>
-
-          {MOSTRAR_ACTUACIONES_JUZGADO && proceso.tipoProceso.esJudicial && (
-            <Card>
-              <ActuacionesProceso
-                procesoId={proceso.id}
-                radicado={proceso.radicado}
-                puedeSincronizar={puedeEditar}
-              />
-            </Card>
-          )}
         </div>
       </div>
 

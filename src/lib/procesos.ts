@@ -4,10 +4,10 @@
 
 // --- Taxonomía (valores del enum Jurisdiccion de la API/Prisma) ---
 export type Jurisdiccion =
+  | "PENAL"
   | "ORDINARIA_CIVIL"
   | "ORDINARIA_LABORAL"
   | "CONTENCIOSO_ADMIN"
-  | "PENAL"
   | "CONSTITUCIONAL"
   | "FAMILIA";
 
@@ -19,6 +19,19 @@ export type AreaPractica = {
   tipo: TipoAreaPractica;
   jurisdiccion: Jurisdiccion;
   activo: boolean;
+};
+
+// Categoría = clase de proceso (Declarativo/Ejecutivo/…) dentro de una jurisdicción.
+// Nivel de navegación entre Jurisdicción y Tipo, data-driven (catálogo). `proximamente`
+// = categoría teaser sin tipos aún (se muestra pero no es navegable).
+export type CategoriaProceso = {
+  id: string;
+  slug: string;
+  nombre: string;
+  jurisdiccion: Jurisdiccion;
+  activo: boolean;
+  proximamente: boolean;
+  orden: number;
 };
 
 // --- Formulario dinámico ---
@@ -97,6 +110,8 @@ export type GrupoProceso = "JUDICIAL" | "PETICION" | "CONSTITUCIONAL" | "LABORAL
 export type TipoProceso = {
   id: string;
   nombre: string;
+  nombreVisual?: string | null; // nombre corto a mostrar (p. ej. "Ejecutivo")
+  categoriaSlug?: string | null; // clase de proceso (navegación)
   descripcion?: string;
   jurisdiccion: Jurisdiccion;
   esJudicial: boolean; // true = va ante un juez (radicado 23díg/juzgado/cuantía); false = trámite ante entidad (DdP)
@@ -395,10 +410,10 @@ export function validarDatos(
 
 /** Etiqueta legible de una jurisdicción (para la UI). */
 export const JURISDICCION_LABEL: Record<Jurisdiccion, string> = {
+  PENAL: "Ordinaria · Penal",
   ORDINARIA_CIVIL: "Ordinaria · Civil",
   ORDINARIA_LABORAL: "Ordinaria · Laboral",
   CONTENCIOSO_ADMIN: "Contencioso-Administrativa",
-  PENAL: "Penal",
   CONSTITUCIONAL: "Constitucional",
   FAMILIA: "Familia",
 };

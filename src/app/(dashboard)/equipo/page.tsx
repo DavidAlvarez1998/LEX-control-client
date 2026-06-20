@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Card, EmptyState, PageHeader, PlusIcon } from "@/components/ui";
+import { Button, Card, EmptyState, ModalPortal, PageHeader, PlusIcon } from "@/components/ui";
 import { Field, Input } from "@/components/form-ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { api, errorMessage } from "@/lib/api";
@@ -510,6 +510,7 @@ export default function EquipoPage() {
       )}
 
       {formOpen && (
+        <ModalPortal>
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60"
           onClick={(e) => {
@@ -564,9 +565,11 @@ export default function EquipoPage() {
             </div>
           </Card>
         </div>
+        </ModalPortal>
       )}
 
       {editar && (
+        <ModalPortal>
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60"
           onClick={(e) => {
@@ -598,9 +601,11 @@ export default function EquipoPage() {
             </div>
           </Card>
         </div>
+        </ModalPortal>
       )}
 
       {link && (
+        <ModalPortal>
         <div className="fixed inset-0 z-[55] flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60">
           <Card className="w-full max-w-lg">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
@@ -626,6 +631,7 @@ export default function EquipoPage() {
             </div>
           </Card>
         </div>
+        </ModalPortal>
       )}
 
       <ConfirmDialog

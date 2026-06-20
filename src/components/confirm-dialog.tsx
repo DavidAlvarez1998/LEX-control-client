@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card } from "./ui";
+import { Button, Card, ModalPortal } from "./ui";
 
 /** Modal de confirmación acorde al portal (reemplaza window.confirm). Opcional:
  *  un campo de texto (`input`) para capturar un motivo, reemplazando window.prompt. */
@@ -32,6 +32,7 @@ export function ConfirmDialog({
   if (!open) return null;
   const faltaMotivo = !!input?.required && !inputValue.trim();
   return (
+    <ModalPortal>
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60"
       onClick={(e) => {
@@ -77,5 +78,6 @@ export function ConfirmDialog({
         </div>
       </Card>
     </div>
+    </ModalPortal>
   );
 }

@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button, Card, EmptyState, PageHeader, PlusIcon, Tooltip } from "@/components/ui";
+import { Button, Card, EmptyState, ModalPortal, PageHeader, PlusIcon, Tooltip } from "@/components/ui";
 import { CorreosInput, Field, Input, Select, Textarea } from "@/components/form-ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { api, errorMessage } from "@/lib/api";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 import { getUser } from "@/lib/auth";
 import { comercialApi, DISPOSICION_LABEL, type PipelineItem } from "@/lib/comercial-api";
+import { JURISDICCION_LABEL, type AreaPractica, type Jurisdiccion } from "@/lib/procesos";
 
 type Estado = "PROSPECTO" | "CLIENTE" | "DESCARTADO";
 
@@ -72,8 +73,8 @@ export default function ClientesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  // "Tipo de caso" = áreas de práctica reales (nombres), no una lista fija.
-  const [areasCaso, setAreasCaso] = useState<string[]>([]);
+  // "Tipo de caso" = área de práctica del catálogo (data-driven), agrupada por jurisdicción.
+  const [areas, setAreas] = useState<AreaPractica[]>([]);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -136,14 +137,22 @@ export default function ClientesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Carga las áreas de práctica reales (GET /catalogo/areas ya devuelve solo las
-  // activas) para poblar el campo "Tipo de caso", en sync con el catálogo.
+  // Áreas de práctica (activas) para el campo "Tipo de caso".
   useEffect(() => {
-    api
-      .get<{ nombre: string }[]>("/catalogo/areas")
-      .then((a) => setAreasCaso(a.map((x) => x.nombre)))
-      .catch(() => {});
+    api.get<AreaPractica[]>("/catalogo/areas").then(setAreas).catch(() => {});
   }, []);
+
+  // "Tipo de caso" = áreas del catálogo, agrupadas por jurisdicción (optgroups: el
+  // título de la jurisdicción con sus áreas debajo), en el orden de JURISDICCION_LABEL.
+  // El desplegable nativo scrollea solo cuando la lista crece. Conserva un valor legado.
+  const ordenJur = Object.keys(JURISDICCION_LABEL) as Jurisdiccion[];
+  const tipoCasoGrupos = ordenJur
+    .map((j) => ({
+      label: JURISDICCION_LABEL[j],
+      opciones: areas.filter((a) => a.jurisdiccion === j).map((a) => a.slug),
+    }))
+    .filter((g) => g.opciones.length > 0);
+  const tipoCasoEtiquetas = Object.fromEntries(areas.map((a) => [a.slug, a.nombre]));
 
   function abrirCrear() {
     setEditId(null);
@@ -359,6 +368,7 @@ export default function ClientesPage() {
       )}
 
       {formOpen && (
+        <ModalPortal>
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60"
           onClick={(e) => { if (e.target === e.currentTarget && !saving) setFormOpen(false); }}
@@ -401,11 +411,18 @@ export default function ClientesPage() {
                 <Input value={form.ciudad} onChange={(v) => setForm({ ...form, ciudad: v })} placeholder="Ciudad" />
               </Field>
               <Field label="Tipo de caso">
-                {/* Áreas de práctica reales; conserva un valor legado si no está en la lista. */}
+                {/* Área de práctica del catálogo, agrupada por jurisdicción (optgroups);
+                    conserva un valor legado fuera del catálogo. */}
                 <Select
                   value={form.tipoCaso}
                   onChange={(v) => setForm({ ...form, tipoCaso: v })}
-                  opciones={form.tipoCaso && !areasCaso.includes(form.tipoCaso) ? [form.tipoCaso, ...areasCaso] : areasCaso}
+                  grupos={
+                    form.tipoCaso && !areas.some((a) => a.slug === form.tipoCaso)
+                      ? [{ label: "Actual", opciones: [form.tipoCaso] }, ...tipoCasoGrupos]
+                      : tipoCasoGrupos
+                  }
+                  etiquetas={tipoCasoEtiquetas}
+                  placeholder="—"
                 />
               </Field>
               <Field label="Viabilidad">
@@ -431,6 +448,7 @@ export default function ClientesPage() {
             </div>
           </Card>
         </div>
+        </ModalPortal>
       )}
 
       <ConfirmDialog

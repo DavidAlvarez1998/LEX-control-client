@@ -16,14 +16,12 @@ const MODULOS: { titulo: string; desc: string; icon: React.ReactNode }[] = [
   { titulo: "Contratos", desc: "Contratos del personal del despacho con documentos, cláusulas y vencimientos.", icon: <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6ZM14 2v6h6M9 13h6M9 17h6" /> },
   { titulo: "Facturación", desc: "Facturas con IVA, pagos vinculados y estado de cuenta por cliente.", icon: <path d="M4 2h16v20l-3-2-2 2-2-2-2 2-2-2-3 2V2ZM8 7h8M8 11h8M8 15h5" /> },
   { titulo: "Agenda", desc: "Calendario mensual, recordatorios y tareas para todo el equipo.", icon: <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" /> },
-  { titulo: "Consulta judicial", desc: "Actuaciones del juzgado sincronizadas al expediente, al día.", icon: <path d="M21 21l-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" /> },
 ];
 
 const BENEFICIOS: { titulo: string; desc: string }[] = [
   { titulo: "Nunca pierdas un término", desc: "Vencimientos calculados en días hábiles, semáforo y panel de lo que vence hoy." },
   { titulo: "Multi-rol por despacho", desc: "Cada quien ve lo suyo: jurídico, comercial y contable, con permisos por rol." },
   { titulo: "Todo en un lugar", desc: "Procesos, clientes, dinero y agenda conectados, sin saltar entre herramientas." },
-  { titulo: "Datos del juzgado al día", desc: "Trae las actuaciones por radicado y las proyecta en la línea de tiempo del caso." },
 ];
 
 function Icono({ children }: { children: React.ReactNode }) {

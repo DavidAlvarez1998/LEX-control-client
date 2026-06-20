@@ -209,6 +209,16 @@ export function EmptyState({
   );
 }
 
+/** Portalea su contenido a <body>. Úsalo para envolver overlays `fixed`: si se
+ *  renderizan dentro del árbol de la página, un ancestro con `transform` (p. ej.
+ *  la animación de aparición `.lex-page` en navegadores sin View Transitions —
+ *  Firefox/Safari) los confina a su caja en vez del viewport, recortando el modal
+ *  bajo el topbar/sidebar. El portal los mide siempre contra el viewport. */
+export function ModalPortal({ children }: { children: ReactNode }) {
+  if (typeof document === "undefined") return null;
+  return createPortal(children, document.body);
+}
+
 export function Modal({
   open,
   onClose,
