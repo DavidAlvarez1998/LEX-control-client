@@ -85,6 +85,7 @@ export type ProcesoListItem = {
   clienteNombre: string | null;
   casoRelacionadoId: string | null;
   tieneDerivados: boolean;
+  actuacionesNuevas: number; // novedades del juzgado no leídas (P1)
 };
 
 export type ListaProcesos = {
@@ -101,6 +102,7 @@ export function listProcesos(filtros: {
   responsableId?: string;
   clienteId?: string;
   page?: number;
+  conNovedades?: boolean;
 } = {}): Promise<ListaProcesos> {
   const qs = new URLSearchParams();
   if (filtros.area) qs.set("area", filtros.area);
@@ -109,6 +111,7 @@ export function listProcesos(filtros: {
   if (filtros.responsableId) qs.set("responsableId", filtros.responsableId);
   if (filtros.clienteId) qs.set("clienteId", filtros.clienteId);
   if (filtros.page) qs.set("page", String(filtros.page));
+  if (filtros.conNovedades) qs.set("conNovedades", "1");
   const q = qs.toString();
   return api.get<ListaProcesos>(`/procesos${q ? `?${q}` : ""}`);
 }

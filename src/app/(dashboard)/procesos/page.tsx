@@ -146,6 +146,7 @@ function ProcesosInner() {
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [responsableId, setResponsableId] = useState("");
+  const [conNovedades, setConNovedades] = useState(false); // P1: solo procesos con novedades del juzgado
   // Opciones de responsable: se acumulan de los procesos vistos (no hay endpoint
   // de equipo accesible a JURIDICO). Una vez visto, el responsable queda en el filtro.
   const responsablesRef = useRef<Map<string, string>>(new Map());
@@ -168,7 +169,7 @@ function ProcesosInner() {
     setError(null);
     const area = areas.find((a) => a.nombre === areaNombre)?.slug;
     const estado = estadoLabel ? ESTADO_POR_LABEL[estadoLabel] : undefined;
-    listProcesos({ area, estado, q: q || undefined, responsableId: responsableId || undefined })
+    listProcesos({ area, estado, q: q || undefined, responsableId: responsableId || undefined, conNovedades: conNovedades || undefined })
       .then((r) => {
         setItems(r.items);
         let nuevo = false;
@@ -182,7 +183,7 @@ function ProcesosInner() {
       })
       .catch((e) => setError(errorMessage(e, "Error al cargar")))
       .finally(() => setLoading(false));
-  }, [areas, areaNombre, estadoLabel, q, responsableId]);
+  }, [areas, areaNombre, estadoLabel, q, responsableId, conNovedades]);
 
   const nombreArea = useMemo(
     () => (slug: string | null) => areas.find((a) => a.slug === slug)?.nombre ?? slug ?? "—",
@@ -522,6 +523,17 @@ function ProcesosInner() {
             })}
           </div>
         )}
+        {/* P1 — filtrar a los procesos con actuaciones nuevas del juzgado. */}
+        <button
+          onClick={() => setConNovedades((v) => !v)}
+          className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+            conNovedades
+              ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+              : "border-line text-muted hover:bg-hover"
+          }`}
+        >
+          🟢 Con novedades
+        </button>
         <div className="w-64">
           <Input value={qInput} onChange={setQInput} placeholder="Buscar por código, título, cliente o radicado…" />
         </div>
@@ -594,6 +606,11 @@ function ProcesosInner() {
                 >
                   <td className="px-5 py-3 align-top">
                     <div className="font-medium text-indigo-600 group-hover:underline dark:text-indigo-400" style={{ viewTransitionName: vtName("proceso-titulo", t.id) }}>{t.titulo}</div>
+                    {t.actuacionesNuevas > 0 && (
+                      <span className="mt-0.5 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                        🟢 {t.actuacionesNuevas} nueva{t.actuacionesNuevas > 1 ? "s" : ""} del juzgado
+                      </span>
+                    )}
                     <div className="text-xs text-slate-500">
                       {t.tipoProcesoNombre} · {nombreArea(t.areaSlug)} · {t.codigoInterno}
                       {t.radicado && ` · Rad. ${t.radicado}`}
