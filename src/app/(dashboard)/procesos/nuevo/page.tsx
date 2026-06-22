@@ -72,10 +72,10 @@ type ClienteNuevo = {
 const CLIENTE_NUEVO_VACIO: ClienteNuevo = { nombre: "", tipoPersona: "NATURAL" };
 
 // Las partes de esta sección son la contraparte y terceros (nunca el cliente).
-function parteVacia(): ParteProceso {
+function parteVacia(rol: RolParte = "DEMANDADO"): ParteProceso {
   return {
     litigante: { id: `tmp-${Math.floor(performance.now())}`, tipoPersona: "NATURAL", nombre: "", correos: [] },
-    rol: "DEMANDADO",
+    rol,
     esNuestroCliente: false,
   };
 }
@@ -92,11 +92,23 @@ function peticionarioVacio(): ParteProceso {
   };
 }
 
-// Procesos de LITIGIO con título "Demandante vs. Demandado": el laboral y los verbales
-// civiles (CGP). Comparten el patrón "Tipo — X vs. Y" (a diferencia de DdP/tutela = "Tipo —
-// Entidad", y del resto de judiciales que va con título manual).
+const esEjecutivo = (tipo: TipoProceso) =>
+  tipo.nombre === "Proceso ejecutivo de mínima cuantía";
+
+// Procesos de LITIGIO con título "Activo vs. Pasivo": el laboral, los verbales civiles
+// (CGP) y el ejecutivo de mínima cuantía. Comparten el patrón "Tipo — X vs. Y" (a diferencia
+// de DdP/tutela = "Tipo — Entidad", y del resto de judiciales que va con título manual).
 const esLitigioVs = (tipo: TipoProceso) =>
-  tipo.grupo === "LABORAL" || ["Proceso verbal", "Proceso verbal sumario"].includes(tipo.nombre);
+  tipo.grupo === "LABORAL" ||
+  ["Proceso verbal", "Proceso verbal sumario"].includes(tipo.nombre) ||
+  esEjecutivo(tipo);
+
+// Roles de las dos partes del litigio: el ejecutivo usa ejecutante/ejecutado; el resto
+// (laboral, verbales) demandante/demandado. El activo va primero en el título.
+const rolesLitigio = (tipo: TipoProceso): { activo: RolParte; pasivo: RolParte } =>
+  esEjecutivo(tipo)
+    ? { activo: "EJECUTANTE", pasivo: "EJECUTADO" }
+    : { activo: "DEMANDANTE", pasivo: "DEMANDADO" };
 
 // Título auto-generado para trámites ante entidad (DdP) y acciones constitucionales
 // (tutela): "Tipo — Entidad" (p. ej. "Derecho de Petición — Colpensiones",
@@ -281,13 +293,15 @@ export default function NuevoProcesoPage() {
     const nombreCliente = clienteNuevo
       ? clienteNuevo.nombre.trim()
       : clientes.find((c) => c.id === clienteId)?.nombre.trim() ?? "";
+    const { pasivo } = rolesLitigio(tipo);
     const contraparte = (
-      partes.find((p) => p.rol === "DEMANDADO") ?? partes[0]
+      partes.find((p) => p.rol === pasivo) ?? partes[0]
     )?.litigante.nombre.trim() ?? "";
-    const representamosDemandado = String(datos.rol ?? "") === "Demandado";
-    const demandante = representamosDemandado ? contraparte : nombreCliente;
-    const demandado = representamosDemandado ? nombreCliente : contraparte;
-    const partesTit = [demandante, demandado].filter(Boolean).join(" vs. ");
+    // El ejecutivo no pregunta lado (el despacho ejecuta) → el cliente es la parte activa.
+    const clienteEsPasivo = !esEjecutivo(tipo) && String(datos.rol ?? "") === "Demandado";
+    const nomActivo = clienteEsPasivo ? contraparte : nombreCliente;
+    const nomPasivo = clienteEsPasivo ? nombreCliente : contraparte;
+    const partesTit = [nomActivo, nomPasivo].filter(Boolean).join(" vs. ");
     return [tipo.nombre, partesTit].filter(Boolean).join(" — ");
   }
 
@@ -323,7 +337,7 @@ export default function NuevoProcesoPage() {
     const rolCliente: RolParte = esTutelaOfensiva
       ? "ACCIONANTE"
       : esLitigioVs(tipo)
-        ? (String(datos.rol) === "Demandado" ? "DEMANDADO" : "DEMANDANTE")
+        ? (String(datos.rol) === "Demandado" ? rolesLitigio(tipo).pasivo : rolesLitigio(tipo).activo)
         : tipo.esJudicial
           ? clienteRol
           : "OTRO";
@@ -896,8 +910,9 @@ export default function NuevoProcesoPage() {
             ante entidad como el derecho de petición). La tutela ofensiva no tiene cuantía
             ni radicado de 23 dígitos (su radicado es seguimiento), así que se omite. El
             laboral los muestra arriba, en el orden del doc (radicado + juzgado), así que
-            aquí se excluye. */}
-        {tipo.esJudicial && !esTutelaOfensiva && tipo.grupo !== "LABORAL" && (
+            aquí se excluye. El ejecutivo de mínima cuantía define radicado/juzgado/cuantía
+            en su propio esquema (fuente única `datos.*`), así que también se excluye. */}
+        {tipo.esJudicial && !esTutelaOfensiva && tipo.grupo !== "LABORAL" && !esEjecutivo(tipo) && (
           <Card>
             <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
               Datos judiciales <span className="font-normal text-slate-400">(opcional)</span>
@@ -933,7 +948,7 @@ export default function NuevoProcesoPage() {
                 Demandado, terceros, etc. — el cliente ya está arriba.
               </p>
             </div>
-            <Button variant="ghost" onClick={() => setPartes((p) => [...p, parteVacia()])}>
+            <Button variant="ghost" onClick={() => setPartes((p) => [...p, parteVacia(rolesLitigio(tipo).pasivo)])}>
               + Agregar parte
             </Button>
           </div>

@@ -222,13 +222,28 @@ export const DatosProceso = forwardRef<
   }
 
   const tieneCampo = (k: string) => esquema.some((c) => c.key === k);
-  // El hint de vencimiento bajo radicación/recepción es para DdP/tutela (su plazo corre
-  // desde esa fecha). En el laboral el plazo NO corre desde la radicación, así que ahí no
-  // va; el único hint laboral es el de subsanar, bajo "Fecha del auto" (más abajo).
-  const slots: Record<string, ReactNode> = grupo === "LABORAL" ? {} : {
-    fechaRadicacion: <VencimientoHint tipoProcesoId={tipoProcesoId} datos={borrador} />,
-    fechaRecepcion: <VencimientoHint tipoProcesoId={tipoProcesoId} datos={borrador} />,
+  // Preview de vencimiento EN VIVO: se ancla bajo el CAMPO del que se deriva cada plazo
+  // (data-driven), NO bajo la radicación por defecto. Así el DdP lo muestra bajo
+  // radicación/recepción (su plazo corre desde ahí), pero el ejecutivo lo muestra bajo
+  // "Fecha del auto de calificación" (fechaAdmision → plazo de subsanar) y "Fecha de
+  // notificación" (plazo para contestar), no bajo la radicación —que en el ejecutivo no
+  // genera ningún término—. El backend ya respeta `disponibleSi`, así que la subsanación
+  // solo aparece si el juez inadmite. (El laboral arma sus hints aparte, más abajo.)
+  const ETIQUETA_PLAZO: Record<string, string> = {
+    fechaAdmision: "Plazo para subsanar:",
+    inadmisionFechaNotif: "Plazo para subsanar:",
+    fechaNotificacion: "Vence para contestar:",
+    trasladoFechaInicio: "Vence el traslado:",
   };
+  const slots: Record<string, ReactNode> = {};
+  if (grupo !== "LABORAL") {
+    for (const e of etapas) {
+      const campo = e.reglas?.plazoDesdeCampo;
+      if (campo && tieneCampo(campo) && !slots[campo]) {
+        slots[campo] = <VencimientoHint tipoProcesoId={tipoProcesoId} datos={borrador} desdeCampo={campo} etiqueta={ETIQUETA_PLAZO[campo] ?? "Vence el"} />;
+      }
+    }
+  }
   let docsSinAnclar: string[] = [];
   let reqSinAnclar: string[] = [];
   // Slots que van ARRIBA del campo (no debajo). P. ej. el PDF de la notificación
