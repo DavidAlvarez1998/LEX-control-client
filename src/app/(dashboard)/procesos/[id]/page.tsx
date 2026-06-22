@@ -12,7 +12,7 @@ import { CasoChain } from "@/components/caso-chain";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type Condicion, type EtapaDef } from "@/lib/procesos";
-import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, getSugerenciasActuaciones, importarDocumentosRama, listActuaciones, listarDocumentosRama, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, validarRadicado, type ActuacionItem, type CasoNodo, type DocumentoRamaItem, type ProcesoDetalle, type SugerenciaHito } from "@/lib/procesos-api";
+import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getDetalleRama, getProceso, getSugerenciasActuaciones, importarDocumentosRama, listActuaciones, listarDocumentosRama, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, validarRadicado, type ActuacionItem, type CasoNodo, type DetalleRama, type DocumentoRamaItem, type ProcesoDetalle, type SugerenciaHito } from "@/lib/procesos-api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
@@ -288,6 +288,17 @@ export default function ExpedientePage() {
         </div>
       )}
 
+      {proceso.ramaEstado === "RESERVADO" && (
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          🔒 Reservado en la Rama — el juzgado no publica las actuaciones de este proceso.
+        </div>
+      )}
+      {proceso.ramaEstado === "NO_PUBLICADO" && (
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          ⏳ Aún no aparece en la Rama Judicial — puede tardar días en publicarse tras radicar.
+        </div>
+      )}
+
       <Card className="mb-5">
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
           <Dato label="Código interno" value={proceso.codigoInterno} />
@@ -299,7 +310,15 @@ export default function ExpedientePage() {
           <Dato label="Cliente" value={proceso.cliente?.nombre ?? "—"} />
           <Dato label="Abogado responsable" value={proceso.responsable?.nombre ?? "Sin asignar"} />
           {proceso.tipoProceso.esJudicial && (
-            <Dato label="Despacho / juzgado" value={proceso.despachoJuzgado ?? "—"} />
+            <div>
+              <div className="text-xs text-slate-400">Despacho / juzgado</div>
+              <div className="mt-0.5 flex items-center gap-1.5">
+                <span className="font-medium text-slate-700 dark:text-slate-200">{proceso.despachoJuzgado ?? "—"}</span>
+                {(proceso.camposRamaCsv ?? "").split(",").includes("despachoJuzgado") && (
+                  <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-600 dark:text-slate-300">de la Rama</span>
+                )}
+              </div>
+            </div>
           )}
           {proceso.tipoProceso.esJudicial && (
             <Dato label="Cuantía" value={proceso.cuantiaValor ? `$${formatMoney(proceso.cuantiaValor)}` : "—"} />
@@ -549,6 +568,7 @@ export default function ExpedientePage() {
             onChanged={() => getProceso(proceso.id).then(setProceso).catch(() => {})}
             readOnly={!puedeEditar}
           />
+          {proceso.radicado && proceso.ramaEstado === "OK" && <EstadoJuzgado procesoId={proceso.id} />}
           {proceso.radicado && (
             <DocumentosRama
               procesoId={proceso.id}
@@ -745,6 +765,36 @@ function ActuacionesJuzgado({
             términos y decisiones críticas, verifica directamente con el juzgado.
           </p>
         </>
+      )}
+    </Card>
+  );
+}
+
+/** P11 — snapshot del proceso en el juzgado (ubicación, tipo/clase, última actualización). */
+function EstadoJuzgado({ procesoId }: { procesoId: string }) {
+  const [det, setDet] = useState<DetalleRama | null | "cargando">("cargando");
+  useEffect(() => {
+    getDetalleRama(procesoId).then(setDet).catch(() => setDet(null));
+  }, [procesoId]);
+  if (det === "cargando" || det === null) return null;
+  const fila = (label: string, valor: string | null) =>
+    valor ? (
+      <span>
+        <span className="text-slate-400">{label}:</span> <span className="text-slate-700 dark:text-slate-200">{valor}</span>
+      </span>
+    ) : null;
+  return (
+    <Card className="mb-5">
+      <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">🏛️ Estado en el juzgado</h3>
+      <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
+        {fila("Ubicación", det.ubicacion)}
+        {fila("Tipo", det.tipoProceso)}
+        {fila("Clase", det.claseProceso)}
+        {fila("Ponente", det.ponente)}
+        {fila("Últ. actualización Rama", det.ultimaActualizacion ? fecha(det.ultimaActualizacion) : null)}
+      </div>
+      {det.contenidoRadicacion && (
+        <p className="mt-2 text-[11px] text-slate-400">Radicación: {det.contenidoRadicacion}</p>
       )}
     </Card>
   );

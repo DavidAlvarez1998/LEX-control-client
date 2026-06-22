@@ -155,6 +155,8 @@ export type ProcesoDetalle = {
   proximaAudiencia: string | null;
   fechaLimite: string | null;
   actuacionesSyncAt: string | null; // última sincronización con la Rama (frescura, P5)
+  ramaEstado: string | null; // OK | RESERVADO | NO_PUBLICADO (P6)
+  camposRamaCsv: string | null; // campos que llenó la Rama (P8)
   casoRelacionadoId: string | null;
   tipoProceso: {
     id: string;
@@ -235,6 +237,21 @@ export function marcarActuacionesVistas(procesoId: string): Promise<{ ok: boolea
 /** Sugerencias de avance de etapa derivadas de los hitos de las actuaciones (#1). */
 export function getSugerenciasActuaciones(procesoId: string): Promise<SugerenciaHito[]> {
   return api.get<SugerenciaHito[]>(`/procesos/${procesoId}/actuaciones/sugerencias`);
+}
+
+// --- Detalle del proceso en el juzgado (Rama, P11) ---
+export type DetalleRama = {
+  tipoProceso: string | null;
+  claseProceso: string | null;
+  subclaseProceso: string | null;
+  ponente: string | null;
+  recurso: string | null;
+  ubicacion: string | null;
+  contenidoRadicacion: string | null;
+  ultimaActualizacion: string | null;
+};
+export function getDetalleRama(procesoId: string): Promise<DetalleRama | null> {
+  return api.get<DetalleRama | null>(`/procesos/${procesoId}/rama/detalle`);
 }
 
 // --- Documentos del expediente (Rama, P9) ---
