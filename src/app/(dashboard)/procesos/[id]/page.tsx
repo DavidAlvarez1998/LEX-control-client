@@ -313,9 +313,10 @@ export default function ExpedientePage() {
 
       <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Etapas del proceso
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+            Avance en el despacho
           </h3>
+          <p className="mb-4 text-xs text-slate-400">Las etapas que gestionas tú en LEX Control.</p>
           {esLaboral ? (
             // Stepper agrupado por fase (1..6): la fase actual va abierta; las demás se
             // pueden desplegar. Dentro de cada fase solo se ven las etapas que aplican.
@@ -639,14 +640,16 @@ function ActuacionesJuzgado({
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Actuaciones del juzgado
+            🏛️ Lo que publica el juzgado
             {numNuevas > 0 && (
               <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
                 {numNuevas} nueva{numNuevas > 1 ? "s" : ""}
               </span>
             )}
           </h3>
-          <p className="text-xs text-slate-400">Lo que publica la Rama Judicial para este radicado.</p>
+          <p className="text-xs text-slate-400">
+            Actuaciones que la Rama Judicial publica para este radicado (fuente externa, distinta de tu avance en el despacho).
+          </p>
         </div>
         {!readOnly && radicado && (
           <div className="flex shrink-0 gap-2">
@@ -721,6 +724,10 @@ function ActuacionesJuzgado({
               ))}
             </ol>
           )}
+          <p className="mt-4 border-t border-slate-100 pt-3 text-[11px] text-slate-400 dark:border-slate-700">
+            La información de la Rama no es en tiempo real y algunos juzgados publican con retraso. Para
+            términos y decisiones críticas, verifica directamente con el juzgado.
+          </p>
         </>
       )}
     </Card>
@@ -916,7 +923,7 @@ function RadicadoDato({
             </button>
           </div>
           {digitos > 0 && (
-            <p className={`mt-1 text-xs ${radicadoOk ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+            <p className={`mt-1 text-sm font-medium ${radicadoOk ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
               {radicadoOk
                 ? "✓ 23 dígitos"
                 : digitos < 23
