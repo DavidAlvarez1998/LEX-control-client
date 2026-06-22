@@ -165,9 +165,14 @@ export function DocumentosProceso({
           <li key={doc.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-600">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <div className="truncate font-medium text-slate-800 dark:text-slate-100">{doc.nombre}</div>
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate font-medium text-slate-800 dark:text-slate-100">{doc.nombre}</span>
+                  {doc.origenRamaIdReg && (
+                    <span className="shrink-0 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-600 dark:text-slate-300">del juzgado</span>
+                  )}
+                </div>
                 <div className="text-xs text-slate-400">
-                  {doc.contenido != null ? "Borrador generado" : "Archivo adjunto"}
+                  {doc.origenRamaIdReg ? "Importado del expediente" : doc.contenido != null ? "Borrador generado" : "Archivo adjunto"}
                 </div>
               </div>
               <div className="flex shrink-0 gap-2">

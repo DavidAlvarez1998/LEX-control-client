@@ -659,6 +659,18 @@ function ActuacionesJuzgado({
     }
   }
 
+  // P4: asigna cada sugerencia a la actuación (más reciente) que la disparó, para
+  // mostrarla inline en el timeline en vez de en una card aparte.
+  const sugPorItem = new Map<string, SugerenciaHito>();
+  {
+    const restantes = new Map(sugerencias.map((s) => [s.etapaKey, s] as const));
+    for (const a of items ?? []) {
+      for (const [k, s] of restantes) {
+        if (s.actuacion === a.actuacion) { sugPorItem.set(a.id, s); restantes.delete(k); break; }
+      }
+    }
+  }
+
   const tono = aviso?.tono === "ok"
     ? "text-emerald-600 dark:text-emerald-400"
     : aviso?.tono === "warn"
@@ -707,33 +719,6 @@ function ActuacionesJuzgado({
           </p>
           {aviso && <p className={`mb-3 text-xs font-medium ${tono}`}>{aviso.texto}</p>}
 
-          {/* #1: sugerencias de avance (no auto-avanza; el abogado confirma y adjunta). */}
-          {sugerencias.length > 0 && (
-            <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-500/30 dark:bg-indigo-500/10">
-              <p className="mb-2 text-xs font-semibold text-indigo-800 dark:text-indigo-200">Sugerencias de la Rama</p>
-              <ul className="space-y-1.5">
-                {sugerencias.map((s) => (
-                  <li key={s.etapaKey} className="flex items-center justify-between gap-3 text-xs">
-                    <span className="text-indigo-900 dark:text-indigo-200">
-                      Posible avance a <strong>{s.etapaNombre}</strong>
-                      {s.fechaSugerida ? <> · {fecha(s.fechaSugerida)}</> : null}
-                      <span className="block text-indigo-700/70 dark:text-indigo-300/60">“{s.actuacion}”</span>
-                    </span>
-                    {!readOnly && s.campoFecha && s.fechaSugerida && (
-                      <button
-                        onClick={() => usarFecha(s)}
-                        disabled={aplicando === s.etapaKey}
-                        className="shrink-0 rounded-md bg-indigo-600 px-2 py-1 font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-                      >
-                        {aplicando === s.etapaKey ? "…" : "Usar fecha"}
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
           {items === null ? (
             <p className="text-sm text-slate-400">Cargando…</p>
           ) : items.length === 0 ? (
@@ -755,6 +740,27 @@ function ActuacionesJuzgado({
                       )}
                     </div>
                     {a.anotacion && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{a.anotacion}</p>}
+                    {/* P4: sugerencia de avance inline (junto a la actuación que la dispara). */}
+                    {(() => {
+                      const s = sugPorItem.get(a.id);
+                      if (!s) return null;
+                      return (
+                        <div className="mt-1 flex flex-wrap items-center gap-2 rounded-md bg-indigo-50 px-2 py-1 text-xs dark:bg-indigo-500/10">
+                          <span className="text-indigo-900 dark:text-indigo-200">
+                            ↳ ¿avanzar a <strong>{s.etapaNombre}</strong>{s.fechaSugerida ? ` (${fecha(s.fechaSugerida)})` : ""}?
+                          </span>
+                          {!readOnly && s.campoFecha && s.fechaSugerida && (
+                            <button
+                              onClick={() => usarFecha(s)}
+                              disabled={aplicando === s.etapaKey}
+                              className="rounded-md bg-indigo-600 px-2 py-0.5 font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                              {aplicando === s.etapaKey ? "…" : "Usar fecha"}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </li>
               ))}

@@ -182,6 +182,7 @@ export type DocumentoProceso = {
   url: string | null; // adjunto (enlace)
   contenido: string | null; // borrador generado (editable)
   generadoDePlantilla: string | null;
+  origenRamaIdReg: string | null; // si se importó del expediente de la Rama (P15)
   createdAt: string;
 };
 
