@@ -12,7 +12,7 @@ import { CasoChain } from "@/components/caso-chain";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type Condicion, type EtapaDef } from "@/lib/procesos";
-import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getDetalleRama, getProceso, getSugerenciasActuaciones, importarDocumentosRama, listActuaciones, listarDocumentosRama, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, validarRadicado, type ActuacionItem, type CasoNodo, type DetalleRama, type DocumentoRamaItem, type ProcesoDetalle, type SugerenciaHito } from "@/lib/procesos-api";
+import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getDetalleRama, getProceso, getSugerenciasActuaciones, importarDocumentosRama, importarPartesRama, listActuaciones, listarDocumentosRama, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, sugerirPartesRama, validarRadicado, type ActuacionItem, type CasoNodo, type DetalleRama, type DocumentoRamaItem, type ProcesoDetalle, type SugerenciaHito, type SujetoRamaItem } from "@/lib/procesos-api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
@@ -570,6 +570,13 @@ export default function ExpedientePage() {
           />
           {proceso.radicado && proceso.ramaEstado === "OK" && <EstadoJuzgado procesoId={proceso.id} />}
           {proceso.radicado && (
+            <PartesRama
+              procesoId={proceso.id}
+              onImportado={() => getProceso(proceso.id).then(setProceso).catch(() => {})}
+              readOnly={!puedeEditar}
+            />
+          )}
+          {proceso.radicado && (
             <DocumentosRama
               procesoId={proceso.id}
               onImportado={() => getProceso(proceso.id).then(setProceso).catch(() => {})}
@@ -771,6 +778,59 @@ function ActuacionesJuzgado({
             términos y decisiones críticas, verifica directamente con el juzgado.
           </p>
         </>
+      )}
+    </Card>
+  );
+}
+
+/** P10 — partes que reporta la Rama: cotejo + importar las que falten. */
+function PartesRama({ procesoId, onImportado, readOnly = false }: { procesoId: string; onImportado: () => void; readOnly?: boolean }) {
+  const [sujetos, setSujetos] = useState<SujetoRamaItem[] | null | "no">("no");
+  const [importando, setImportando] = useState(false);
+  useEffect(() => {
+    sugerirPartesRama(procesoId)
+      .then((r) => setSujetos(r.encontrado ? r.sujetos : "no"))
+      .catch(() => setSujetos("no"));
+  }, [procesoId]);
+
+  if (sujetos === "no" || sujetos === null) return null;
+  const faltan = sujetos.filter((s) => !s.yaExiste);
+  if (sujetos.length === 0) return null;
+
+  async function importar() {
+    setImportando(true);
+    try {
+      await importarPartesRama(procesoId);
+      onImportado();
+      const r = await sugerirPartesRama(procesoId);
+      setSujetos(r.encontrado ? r.sujetos : "no");
+    } finally {
+      setImportando(false);
+    }
+  }
+
+  return (
+    <Card className="mb-5">
+      <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">🏛️ Partes según el juzgado</h3>
+      <ul className="space-y-1 text-sm">
+        {sujetos.map((s, i) => (
+          <li key={i} className="flex items-center gap-2">
+            <span className="w-24 shrink-0 text-xs text-slate-400">{s.tipoSujeto ?? "—"}</span>
+            <span className="min-w-0 flex-1 text-slate-700 dark:text-slate-200">{s.nombreRazonSocial}</span>
+            {s.yaExiste ? (
+              <span className="shrink-0 text-xs text-emerald-600 dark:text-emerald-400">ya está ✓</span>
+            ) : (
+              <span className="shrink-0 text-xs text-slate-400">falta</span>
+            )}
+          </li>
+        ))}
+      </ul>
+      {!readOnly && faltan.length > 0 && (
+        <div className="mt-3">
+          <Button onClick={importar} disabled={importando}>
+            {importando ? "Importando…" : `Importar las que faltan (${faltan.length})`}
+          </Button>
+        </div>
       )}
     </Card>
   );

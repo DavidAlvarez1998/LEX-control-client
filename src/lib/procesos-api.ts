@@ -262,6 +262,22 @@ export function getDetalleRama(procesoId: string): Promise<DetalleRama | null> {
   return api.get<DetalleRama | null>(`/procesos/${procesoId}/rama/detalle`);
 }
 
+// --- Partes según la Rama (P10) ---
+export type SujetoRamaItem = {
+  tipoSujeto: string | null;
+  nombreRazonSocial: string | null;
+  identificacion: string | null;
+  rol: string;
+  yaExiste: boolean;
+};
+export type ListaSujetosRama = { encontrado: boolean; sujetos: SujetoRamaItem[] };
+export function sugerirPartesRama(procesoId: string): Promise<ListaSujetosRama> {
+  return api.get<ListaSujetosRama>(`/procesos/${procesoId}/rama/partes`);
+}
+export function importarPartesRama(procesoId: string, nombres?: string[]): Promise<{ importadas: number }> {
+  return api.post<{ importadas: number }>(`/procesos/${procesoId}/rama/partes/importar`, { nombres });
+}
+
 // --- Documentos del expediente (Rama, P9) ---
 export type DocumentoRamaItem = {
   idRegDocumento: number;
