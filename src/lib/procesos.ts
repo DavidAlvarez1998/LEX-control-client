@@ -137,14 +137,23 @@ export const esCurado = (t: { actualizado?: boolean; grupo: string }): boolean =
 export type TipoPersona = "NATURAL" | "JURIDICA";
 export type TipoDocumento = "CC" | "CE" | "NIT" | "TI" | "PASAPORTE" | "PEP_PPT";
 
+// Naturaleza de una persona jurídica (solo aplica cuando tipoPersona = JURIDICA).
+export type NaturalezaJuridica = "PUBLICA" | "PRIVADA" | "MIXTA";
+
 export type Litigante = {
   id: string;
   tipoPersona: TipoPersona;
+  naturalezaJuridica?: NaturalezaJuridica | null;
   nombre: string;
   tipoDocumento?: TipoDocumento;
   numeroDocumento?: string;
   telefono?: string;
+  direccion?: string;
   correos?: string[]; // varios correos; el primero es el principal
+  // Marcas "se desconocen los datos" de notificación.
+  correoDesconocido?: boolean;
+  direccionDesconocida?: boolean;
+  telefonoDesconocido?: boolean;
 };
 
 export type RolParte =

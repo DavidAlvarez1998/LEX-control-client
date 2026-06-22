@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui";
-import { CorreosInput, Field, Input, Select } from "@/components/form-ui";
+import { Field, Input, NATURALEZA_LABEL, Notificaciones, Select } from "@/components/form-ui";
 import { errorMessage } from "@/lib/api";
-import type { GrupoProceso, RolParte, TipoDocumento, TipoPersona } from "@/lib/procesos";
+import type { GrupoProceso, NaturalezaJuridica, RolParte, TipoDocumento, TipoPersona } from "@/lib/procesos";
 import {
   agregarParte,
   editarParte,
@@ -26,9 +26,15 @@ type Draft = {
   nombre: string;
   rol: RolParte;
   tipoPersona: TipoPersona;
+  naturalezaJuridica: NaturalezaJuridica | null;
   tipoDocumento: TipoDocumento | "";
   numeroDocumento: string;
   correos: string[];
+  correoDesconocido: boolean;
+  direccion: string;
+  direccionDesconocida: boolean;
+  telefono: string;
+  telefonoDesconocido: boolean;
 };
 
 function draftDeParte(p: ParteDetalle): Draft {
@@ -36,9 +42,15 @@ function draftDeParte(p: ParteDetalle): Draft {
     nombre: p.litigante.nombre,
     rol: p.rol,
     tipoPersona: p.litigante.tipoPersona,
+    naturalezaJuridica: p.litigante.naturalezaJuridica ?? null,
     tipoDocumento: p.litigante.tipoDocumento ?? "",
     numeroDocumento: p.litigante.numeroDocumento ?? "",
     correos: p.litigante.correos ?? [],
+    correoDesconocido: p.litigante.correoDesconocido ?? false,
+    direccion: p.litigante.direccion ?? "",
+    direccionDesconocida: p.litigante.direccionDesconocida ?? false,
+    telefono: p.litigante.telefono ?? "",
+    telefonoDesconocido: p.litigante.telefonoDesconocido ?? false,
   };
 }
 
@@ -46,9 +58,15 @@ const DRAFT_VACIO: Draft = {
   nombre: "",
   rol: "DEMANDADO",
   tipoPersona: "NATURAL",
+  naturalezaJuridica: null,
   tipoDocumento: "",
   numeroDocumento: "",
   correos: [],
+  correoDesconocido: false,
+  direccion: "",
+  direccionDesconocida: false,
+  telefono: "",
+  telefonoDesconocido: false,
 };
 
 /**
@@ -99,9 +117,15 @@ export function PartesProceso({
       const litigante = {
         nombre: draft.nombre.trim(),
         tipoPersona: draft.tipoPersona,
+        naturalezaJuridica: draft.tipoPersona === "JURIDICA" ? draft.naturalezaJuridica : null,
         tipoDocumento: draft.tipoDocumento || null,
         numeroDocumento: draft.numeroDocumento.trim() || null,
         correos: draft.correos,
+        correoDesconocido: draft.correoDesconocido,
+        direccion: draft.direccion.trim() || null,
+        direccionDesconocida: draft.direccionDesconocida,
+        telefono: draft.telefono.trim() || null,
+        telefonoDesconocido: draft.telefonoDesconocido,
       };
       const actualizado =
         editando === "nueva"
@@ -146,10 +170,27 @@ export function PartesProceso({
       <Field label="Tipo de persona">
         <Select
           value={draft.tipoPersona}
-          onChange={(v) => setDraft((d) => ({ ...d, tipoPersona: v as TipoPersona }))}
+          onChange={(v) =>
+            setDraft((d) =>
+              v === "JURIDICA"
+                ? { ...d, tipoPersona: "JURIDICA", tipoDocumento: "NIT" }
+                : { ...d, tipoPersona: "NATURAL", naturalezaJuridica: null },
+            )
+          }
           opciones={["NATURAL", "JURIDICA"]}
         />
       </Field>
+      {draft.tipoPersona === "JURIDICA" && (
+        <Field label="Naturaleza">
+          <Select
+            value={draft.naturalezaJuridica ?? ""}
+            onChange={(v) => setDraft((d) => ({ ...d, naturalezaJuridica: (v as NaturalezaJuridica) || null }))}
+            opciones={["PUBLICA", "PRIVADA", "MIXTA"]}
+            etiquetas={NATURALEZA_LABEL}
+            placeholder="Selecciona…"
+          />
+        </Field>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <Field label="Documento">
           <Select
@@ -163,10 +204,17 @@ export function PartesProceso({
           <Input value={draft.numeroDocumento} onChange={(v) => setDraft((d) => ({ ...d, numeroDocumento: v }))} />
         </Field>
       </div>
-      <div>
-        <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Correos</span>
-        <CorreosInput value={draft.correos} onChange={(v) => setDraft((d) => ({ ...d, correos: v }))} />
-      </div>
+      <Notificaciones
+        value={{
+          correos: draft.correos,
+          correoDesconocido: draft.correoDesconocido,
+          direccion: draft.direccion,
+          direccionDesconocida: draft.direccionDesconocida,
+          telefono: draft.telefono,
+          telefonoDesconocido: draft.telefonoDesconocido,
+        }}
+        onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
+      />
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={cancelar} disabled={guardando}>

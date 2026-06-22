@@ -314,6 +314,85 @@ export function Checkbox({
   );
 }
 
+// Etiquetas amables para la naturaleza de una persona jurídica.
+export const NATURALEZA_LABEL: Record<string, string> = {
+  PUBLICA: "Pública",
+  PRIVADA: "Privada",
+  MIXTA: "Mixta",
+};
+
+/**
+ * Bloque "Notificaciones" de un sujeto procesal / cliente: correo(s), dirección y
+ * teléfono, cada uno con un check "Se desconocen los datos" que deshabilita y limpia
+ * el campo (la marca se persiste; es relevante para emplazamiento). `value` agrupa los
+ * 6 campos; `onChange` recibe un patch parcial. Reutilizado en nuevo proceso (partes y
+ * cliente nuevo) y en el panel Partes de la ficha.
+ */
+export type DatosNotificacion = {
+  correos: string[];
+  correoDesconocido: boolean;
+  direccion: string;
+  direccionDesconocida: boolean;
+  telefono: string;
+  telefonoDesconocido: boolean;
+};
+
+export function Notificaciones({
+  value,
+  onChange,
+}: {
+  value: DatosNotificacion;
+  onChange: (patch: Partial<DatosNotificacion>) => void;
+}) {
+  return (
+    <div className="space-y-3 rounded-lg border border-line bg-subtle p-3">
+      <span className="block text-sm font-semibold text-foreground">Notificaciones</span>
+
+      <div>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-medium text-foreground">Correo</span>
+          <Checkbox
+            checked={value.correoDesconocido}
+            onChange={(v) => onChange(v ? { correoDesconocido: true, correos: [] } : { correoDesconocido: false })}
+            label="Se desconocen los datos"
+          />
+        </div>
+        {!value.correoDesconocido && (
+          <CorreosInput value={value.correos} onChange={(v) => onChange({ correos: v })} />
+        )}
+      </div>
+
+      <div>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-medium text-foreground">Dirección</span>
+          <Checkbox
+            checked={value.direccionDesconocida}
+            onChange={(v) => onChange(v ? { direccionDesconocida: true, direccion: "" } : { direccionDesconocida: false })}
+            label="Se desconocen los datos"
+          />
+        </div>
+        {!value.direccionDesconocida && (
+          <Input value={value.direccion} onChange={(v) => onChange({ direccion: v })} placeholder="Dirección de notificación" />
+        )}
+      </div>
+
+      <div>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-medium text-foreground">Teléfono</span>
+          <Checkbox
+            checked={value.telefonoDesconocido}
+            onChange={(v) => onChange(v ? { telefonoDesconocido: true, telefono: "" } : { telefonoDesconocido: false })}
+            label="Se desconocen los datos"
+          />
+        </div>
+        {!value.telefonoDesconocido && (
+          <Input value={value.telefono} onChange={(v) => onChange({ telefono: v })} placeholder="Teléfono de contacto" />
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Input de dinero con formato 1.000.000 (convención de precios del proyecto). */
 export function MoneyInput({
   value,

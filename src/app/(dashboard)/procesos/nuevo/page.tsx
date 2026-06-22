@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button, Card, Modal, PageHeader } from "@/components/ui";
-import { BuscadorSelect, CorreosInput, Field, Input, MoneyInput, Select, SelectableCard } from "@/components/form-ui";
+import { BuscadorSelect, CorreosInput, Field, Input, MoneyInput, NATURALEZA_LABEL, Notificaciones, Select, SelectableCard } from "@/components/form-ui";
 import { FormularioDinamico } from "@/components/formulario-dinamico";
 import { VencimientoHint } from "@/components/vencimiento-hint";
 import { BotonSubirDoc } from "@/components/boton-subir-doc";
@@ -25,6 +25,7 @@ import {
   validarDatos,
   type CuantiaTipo,
   type Jurisdiccion,
+  type NaturalezaJuridica,
   type ParteProceso,
   type RolParte,
   type TipoDocumento,
@@ -65,10 +66,15 @@ const TIPOS_DOC: TipoDocumento[] = ["CC", "CE", "NIT", "TI", "PASAPORTE", "PEP_P
 type ClienteNuevo = {
   nombre: string;
   tipoPersona: TipoPersona;
+  naturalezaJuridica?: NaturalezaJuridica | null;
   tipoDocumento?: TipoDocumento;
   numeroDocumento?: string;
   telefono?: string;
+  direccion?: string;
   correos?: string[]; // varios correos; el primero es el principal
+  correoDesconocido?: boolean;
+  direccionDesconocida?: boolean;
+  telefonoDesconocido?: boolean;
 };
 const CLIENTE_NUEVO_VACIO: ClienteNuevo = { nombre: "", tipoPersona: "NATURAL" };
 
@@ -443,10 +449,16 @@ export default function NuevoProcesoPage() {
             .map((p) => ({
               litigante: {
                 tipoPersona: p.litigante.tipoPersona,
+                naturalezaJuridica: p.litigante.naturalezaJuridica,
                 nombre: p.litigante.nombre.trim(),
                 tipoDocumento: p.litigante.tipoDocumento,
                 numeroDocumento: p.litigante.numeroDocumento,
+                telefono: p.litigante.telefono,
+                direccion: p.litigante.direccion,
                 correos: (p.litigante.correos ?? []).map((c) => c.trim()).filter(Boolean),
+                correoDesconocido: p.litigante.correoDesconocido,
+                direccionDesconocida: p.litigante.direccionDesconocida,
+                telefonoDesconocido: p.litigante.telefonoDesconocido,
               },
               rol: p.rol,
               rolEtiqueta: p.rolEtiqueta,
@@ -1012,7 +1024,7 @@ export default function NuevoProcesoPage() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                Contraparte y otras partes <span className="font-normal text-slate-400">(opcional)</span>
+                Agregar sujeto procesal <span className="font-normal text-slate-400">(opcional)</span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Demandado, terceros, etc. — el cliente ya está arriba.
@@ -1047,10 +1059,28 @@ export default function NuevoProcesoPage() {
                     <Field label="Tipo de persona">
                       <Select
                         value={p.litigante.tipoPersona}
-                        onChange={(v) => actualizarLitigante(i, { tipoPersona: v as TipoPersona })}
+                        onChange={(v) =>
+                          actualizarLitigante(
+                            i,
+                            v === "JURIDICA"
+                              ? { tipoPersona: "JURIDICA", tipoDocumento: "NIT" }
+                              : { tipoPersona: "NATURAL", naturalezaJuridica: null },
+                          )
+                        }
                         opciones={["NATURAL", "JURIDICA"]}
                       />
                     </Field>
+                    {p.litigante.tipoPersona === "JURIDICA" && (
+                      <Field label="Naturaleza">
+                        <Select
+                          value={p.litigante.naturalezaJuridica ?? ""}
+                          onChange={(v) => actualizarLitigante(i, { naturalezaJuridica: (v as NaturalezaJuridica) || null })}
+                          opciones={["PUBLICA", "PRIVADA", "MIXTA"]}
+                          etiquetas={NATURALEZA_LABEL}
+                          placeholder="Selecciona…"
+                        />
+                      </Field>
+                    )}
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <Field label="Documento">
                         <Select
@@ -1069,10 +1099,16 @@ export default function NuevoProcesoPage() {
                     </div>
                   </div>
                   <div className="mt-3">
-                    <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Correos</span>
-                    <CorreosInput
-                      value={p.litigante.correos ?? []}
-                      onChange={(v) => actualizarLitigante(i, { correos: v })}
+                    <Notificaciones
+                      value={{
+                        correos: p.litigante.correos ?? [],
+                        correoDesconocido: p.litigante.correoDesconocido ?? false,
+                        direccion: p.litigante.direccion ?? "",
+                        direccionDesconocida: p.litigante.direccionDesconocida ?? false,
+                        telefono: p.litigante.telefono ?? "",
+                        telefonoDesconocido: p.litigante.telefonoDesconocido ?? false,
+                      }}
+                      onChange={(patch) => actualizarLitigante(i, patch)}
                     />
                   </div>
                   <div className="mt-3 flex justify-end">
@@ -1134,10 +1170,27 @@ export default function NuevoProcesoPage() {
         <Field label="Tipo de persona">
           <Select
             value={nuevoForm.tipoPersona}
-            onChange={(v) => setNuevoForm((f) => ({ ...f, tipoPersona: v as TipoPersona }))}
+            onChange={(v) =>
+              setNuevoForm((f) =>
+                v === "JURIDICA"
+                  ? { ...f, tipoPersona: "JURIDICA", tipoDocumento: "NIT" }
+                  : { ...f, tipoPersona: "NATURAL", naturalezaJuridica: null },
+              )
+            }
             opciones={["NATURAL", "JURIDICA"]}
           />
         </Field>
+        {nuevoForm.tipoPersona === "JURIDICA" && (
+          <Field label="Naturaleza">
+            <Select
+              value={nuevoForm.naturalezaJuridica ?? ""}
+              onChange={(v) => setNuevoForm((f) => ({ ...f, naturalezaJuridica: (v as NaturalezaJuridica) || null }))}
+              opciones={["PUBLICA", "PRIVADA", "MIXTA"]}
+              etiquetas={NATURALEZA_LABEL}
+              placeholder="Selecciona…"
+            />
+          </Field>
+        )}
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Field label="Tipo de documento">
             <Select
@@ -1154,20 +1207,17 @@ export default function NuevoProcesoPage() {
             />
           </Field>
         </div>
-        <Field label="Teléfono">
-          <Input
-            value={nuevoForm.telefono ?? ""}
-            onChange={(v) => setNuevoForm((f) => ({ ...f, telefono: v }))}
-            placeholder="Teléfono"
-          />
-        </Field>
-        <div>
-          <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Correos</span>
-          <CorreosInput
-            value={nuevoForm.correos ?? []}
-            onChange={(v) => setNuevoForm((f) => ({ ...f, correos: v }))}
-          />
-        </div>
+        <Notificaciones
+          value={{
+            correos: nuevoForm.correos ?? [],
+            correoDesconocido: nuevoForm.correoDesconocido ?? false,
+            direccion: nuevoForm.direccion ?? "",
+            direccionDesconocida: nuevoForm.direccionDesconocida ?? false,
+            telefono: nuevoForm.telefono ?? "",
+            telefonoDesconocido: nuevoForm.telefonoDesconocido ?? false,
+          }}
+          onChange={(patch) => setNuevoForm((f) => ({ ...f, ...patch }))}
+        />
       </Modal>
     </div>
   );

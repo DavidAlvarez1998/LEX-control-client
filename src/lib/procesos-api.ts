@@ -12,6 +12,7 @@ import type {
   GrupoProceso,
   Instancia,
   Jurisdiccion,
+  NaturalezaJuridica,
   RolParte,
   TipoDocumento,
   TipoPersona,
@@ -122,11 +123,16 @@ export type ParteDetalle = {
     id: string;
     nombre: string;
     tipoPersona: TipoPersona;
+    naturalezaJuridica: NaturalezaJuridica | null;
     tipoDocumento: TipoDocumento | null;
     numeroDocumento: string | null;
     telefono: string | null;
+    direccion: string | null;
     email: string | null;
     correos: string[];
+    correoDesconocido: boolean;
+    direccionDesconocida: boolean;
+    telefonoDesconocido: boolean;
   };
 };
 
@@ -339,12 +345,17 @@ export type CrearProcesoBody = {
     nuevo?: {
       nombre: string;
       tipoPersona?: TipoPersona;
+      naturalezaJuridica?: NaturalezaJuridica | null;
       tipoDocumento?: TipoDocumento;
       numeroDocumento?: string;
       telefono?: string;
+      direccion?: string;
       email?: string;
       correos?: string[];
       ciudad?: string;
+      correoDesconocido?: boolean;
+      direccionDesconocida?: boolean;
+      telefonoDesconocido?: boolean;
     };
     rol: RolParte;
     rolEtiqueta?: string;
@@ -352,12 +363,17 @@ export type CrearProcesoBody = {
   partes: {
     litigante: {
       tipoPersona: TipoPersona;
+      naturalezaJuridica?: NaturalezaJuridica | null;
       nombre: string;
       tipoDocumento?: TipoDocumento;
       numeroDocumento?: string;
       telefono?: string;
+      direccion?: string;
       email?: string;
       correos?: string[];
+      correoDesconocido?: boolean;
+      direccionDesconocida?: boolean;
+      telefonoDesconocido?: boolean;
     };
     rol: RolParte;
     rolEtiqueta?: string;
@@ -404,12 +420,17 @@ export function actualizarProceso(
 // Datos de un litigante al agregar/editar una parte (mismo contrato del create).
 export type LitiganteInput = {
   tipoPersona?: TipoPersona;
+  naturalezaJuridica?: NaturalezaJuridica | null;
   nombre?: string;
   tipoDocumento?: TipoDocumento | null;
   numeroDocumento?: string | null;
   telefono?: string | null;
+  direccion?: string | null;
   email?: string | null;
   correos?: string[];
+  correoDesconocido?: boolean;
+  direccionDesconocida?: boolean;
+  telefonoDesconocido?: boolean;
 };
 
 /** Agrega una contraparte/tercero a un proceso ya creado. */
