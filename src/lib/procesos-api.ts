@@ -173,6 +173,40 @@ export type DocumentoProceso = {
   createdAt: string;
 };
 
+// --- Actuaciones de la Rama Judicial (CPNU) ---
+export type ActuacionItem = {
+  id: string;
+  fechaActuacion: string;
+  actuacion: string;
+  anotacion: string | null;
+  fechaRegistro: string | null;
+  createdAt: string;
+};
+export type ValidarRadicadoResp = {
+  encontrado: boolean;
+  idProceso: number | null;
+  despacho: string | null;
+  departamento: string | null;
+  fechaUltimaActuacion: string | null;
+  esPrivado: boolean;
+};
+export type SyncActuacionesResp = { encontrado: boolean; reservado: boolean; nuevas: number; total: number };
+
+/** Valida un radicado contra la Rama Judicial (feedback al pegarlo). */
+export function validarRadicado(radicado: string): Promise<ValidarRadicadoResp> {
+  return api.get<ValidarRadicadoResp>(`/procesos/validar-radicado?radicado=${encodeURIComponent(radicado)}`);
+}
+
+/** Actuaciones guardadas del proceso (más reciente primero). */
+export function listActuaciones(procesoId: string): Promise<ActuacionItem[]> {
+  return api.get<ActuacionItem[]>(`/procesos/${procesoId}/actuaciones`);
+}
+
+/** Dispara la sincronización con la Rama (inserta solo las nuevas). */
+export function sincronizarActuaciones(procesoId: string): Promise<SyncActuacionesResp> {
+  return api.post<SyncActuacionesResp>(`/procesos/${procesoId}/actuaciones/sincronizar`, {});
+}
+
 export type PlantillaItem = { id: string; nombre: string };
 
 export function getPlantillasDeProceso(id: string): Promise<PlantillaItem[]> {

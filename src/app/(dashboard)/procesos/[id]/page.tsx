@@ -12,7 +12,7 @@ import { CasoChain } from "@/components/caso-chain";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type Condicion, type EtapaDef } from "@/lib/procesos";
-import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, moverEtapa, type CasoNodo, type ProcesoDetalle } from "@/lib/procesos-api";
+import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, listActuaciones, moverEtapa, sincronizarActuaciones, validarRadicado, type ActuacionItem, type CasoNodo, type ProcesoDetalle } from "@/lib/procesos-api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
@@ -535,8 +535,130 @@ export default function ExpedientePage() {
         />
       </Card>
       </div>
+
+      {/* Actuaciones del juzgado (Rama Judicial / CPNU): bitácora externa, distinta
+          de las etapas internas. Solo para procesos judiciales con radicado. */}
+      {proceso.tipoProceso.esJudicial && (
+        <div>
+          <ActuacionesJuzgado
+            procesoId={proceso.id}
+            radicado={proceso.radicado}
+            onUltimaActuacion={() => getProceso(proceso.id).then(setProceso).catch(() => {})}
+            readOnly={!puedeEditar}
+          />
+        </div>
+      )}
     </div>
     </RolEmpresaGuard>
+  );
+}
+
+/** Panel de actuaciones de la Rama Judicial: lista + botón "Actualizar" (sync).
+ *  Marca como "nueva" lo que aparece en la sincronización de esta sesión. */
+function ActuacionesJuzgado({
+  procesoId,
+  radicado,
+  onUltimaActuacion,
+  readOnly = false,
+}: {
+  procesoId: string;
+  radicado: string | null;
+  onUltimaActuacion: () => void;
+  readOnly?: boolean;
+}) {
+  const [items, setItems] = useState<ActuacionItem[] | null>(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [aviso, setAviso] = useState<{ texto: string; tono: "ok" | "info" | "warn" } | null>(null);
+  const [nuevasIds, setNuevasIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!radicado) { setItems([]); return; }
+    listActuaciones(procesoId).then(setItems).catch(() => setItems([]));
+  }, [procesoId, radicado]);
+
+  async function actualizar() {
+    setSincronizando(true);
+    setAviso(null);
+    try {
+      const previas = new Set((items ?? []).map((a) => a.id));
+      const r = await sincronizarActuaciones(procesoId);
+      if (r.reservado) {
+        setAviso({ texto: "El proceso figura como reservado en la Rama: no muestra actuaciones.", tono: "warn" });
+      } else if (!r.encontrado) {
+        setAviso({ texto: "El radicado aún no aparece en la Rama Judicial (puede tardar días en publicarse).", tono: "warn" });
+      } else {
+        setAviso({
+          texto: r.nuevas > 0 ? `✓ ${r.nuevas} actuación(es) nueva(s) de ${r.total}.` : `Sin novedades (${r.total} actuaciones).`,
+          tono: r.nuevas > 0 ? "ok" : "info",
+        });
+      }
+      const frescas = await listActuaciones(procesoId);
+      setItems(frescas);
+      setNuevasIds(new Set(frescas.filter((a) => !previas.has(a.id)).map((a) => a.id)));
+      if (r.encontrado && r.nuevas > 0) onUltimaActuacion(); // refresca datos (ultimaActuacion)
+    } catch {
+      setAviso({ texto: "No se pudo consultar la Rama Judicial. Intenta más tarde.", tono: "warn" });
+    } finally {
+      setSincronizando(false);
+    }
+  }
+
+  const tono = aviso?.tono === "ok"
+    ? "text-emerald-600 dark:text-emerald-400"
+    : aviso?.tono === "warn"
+    ? "text-amber-600 dark:text-amber-400"
+    : "text-slate-500 dark:text-slate-400";
+
+  return (
+    <Card className="mb-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Actuaciones del juzgado</h3>
+          <p className="text-xs text-slate-400">Lo que publica la Rama Judicial para este radicado.</p>
+        </div>
+        {!readOnly && radicado && (
+          <Button onClick={actualizar} disabled={sincronizando}>
+            {sincronizando ? "Actualizando…" : "Actualizar"}
+          </Button>
+        )}
+      </div>
+
+      {!radicado ? (
+        <p className="rounded-md bg-slate-200 px-3 py-2 text-xs text-slate-600 dark:bg-slate-600 dark:text-slate-300">
+          Agrega el radicado del proceso para traer sus actuaciones desde la Rama Judicial.
+        </p>
+      ) : (
+        <>
+          {aviso && <p className={`mb-3 text-xs font-medium ${tono}`}>{aviso.texto}</p>}
+          {items === null ? (
+            <p className="text-sm text-slate-400">Cargando…</p>
+          ) : items.length === 0 ? (
+            <p className="text-sm text-slate-400">
+              Sin actuaciones todavía. Usa “Actualizar” para consultarlas en la Rama.
+            </p>
+          ) : (
+            <ol className="space-y-2">
+              {items.map((a) => (
+                <li key={a.id} className="flex gap-3 border-l-2 border-slate-200 pl-3 dark:border-slate-600">
+                  <span className="w-24 shrink-0 text-xs text-slate-400">{fecha(a.fechaActuacion)}</span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{a.actuacion}</span>
+                      {nuevasIds.has(a.id) && (
+                        <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                          nueva
+                        </span>
+                      )}
+                    </div>
+                    {a.anotacion && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{a.anotacion}</p>}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </>
+      )}
+    </Card>
   );
 }
 
@@ -646,15 +768,30 @@ function RadicadoDato({
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(valor ?? "");
   const [guardando, setGuardando] = useState(false);
+  // Feedback de validación contra la Rama Judicial (no bloquea; solo informa).
+  const [feedback, setFeedback] = useState<{ texto: string; warn: boolean } | null>(null);
 
   async function guardar() {
     setGuardando(true);
     try {
-      const actualizado = await actualizarProceso(procesoId, {
-        radicado: texto.trim() || null,
-      });
+      const limpio = texto.trim();
+      const actualizado = await actualizarProceso(procesoId, { radicado: limpio || null });
       onSaved(actualizado);
       setEditando(false);
+      setFeedback(null);
+      if (limpio.replace(/\D/g, "").length === 23) {
+        validarRadicado(limpio)
+          .then((r) =>
+            setFeedback(
+              r.esPrivado
+                ? { texto: "Figura como reservado en la Rama.", warn: true }
+                : r.encontrado
+                ? { texto: `✓ Encontrado en la Rama${r.despacho ? `: ${r.despacho.trim()}` : ""}.`, warn: false }
+                : { texto: "Aún no aparece en la Rama (puede tardar en publicarse).", warn: true },
+            ),
+          )
+          .catch(() => {});
+      }
     } finally {
       setGuardando(false);
     }
@@ -713,6 +850,11 @@ function RadicadoDato({
             </button>
           )}
         </div>
+      )}
+      {feedback && (
+        <p className={`mt-1 text-xs ${feedback.warn ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+          {feedback.texto}
+        </p>
       )}
     </div>
   );
