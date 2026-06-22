@@ -626,7 +626,10 @@ function anclasPorCampo(
     }
     for (const os of r.opcionalesSi ?? []) {
       if (!evaluarCondicion(os.si, datos)) continue;
-      const campoSi = camposDeCondicion(os.si).find(tieneCampo) ?? anchor;
+      const campoSi =
+        (os.anclaCampo && tieneCampo(os.anclaCampo) ? os.anclaCampo : undefined) ??
+        camposDeCondicion(os.si).find(tieneCampo) ??
+        anchor;
       for (const d of os.documentosOpcionales ?? []) add(campoSi, d, false);
     }
   }

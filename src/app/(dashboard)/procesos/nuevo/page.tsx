@@ -8,6 +8,7 @@ import { BuscadorSelect, CorreosInput, Field, Input, MoneyInput, Select, Selecta
 import { FormularioDinamico } from "@/components/formulario-dinamico";
 import { VencimientoHint } from "@/components/vencimiento-hint";
 import { BotonSubirDoc } from "@/components/boton-subir-doc";
+import { DocumentosUploader } from "@/components/documentos-uploader";
 import { errorMessage } from "@/lib/api";
 import { getUser, type AuthUser } from "@/lib/auth";
 import {
@@ -140,6 +141,12 @@ export default function NuevoProcesoPage() {
   // suben tras crear el proceso (la subida necesita el id).
   const [archivos, setArchivos] = useState<Record<string, File>>({});
   const [docsError, setDocsError] = useState<string | null>(null);
+  // Documentos de prueba con nombre libre (anexos): se recogen aquí (lista repetible)
+  // y se suben tras crear el proceso, igual que `archivos`. El proceso aún no existe.
+  const [pruebasDocs, setPruebasDocs] = useState<{ id: string; nombre: string; file: File | null }[]>([]);
+  // Documentos de la solicitud de medidas cautelares (ejecutivo): lista repetible,
+  // N archivos cada uno con su nombre; se suben tras crear, igual que `pruebasDocs`.
+  const [cautelaresDocs, setCautelaresDocs] = useState<{ id: string; nombre: string; file: File | null }[]>([]);
 
   const [titulo, setTitulo] = useState("");
   const [datos, setDatos] = useState<Record<string, unknown>>({});
@@ -234,10 +241,28 @@ export default function NuevoProcesoPage() {
   // Bloque de adjuntos INLINE: para anclar los documentos justo debajo del campo
   // que genera su necesidad (vía slotDespuesDe), en vez de agruparlos al final.
   const slotDocs = (docs: string[], requeridos: string[] = []) => (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
-      <p className="mb-2 text-sm font-medium text-amber-900 dark:text-amber-200">Documentos a adjuntar</p>
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-slate-700/60">
+      <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">Documentos a adjuntar</p>
       {listaDocs(docs, requeridos)}
     </div>
+  );
+  // Uploaders de N documentos con nombre libre (componente estándar DocumentosUploader).
+  // Recogen los File en estado local; se suben tras crear el proceso (loops abajo).
+  const pruebasUploader = (
+    <DocumentosUploader
+      value={pruebasDocs}
+      onChange={setPruebasDocs}
+      titulo="Documentos de prueba"
+      descripcion="Cada documento que aportas como prueba (el título ejecutivo, certificaciones, etc.)."
+    />
+  );
+  const cautelaresUploader = (
+    <DocumentosUploader
+      value={cautelaresDocs}
+      onChange={setCautelaresDocs}
+      titulo="Documentos de medidas cautelares"
+      descripcion="La solicitud de cautelares y sus soportes."
+    />
   );
   function actualizarParte(i: number, patch: Partial<ParteProceso>) {
     setPartes((ps) => ps.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
@@ -278,6 +303,25 @@ export default function NuevoProcesoPage() {
     anclar("sintesis", tomar("demanda.pdf", "pruebas.pdf", "anexos.pdf"));
     anclar("medioRadicacion", tomar("soporte-radicacion.pdf"));
     anclar("calidad", tomar("poder.pdf"));
+  }
+
+  // Ejecutivo de mínima cuantía: la "Solicitud de medidas cautelares" se ancla
+  // INLINE bajo "Otras medidas cautelares" (solo aparece si pidió cautelares), en
+  // vez de quedar en el bloque "Documentos del proceso" del final. Data-driven:
+  // el doc es el opcional que surge solo al poner solicitaCautelares=Sí.
+  const slotsEjecutivo: Record<string, ReactNode> = {};
+  const ancladosEjecutivo = new Set<string>();
+  if (tipo && esEjecutivo(tipo)) {
+    const etapasCrea = etapasDeCreacion(tipo.etapas);
+    const sinCautelares = { ...datos, solicitaCautelares: "" };
+    const docsCautelares = documentosOpcionalesDeEtapas(etapasCrea, datos).filter(
+      (d) => !documentosOpcionalesDeEtapas(etapasCrea, sinCautelares).includes(d),
+    );
+    if (docsCautelares.length) {
+      // Lista repetible (N archivos con nombre), no el slot de un único doc fijo.
+      slotsEjecutivo.otrasCautelares = cautelaresUploader;
+      docsCautelares.forEach((d) => ancladosEjecutivo.add(d.toLowerCase()));
+    }
   }
 
   const clienteSeleccionado = clienteNuevo
@@ -439,6 +483,26 @@ export default function NuevoProcesoPage() {
         if (!file) continue;
         try {
           await subirArchivoProceso(creado.id, file, nombre);
+        } catch {
+          /* reintenta en la ficha del proceso */
+        }
+      }
+      // Documentos de prueba (nombre libre): se suben con prefijo "Prueba: " para que
+      // queden agrupados y categorizados como PRUEBA (categoriaDoc infiere por nombre).
+      for (const p of pruebasDocs) {
+        if (!p.file) continue;
+        try {
+          await subirArchivoProceso(creado.id, p.file, `Prueba: ${p.nombre.trim() || p.file.name}`);
+        } catch {
+          /* reintenta en la ficha del proceso */
+        }
+      }
+      // Documentos de medidas cautelares (nombre libre): se suben con prefijo
+      // "Solicitud cautelar: " para que queden agrupados en la ficha.
+      for (const c of cautelaresDocs) {
+        if (!c.file) continue;
+        try {
+          await subirArchivoProceso(creado.id, c.file, `Solicitud cautelar: ${c.nombre.trim() || c.file.name}`);
         } catch {
           /* reintenta en la ficha del proceso */
         }
@@ -793,6 +857,8 @@ export default function NuevoProcesoPage() {
               // Verbal civil: cada adjunto justo debajo del campo que lo pide
               // (mapeo confirmado con el usuario; ver slotsVerbal arriba).
               ...slotsVerbal,
+              // Ejecutivo: la solicitud de cautelares bajo "Otras medidas cautelares".
+              ...slotsEjecutivo,
               // En el laboral, bajo "Fecha de radicación" va el adjunto de la radicación
               // (no el hint de vencimiento: el plazo laboral no corre desde aquí).
               fechaRadicacion: tipo.grupo === "LABORAL"
@@ -859,6 +925,9 @@ export default function NuevoProcesoPage() {
                 );
               })(),
             }}
+            // Arriba del campo de texto "Pruebas a solicitar": el uploader de documentos
+            // de prueba (nombre libre, N archivos). Solo en el ejecutivo de mínima cuantía.
+            slotAntesDe={esEjecutivo(tipo) ? { pruebas: pruebasUploader } : undefined}
           />
         </Card>
 
@@ -890,6 +959,7 @@ export default function NuevoProcesoPage() {
           const req = documentosRequeridosDeEtapas(etapasCrea, datos);
           let docs = [...req, ...documentosOpcionalesDeEtapas(etapasCrea, datos)];
           if (esVerbal) docs = docs.filter((d) => !ancladosVerbal.has(d.toLowerCase()));
+          if (esEjecutivo(tipo)) docs = docs.filter((d) => !ancladosEjecutivo.has(d.toLowerCase()));
           if (docs.length === 0) return null;
           return (
             <Card>

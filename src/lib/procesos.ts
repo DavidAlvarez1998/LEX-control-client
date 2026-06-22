@@ -76,7 +76,7 @@ export type ReglasEtapa = {
   documentosOpcionales?: string[]; // ofrecidos para adjuntar, NO bloquean (p. ej. reiteracion.pdf)
   plazoDias?: number;
   requeridosSi?: { si: Condicion; camposRequeridos?: string[]; documentosRequeridos?: string[] }[];
-  opcionalesSi?: { si: Condicion; documentosOpcionales?: string[] }[]; // opcionales condicionales (p. ej. recurso.pdf si parcial)
+  opcionalesSi?: { si: Condicion; documentosOpcionales?: string[]; anclaCampo?: string }[]; // opcionales condicionales (p. ej. recurso.pdf si parcial). `anclaCampo`: bajo qué campo mostrar la subida (por defecto, el campo de la condición)
   plazoDesdeCampo?: string;
   plazoTipoDias?: "habiles" | "calendario";
   plazoDiasPorValorDe?: { campo: string; mapa: Record<string, number> };
