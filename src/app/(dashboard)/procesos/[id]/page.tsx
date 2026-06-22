@@ -12,7 +12,7 @@ import { CasoChain } from "@/components/caso-chain";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type Condicion, type EtapaDef } from "@/lib/procesos";
-import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, getSugerenciasActuaciones, listActuaciones, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, validarRadicado, type ActuacionItem, type CasoNodo, type ProcesoDetalle, type SugerenciaHito } from "@/lib/procesos-api";
+import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, getSugerenciasActuaciones, listActuaciones, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, type ActuacionItem, type CasoNodo, type ProcesoDetalle, type SugerenciaHito } from "@/lib/procesos-api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
@@ -844,59 +844,86 @@ function RadicadoDato({
       onSaved(actualizado);
       setEditando(false);
       setFeedback(null);
+      // Con 23 dígitos, consultamos la Rama y autocompletamos juzgado + fecha de
+      // radicación + actuaciones (sin pisar lo que el abogado ya escribió).
       if (limpio.replace(/\D/g, "").length === 23) {
-        validarRadicado(limpio)
-          .then((r) =>
-            setFeedback(
-              r.esPrivado
-                ? { texto: "Figura como reservado en la Rama.", warn: true }
-                : r.encontrado
-                ? { texto: `✓ Encontrado en la Rama${r.despacho ? `: ${r.despacho.trim()}` : ""}.`, warn: false }
-                : { texto: "Aún no aparece en la Rama (puede tardar en publicarse).", warn: true },
-            ),
-          )
-          .catch(() => {});
+        setFeedback({ texto: "Consultando la Rama Judicial…", warn: false });
+        try {
+          const r = await sincronizarActuaciones(procesoId);
+          if (r.reservado) {
+            setFeedback({ texto: "El proceso figura como reservado en la Rama.", warn: true });
+          } else if (!r.encontrado) {
+            setFeedback({ texto: "El radicado aún no aparece en la Rama (puede tardar días en publicarse).", warn: true });
+          } else {
+            const fresco = await getProceso(procesoId);
+            onSaved(fresco);
+            setFeedback({ texto: "✓ Encontrado. Juzgado, fecha de radicación y actuaciones autocompletados.", warn: false });
+          }
+        } catch {
+          setFeedback({ texto: "No se pudo consultar la Rama. Usa “Actualizar” en el panel de actuaciones.", warn: true });
+        }
       }
     } finally {
       setGuardando(false);
     }
   }
 
+  // Conteo de dígitos en vivo: el radicado CPNU tiene EXACTAMENTE 23 dígitos.
+  const digitos = texto.replace(/\D/g, "").length;
+  const radicadoOk = digitos === 23;
+
   return (
     <div>
       <div className="text-xs text-slate-400">Radicado</div>
       {editando ? (
-        <div className="mt-0.5 flex items-center gap-1.5">
-          <input
-            autoFocus
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") guardar();
-              if (e.key === "Escape") {
+        <div className="mt-0.5">
+          <div className="flex items-center gap-1.5">
+            <input
+              autoFocus
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") guardar();
+                if (e.key === "Escape") {
+                  setTexto(valor ?? "");
+                  setEditando(false);
+                }
+              }}
+              placeholder="23 dígitos del juzgado"
+              className={`w-full min-w-0 rounded border px-2 py-1 text-sm outline-none dark:bg-slate-600 dark:text-slate-100 ${
+                digitos === 0
+                  ? "border-slate-300 focus:border-indigo-400 dark:border-slate-600"
+                  : radicadoOk
+                  ? "border-emerald-400 focus:border-emerald-500"
+                  : "border-amber-400 focus:border-amber-500"
+              }`}
+            />
+            <button
+              onClick={guardar}
+              disabled={guardando}
+              className="shrink-0 text-xs font-medium text-indigo-600 hover:underline disabled:opacity-50"
+            >
+              {guardando ? "…" : "Guardar"}
+            </button>
+            <button
+              onClick={() => {
                 setTexto(valor ?? "");
                 setEditando(false);
-              }
-            }}
-            placeholder="23 dígitos del juzgado"
-            className="w-full min-w-0 rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-indigo-400 dark:border-slate-600 dark:bg-slate-600 dark:text-slate-100"
-          />
-          <button
-            onClick={guardar}
-            disabled={guardando}
-            className="shrink-0 text-xs font-medium text-indigo-600 hover:underline disabled:opacity-50"
-          >
-            {guardando ? "…" : "Guardar"}
-          </button>
-          <button
-            onClick={() => {
-              setTexto(valor ?? "");
-              setEditando(false);
-            }}
-            className="shrink-0 text-xs text-slate-400 hover:text-slate-600"
-          >
-            ✕
-          </button>
+              }}
+              className="shrink-0 text-xs text-slate-400 hover:text-slate-600"
+            >
+              ✕
+            </button>
+          </div>
+          {digitos > 0 && (
+            <p className={`mt-1 text-xs ${radicadoOk ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+              {radicadoOk
+                ? "✓ 23 dígitos"
+                : digitos < 23
+                ? `Faltan ${23 - digitos} dígito(s) — van ${digitos} de 23`
+                : `Sobran ${digitos - 23} dígito(s) — van ${digitos} de 23`}
+            </p>
+          )}
         </div>
       ) : (
         <div className="mt-0.5 flex items-center gap-2">
