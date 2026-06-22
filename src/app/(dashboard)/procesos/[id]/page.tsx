@@ -12,7 +12,7 @@ import { CasoChain } from "@/components/caso-chain";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type Condicion, type EtapaDef } from "@/lib/procesos";
-import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, getSugerenciasActuaciones, listActuaciones, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, validarRadicado, type ActuacionItem, type CasoNodo, type ProcesoDetalle, type SugerenciaHito } from "@/lib/procesos-api";
+import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, getSugerenciasActuaciones, importarDocumentosRama, listActuaciones, listarDocumentosRama, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, validarRadicado, type ActuacionItem, type CasoNodo, type DocumentoRamaItem, type ProcesoDetalle, type SugerenciaHito } from "@/lib/procesos-api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
@@ -549,6 +549,13 @@ export default function ExpedientePage() {
             onChanged={() => getProceso(proceso.id).then(setProceso).catch(() => {})}
             readOnly={!puedeEditar}
           />
+          {proceso.radicado && (
+            <DocumentosRama
+              procesoId={proceso.id}
+              onImportado={() => getProceso(proceso.id).then(setProceso).catch(() => {})}
+              readOnly={!puedeEditar}
+            />
+          )}
         </div>
       )}
     </div>
@@ -737,6 +744,111 @@ function ActuacionesJuzgado({
             La información de la Rama no es en tiempo real y algunos juzgados publican con retraso. Para
             términos y decisiones críticas, verifica directamente con el juzgado.
           </p>
+        </>
+      )}
+    </Card>
+  );
+}
+
+/** P9 — documentos del expediente publicados por el juzgado: listar e importar los PDF. */
+function DocumentosRama({
+  procesoId,
+  onImportado,
+  readOnly = false,
+}: {
+  procesoId: string;
+  onImportado: () => void;
+  readOnly?: boolean;
+}) {
+  const [docs, setDocs] = useState<DocumentoRamaItem[] | null>(null);
+  const [encontrado, setEncontrado] = useState(true);
+  const [cargando, setCargando] = useState(false);
+  const [importando, setImportando] = useState(false);
+  const [sel, setSel] = useState<Set<number>>(new Set());
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  async function cargar() {
+    setCargando(true);
+    setAviso(null);
+    try {
+      const r = await listarDocumentosRama(procesoId);
+      setEncontrado(r.encontrado);
+      setDocs(r.documentos);
+      setSel(new Set(r.documentos.filter((d) => !d.yaImportado).map((d) => d.idRegDocumento)));
+    } catch {
+      setAviso("No se pudieron consultar los documentos en la Rama.");
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function importar() {
+    setImportando(true);
+    setAviso(null);
+    try {
+      const idRegs = [...sel];
+      const r = await importarDocumentosRama(procesoId, idRegs.length ? idRegs : undefined);
+      setAviso(`✓ ${r.importados} importado(s)${r.fallidos ? ` · ${r.fallidos} con error` : ""}.`);
+      await cargar();
+      if (r.importados > 0) onImportado();
+    } catch {
+      setAviso("No se pudieron importar los documentos.");
+    } finally {
+      setImportando(false);
+    }
+  }
+
+  const pendientes = (docs ?? []).filter((d) => !d.yaImportado);
+  const toggle = (id: number) =>
+    setSel((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+
+  return (
+    <Card className="mb-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">📎 Documentos del expediente</h3>
+          <p className="text-xs text-slate-400">Los archivos que el juzgado publica para este radicado.</p>
+        </div>
+        {!readOnly && (
+          <Button variant="ghost" onClick={cargar} disabled={cargando}>
+            {cargando ? "…" : docs === null ? "Ver disponibles" : "Actualizar"}
+          </Button>
+        )}
+      </div>
+      {aviso && <p className="mb-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">{aviso}</p>}
+      {docs === null ? (
+        <p className="text-sm text-slate-400">Usa “Ver disponibles” para listar los documentos del expediente.</p>
+      ) : !encontrado ? (
+        <p className="text-sm text-slate-400">El proceso no está publicado en la Rama o no tiene documentos.</p>
+      ) : docs.length === 0 ? (
+        <p className="text-sm text-slate-400">El expediente no tiene documentos publicados.</p>
+      ) : (
+        <>
+          <ul className="space-y-1.5">
+            {docs.map((d) => (
+              <li key={d.idRegDocumento} className="flex items-center gap-2 text-sm">
+                {!d.yaImportado && !readOnly ? (
+                  <input type="checkbox" checked={sel.has(d.idRegDocumento)} onChange={() => toggle(d.idRegDocumento)} />
+                ) : (
+                  <span className="w-4 shrink-0" />
+                )}
+                <span className="w-20 shrink-0 text-xs text-slate-400">{fecha(d.fechaCarga)}</span>
+                <span className="min-w-0 flex-1 text-slate-700 dark:text-slate-200">{d.descripcion ?? `Documento ${d.idRegDocumento}`}</span>
+                {d.yaImportado && <span className="shrink-0 text-xs text-emerald-600 dark:text-emerald-400">ya en el proceso ✓</span>}
+              </li>
+            ))}
+          </ul>
+          {!readOnly && pendientes.length > 0 && (
+            <div className="mt-3">
+              <Button onClick={importar} disabled={importando || sel.size === 0}>
+                {importando ? "Importando…" : `Importar seleccionados (${sel.size})`}
+              </Button>
+            </div>
+          )}
         </>
       )}
     </Card>

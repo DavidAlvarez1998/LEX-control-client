@@ -237,6 +237,27 @@ export function getSugerenciasActuaciones(procesoId: string): Promise<Sugerencia
   return api.get<SugerenciaHito[]>(`/procesos/${procesoId}/actuaciones/sugerencias`);
 }
 
+// --- Documentos del expediente (Rama, P9) ---
+export type DocumentoRamaItem = {
+  idRegDocumento: number;
+  descripcion: string | null;
+  fechaCarga: string | null;
+  consActuacion: number | null;
+  yaImportado: boolean;
+};
+export type ListaDocumentosRama = { encontrado: boolean; documentos: DocumentoRamaItem[] };
+export type ImportarDocsResp = { importados: number; omitidos: number; fallidos: number };
+
+/** Lista los documentos del expediente disponibles en la Rama (marca los ya importados). */
+export function listarDocumentosRama(procesoId: string): Promise<ListaDocumentosRama> {
+  return api.get<ListaDocumentosRama>(`/procesos/${procesoId}/rama/documentos`);
+}
+
+/** Descarga e importa al proceso los documentos seleccionados (o todos si no se pasa idRegs). */
+export function importarDocumentosRama(procesoId: string, idRegs?: number[]): Promise<ImportarDocsResp> {
+  return api.post<ImportarDocsResp>(`/procesos/${procesoId}/rama/documentos/importar`, { idRegs });
+}
+
 export type PlantillaItem = { id: string; nombre: string };
 
 export function getPlantillasDeProceso(id: string): Promise<PlantillaItem[]> {
