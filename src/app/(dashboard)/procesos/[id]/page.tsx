@@ -12,7 +12,7 @@ import { CasoChain } from "@/components/caso-chain";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type Condicion, type EtapaDef } from "@/lib/procesos";
-import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, listActuaciones, moverEtapa, sincronizarActuaciones, validarRadicado, type ActuacionItem, type CasoNodo, type ProcesoDetalle } from "@/lib/procesos-api";
+import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, getSugerenciasActuaciones, listActuaciones, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, validarRadicado, type ActuacionItem, type CasoNodo, type ProcesoDetalle, type SugerenciaHito } from "@/lib/procesos-api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
@@ -543,7 +543,8 @@ export default function ExpedientePage() {
           <ActuacionesJuzgado
             procesoId={proceso.id}
             radicado={proceso.radicado}
-            onUltimaActuacion={() => getProceso(proceso.id).then(setProceso).catch(() => {})}
+            datos={proceso.datos}
+            onChanged={() => getProceso(proceso.id).then(setProceso).catch(() => {})}
             readOnly={!puedeEditar}
           />
         </div>
@@ -553,34 +554,41 @@ export default function ExpedientePage() {
   );
 }
 
-/** Panel de actuaciones de la Rama Judicial: lista + botón "Actualizar" (sync).
- *  Marca como "nueva" lo que aparece en la sincronización de esta sesión. */
+/** Panel de actuaciones de la Rama Judicial: lista + "Actualizar" (sync) +
+ *  badges "nueva" PERSISTENTES (no leídas, #3) + "Marcar como vistas" +
+ *  sugerencias de avance de etapa derivadas de los hitos (#1). */
 function ActuacionesJuzgado({
   procesoId,
   radicado,
-  onUltimaActuacion,
+  datos,
+  onChanged,
   readOnly = false,
 }: {
   procesoId: string;
   radicado: string | null;
-  onUltimaActuacion: () => void;
+  datos: Record<string, unknown>;
+  onChanged: () => void;
   readOnly?: boolean;
 }) {
   const [items, setItems] = useState<ActuacionItem[] | null>(null);
+  const [sugerencias, setSugerencias] = useState<SugerenciaHito[]>([]);
   const [sincronizando, setSincronizando] = useState(false);
+  const [aplicando, setAplicando] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ texto: string; tono: "ok" | "info" | "warn" } | null>(null);
-  const [nuevasIds, setNuevasIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
+  const cargar = () => {
     if (!radicado) { setItems([]); return; }
     listActuaciones(procesoId).then(setItems).catch(() => setItems([]));
-  }, [procesoId, radicado]);
+    getSugerenciasActuaciones(procesoId).then(setSugerencias).catch(() => setSugerencias([]));
+  };
+  useEffect(cargar, [procesoId, radicado]);
+
+  const numNuevas = (items ?? []).filter((a) => a.nueva).length;
 
   async function actualizar() {
     setSincronizando(true);
     setAviso(null);
     try {
-      const previas = new Set((items ?? []).map((a) => a.id));
       const r = await sincronizarActuaciones(procesoId);
       if (r.reservado) {
         setAviso({ texto: "El proceso figura como reservado en la Rama: no muestra actuaciones.", tono: "warn" });
@@ -592,14 +600,31 @@ function ActuacionesJuzgado({
           tono: r.nuevas > 0 ? "ok" : "info",
         });
       }
-      const frescas = await listActuaciones(procesoId);
-      setItems(frescas);
-      setNuevasIds(new Set(frescas.filter((a) => !previas.has(a.id)).map((a) => a.id)));
-      if (r.encontrado && r.nuevas > 0) onUltimaActuacion(); // refresca datos (ultimaActuacion)
+      cargar();
+      if (r.encontrado && r.nuevas > 0) onChanged(); // refresca datos (ultimaActuacion / juzgado)
     } catch {
       setAviso({ texto: "No se pudo consultar la Rama Judicial. Intenta más tarde.", tono: "warn" });
     } finally {
       setSincronizando(false);
+    }
+  }
+
+  async function marcarVistas() {
+    await marcarActuacionesVistas(procesoId).catch(() => {});
+    cargar();
+  }
+
+  // #1: pre-llena el campo de fecha sugerido (dispara el auto-avance del motor si
+  // se cumplen los requisitos). El abogado igual debe adjuntar el documento del juez.
+  async function usarFecha(s: SugerenciaHito) {
+    if (!s.campoFecha || !s.fechaSugerida) return;
+    setAplicando(s.etapaKey);
+    try {
+      await actualizarProceso(procesoId, { datos: { ...datos, [s.campoFecha]: s.fechaSugerida } });
+      onChanged();
+      cargar();
+    } finally {
+      setAplicando(null);
     }
   }
 
@@ -613,13 +638,25 @@ function ActuacionesJuzgado({
     <Card className="mb-5">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Actuaciones del juzgado</h3>
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+            Actuaciones del juzgado
+            {numNuevas > 0 && (
+              <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                {numNuevas} nueva{numNuevas > 1 ? "s" : ""}
+              </span>
+            )}
+          </h3>
           <p className="text-xs text-slate-400">Lo que publica la Rama Judicial para este radicado.</p>
         </div>
         {!readOnly && radicado && (
-          <Button onClick={actualizar} disabled={sincronizando}>
-            {sincronizando ? "Actualizando…" : "Actualizar"}
-          </Button>
+          <div className="flex shrink-0 gap-2">
+            {numNuevas > 0 && (
+              <Button variant="ghost" onClick={marcarVistas}>Marcar como vistas</Button>
+            )}
+            <Button onClick={actualizar} disabled={sincronizando}>
+              {sincronizando ? "Actualizando…" : "Actualizar"}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -630,6 +667,34 @@ function ActuacionesJuzgado({
       ) : (
         <>
           {aviso && <p className={`mb-3 text-xs font-medium ${tono}`}>{aviso.texto}</p>}
+
+          {/* #1: sugerencias de avance (no auto-avanza; el abogado confirma y adjunta). */}
+          {sugerencias.length > 0 && (
+            <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-500/30 dark:bg-indigo-500/10">
+              <p className="mb-2 text-xs font-semibold text-indigo-800 dark:text-indigo-200">Sugerencias de la Rama</p>
+              <ul className="space-y-1.5">
+                {sugerencias.map((s) => (
+                  <li key={s.etapaKey} className="flex items-center justify-between gap-3 text-xs">
+                    <span className="text-indigo-900 dark:text-indigo-200">
+                      Posible avance a <strong>{s.etapaNombre}</strong>
+                      {s.fechaSugerida ? <> · {fecha(s.fechaSugerida)}</> : null}
+                      <span className="block text-indigo-700/70 dark:text-indigo-300/60">“{s.actuacion}”</span>
+                    </span>
+                    {!readOnly && s.campoFecha && s.fechaSugerida && (
+                      <button
+                        onClick={() => usarFecha(s)}
+                        disabled={aplicando === s.etapaKey}
+                        className="shrink-0 rounded-md bg-indigo-600 px-2 py-1 font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                      >
+                        {aplicando === s.etapaKey ? "…" : "Usar fecha"}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {items === null ? (
             <p className="text-sm text-slate-400">Cargando…</p>
           ) : items.length === 0 ? (
@@ -644,7 +709,7 @@ function ActuacionesJuzgado({
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{a.actuacion}</span>
-                      {nuevasIds.has(a.id) && (
+                      {a.nueva && (
                         <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
                           nueva
                         </span>

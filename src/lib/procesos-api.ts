@@ -181,6 +181,14 @@ export type ActuacionItem = {
   anotacion: string | null;
   fechaRegistro: string | null;
   createdAt: string;
+  nueva: boolean; // no leída desde la última visita (#3)
+};
+export type SugerenciaHito = {
+  etapaKey: string;
+  etapaNombre: string;
+  campoFecha: string | null;
+  fechaSugerida: string | null;
+  actuacion: string;
 };
 export type ValidarRadicadoResp = {
   encontrado: boolean;
@@ -205,6 +213,16 @@ export function listActuaciones(procesoId: string): Promise<ActuacionItem[]> {
 /** Dispara la sincronización con la Rama (inserta solo las nuevas). */
 export function sincronizarActuaciones(procesoId: string): Promise<SyncActuacionesResp> {
   return api.post<SyncActuacionesResp>(`/procesos/${procesoId}/actuaciones/sincronizar`, {});
+}
+
+/** Marca las actuaciones del proceso como vistas (resetea las "nuevas"). */
+export function marcarActuacionesVistas(procesoId: string): Promise<{ ok: boolean }> {
+  return api.post<{ ok: boolean }>(`/procesos/${procesoId}/actuaciones/marcar-vistas`, {});
+}
+
+/** Sugerencias de avance de etapa derivadas de los hitos de las actuaciones (#1). */
+export function getSugerenciasActuaciones(procesoId: string): Promise<SugerenciaHito[]> {
+  return api.get<SugerenciaHito[]>(`/procesos/${procesoId}/actuaciones/sugerencias`);
 }
 
 export type PlantillaItem = { id: string; nombre: string };
@@ -377,7 +395,7 @@ export function actualizarDatos(
  *  columna canónica que usan facturación y contable, no un campo del formulario). */
 export function actualizarProceso(
   id: string,
-  body: { radicado?: string | null; titulo?: string },
+  body: { radicado?: string | null; titulo?: string; datos?: Record<string, unknown> },
 ): Promise<ProcesoDetalle> {
   return api.patch<ProcesoDetalle>(`/procesos/${id}`, body);
 }
