@@ -6,7 +6,7 @@ import { Card, StatCard } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { getUser } from "@/lib/auth";
-import { getVencimientos, type Vencimientos } from "@/lib/procesos-api";
+import { getVencimientos, listProcesos, type ProcesoListItem, type Vencimientos } from "@/lib/procesos-api";
 
 type Cliente = { id: string; nombre: string; estado: string; fechaIngreso: string };
 type CarteraRow = { saldoPendiente: number | null };
@@ -35,6 +35,7 @@ export default function InicioPage() {
   const [utilidad, setUtilidad] = useState<number | null>(null);
   const [alertas, setAlertas] = useState<Alertas | null>(null);
   const [venc, setVenc] = useState<Vencimientos | null>(null);
+  const [novedades, setNovedades] = useState<ProcesoListItem[]>([]); // P2
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export default function InicioPage() {
           ? api.get<{ total: number }>("/procesos").then((p) => setProcesos(p.total ?? 0)).catch(() => {})
           : null,
         puedeProcesos ? getVencimientos().then(setVenc).catch(() => {}) : null,
+        puedeProcesos ? listProcesos({ conNovedades: true }).then((r) => setNovedades(r.items)).catch(() => {}) : null,
         puedeContable
           ? api.get<CarteraRow[]>("/contable/cartera").then((ca) => setCartera(ca.reduce((s, c) => s + (c.saldoPendiente ?? 0), 0))).catch(() => {})
           : null,
@@ -121,6 +123,31 @@ export default function InicioPage() {
           </ul>
           <Link href="/procesos" className="mt-3 inline-block text-xs font-medium text-indigo-600 hover:underline">
             Ver todos los procesos →
+          </Link>
+        </Card>
+      )}
+
+      {/* P2 — novedades del juzgado (procesos con actuaciones nuevas). */}
+      {puedeProcesos && novedades.length > 0 && (
+        <Card className="border-emerald-200 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="font-medium text-emerald-900 dark:text-emerald-200">🏛️ Novedades del juzgado</h3>
+            <span className="text-xs text-emerald-700 dark:text-emerald-300">{novedades.length} proceso{novedades.length === 1 ? "" : "s"}</span>
+          </div>
+          <ul className="space-y-1.5">
+            {novedades.slice(0, 6).map((p) => (
+              <li key={p.id}>
+                <Link href={`/procesos/${p.id}`} className="flex items-center justify-between gap-2 text-sm hover:underline">
+                  <span className="min-w-0 truncate text-slate-700 dark:text-slate-200">{p.titulo}</span>
+                  <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                    {p.actuacionesNuevas} nueva{p.actuacionesNuevas === 1 ? "" : "s"}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Link href="/procesos" className="mt-3 inline-block text-xs font-medium text-indigo-600 hover:underline">
+            Ver procesos con novedades →
           </Link>
         </Card>
       )}
