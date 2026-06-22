@@ -151,6 +151,7 @@ export type ProcesoDetalle = {
   estado: EstadoProceso;
   proximaAudiencia: string | null;
   fechaLimite: string | null;
+  actuacionesSyncAt: string | null; // última sincronización con la Rama (frescura, P5)
   casoRelacionadoId: string | null;
   tipoProceso: {
     id: string;

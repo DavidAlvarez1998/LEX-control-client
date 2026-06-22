@@ -545,6 +545,7 @@ export default function ExpedientePage() {
             procesoId={proceso.id}
             radicado={proceso.radicado}
             datos={proceso.datos}
+            syncAt={proceso.actuacionesSyncAt}
             onChanged={() => getProceso(proceso.id).then(setProceso).catch(() => {})}
             readOnly={!puedeEditar}
           />
@@ -562,12 +563,14 @@ function ActuacionesJuzgado({
   procesoId,
   radicado,
   datos,
+  syncAt,
   onChanged,
   readOnly = false,
 }: {
   procesoId: string;
   radicado: string | null;
   datos: Record<string, unknown>;
+  syncAt: string | null;
   onChanged: () => void;
   readOnly?: boolean;
 }) {
@@ -669,6 +672,12 @@ function ActuacionesJuzgado({
         </p>
       ) : (
         <>
+          {/* P5 — frescura: cuándo se sincronizó + última actuación publicada. */}
+          <p className="mb-3 text-xs text-slate-400">
+            {syncAt
+              ? `Sincronizado ${haceCuanto(syncAt)}${items && items[0] ? ` · última actuación ${fecha(items[0].fechaActuacion)}` : ""}`
+              : "Aún no consultado — usa “Actualizar” para traer las actuaciones."}
+          </p>
           {aviso && <p className={`mb-3 text-xs font-medium ${tono}`}>{aviso.texto}</p>}
 
           {/* #1: sugerencias de avance (no auto-avanza; el abogado confirma y adjunta). */}
@@ -961,6 +970,19 @@ function RadicadoDato({
 
 function fecha(iso: string | null): string {
   return iso ? iso.slice(0, 10) : "—";
+}
+
+/** "hace 2 h" / "hace 3 días" / "hace un momento" desde un ISO. */
+function haceCuanto(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(ms) || ms < 0) return "recién";
+  const min = Math.floor(ms / 60000);
+  if (min < 1) return "hace un momento";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.floor(h / 24);
+  return `hace ${d} día${d > 1 ? "s" : ""}`;
 }
 
 // Celda de "Vencimiento" con semáforo: rojo si venció, ámbar si vence en ≤3 días.
