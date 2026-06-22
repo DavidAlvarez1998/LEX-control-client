@@ -12,7 +12,7 @@ import { CasoChain } from "@/components/caso-chain";
 import { ApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type Condicion, type EtapaDef } from "@/lib/procesos";
-import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, getSugerenciasActuaciones, listActuaciones, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, type ActuacionItem, type CasoNodo, type ProcesoDetalle, type SugerenciaHito } from "@/lib/procesos-api";
+import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getProceso, getSugerenciasActuaciones, listActuaciones, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, validarRadicado, type ActuacionItem, type CasoNodo, type ProcesoDetalle, type SugerenciaHito } from "@/lib/procesos-api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
@@ -851,6 +851,13 @@ function RadicadoDato({
   const [guardando, setGuardando] = useState(false);
   // Feedback de validación contra la Rama Judicial (no bloquea; solo informa).
   const [feedback, setFeedback] = useState<{ texto: string; warn: boolean } | null>(null);
+  // P12 — preview en vivo de lo que trae la Rama al teclear 23 dígitos (antes de vincular).
+  const [preview, setPreview] = useState<
+    | { estado: "buscando" }
+    | { estado: "encontrado"; despacho: string | null; fechaProceso: string | null; sujetos: string | null }
+    | { estado: "no" } | { estado: "reservado" } | { estado: "error" }
+    | null
+  >(null);
 
   async function guardar() {
     setGuardando(true);
@@ -887,6 +894,30 @@ function RadicadoDato({
   // Conteo de dígitos en vivo: el radicado CPNU tiene EXACTAMENTE 23 dígitos.
   const digitos = texto.replace(/\D/g, "").length;
   const radicadoOk = digitos === 23;
+
+  // P12 — al llegar a 23 dígitos (debounce), consulta la Rama y arma el preview.
+  useEffect(() => {
+    if (!editando) { setPreview(null); return; }
+    const limpio = texto.trim();
+    if (limpio.replace(/\D/g, "").length !== 23) { setPreview(null); return; }
+    setPreview({ estado: "buscando" });
+    let cancelado = false;
+    const t = setTimeout(() => {
+      validarRadicado(limpio)
+        .then((r) => {
+          if (cancelado) return;
+          setPreview(
+            r.esPrivado
+              ? { estado: "reservado" }
+              : r.encontrado
+              ? { estado: "encontrado", despacho: r.despacho, fechaProceso: r.fechaProceso, sujetos: r.sujetosProcesales }
+              : { estado: "no" },
+          );
+        })
+        .catch(() => { if (!cancelado) setPreview({ estado: "error" }); });
+    }, 400);
+    return () => { cancelado = true; clearTimeout(t); };
+  }, [texto, editando]);
 
   return (
     <div>
@@ -939,6 +970,32 @@ function RadicadoDato({
                 ? `Faltan ${23 - digitos} dígito(s) — van ${digitos} de 23`
                 : `Sobran ${digitos - 23} dígito(s) — van ${digitos} de 23`}
             </p>
+          )}
+          {/* P12 — preview de lo que trae la Rama, antes de vincular. */}
+          {preview && (
+            <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs dark:border-slate-600 dark:bg-slate-700/40">
+              {preview.estado === "buscando" && <p className="text-slate-400">Consultando la Rama…</p>}
+              {preview.estado === "encontrado" && (
+                <>
+                  <p className="font-semibold text-emerald-700 dark:text-emerald-300">✓ Encontrado en la Rama</p>
+                  <p className="mt-0.5 text-slate-700 dark:text-slate-200">
+                    {preview.despacho?.trim() ?? "—"}
+                    {preview.fechaProceso ? ` · radicó ${fecha(preview.fechaProceso)}` : ""}
+                  </p>
+                  {preview.sujetos && <p className="mt-0.5 text-slate-500 dark:text-slate-400">{preview.sujetos.trim()}</p>}
+                  <button
+                    onClick={guardar}
+                    disabled={guardando}
+                    className="mt-2 rounded-md bg-indigo-600 px-2.5 py-1 font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {guardando ? "…" : "Vincular y traer datos"}
+                  </button>
+                </>
+              )}
+              {preview.estado === "no" && <p className="text-amber-600 dark:text-amber-400">No aparece aún en la Rama (puede tardar días). Puedes guardarlo igual con “Guardar”.</p>}
+              {preview.estado === "reservado" && <p className="text-amber-600 dark:text-amber-400">Reservado: no veremos sus actuaciones.</p>}
+              {preview.estado === "error" && <p className="text-amber-600 dark:text-amber-400">No se pudo consultar la Rama; reintenta.</p>}
+            </div>
           )}
         </div>
       ) : (

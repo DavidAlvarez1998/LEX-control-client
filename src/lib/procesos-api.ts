@@ -202,6 +202,8 @@ export type ValidarRadicadoResp = {
   idProceso: number | null;
   despacho: string | null;
   departamento: string | null;
+  sujetosProcesales: string | null;
+  fechaProceso: string | null;
   fechaUltimaActuacion: string | null;
   esPrivado: boolean;
 };
