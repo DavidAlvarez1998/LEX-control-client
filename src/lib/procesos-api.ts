@@ -116,6 +116,13 @@ export function listProcesos(filtros: {
   return api.get<ListaProcesos>(`/procesos${q ? `?${q}` : ""}`);
 }
 
+// --- Sincronización masiva on-demand (P16) ---
+export type SyncMisResp = { procesos: number; conNovedad: number; nuevasTotal: number; errores: number };
+/** Sincroniza mis procesos con radicado (los no sincronizados en las últimas 6 h). */
+export function sincronizarMisProcesos(): Promise<SyncMisResp> {
+  return api.post<SyncMisResp>(`/procesos/rama/sincronizar-mis`, {});
+}
+
 // --- Detalle de un proceso ---
 export type ParteDetalle = {
   id: string;

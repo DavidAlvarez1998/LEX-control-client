@@ -16,7 +16,7 @@ import {
   type Jurisdiccion,
   type TipoProceso,
 } from "@/lib/procesos";
-import { getAreas, getCategorias, getTipos, listProcesos, type ProcesoListItem } from "@/lib/procesos-api";
+import { getAreas, getCategorias, getTipos, listProcesos, sincronizarMisProcesos, type ProcesoListItem } from "@/lib/procesos-api";
 import { errorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
@@ -147,6 +147,23 @@ function ProcesosInner() {
   const [q, setQ] = useState("");
   const [responsableId, setResponsableId] = useState("");
   const [conNovedades, setConNovedades] = useState(false); // P1: solo procesos con novedades del juzgado
+  const [sincronizando, setSincronizando] = useState(false); // P16
+  const [avisoSync, setAvisoSync] = useState<string | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
+
+  async function actualizarMisProcesos() {
+    setSincronizando(true);
+    setAvisoSync(null);
+    try {
+      const r = await sincronizarMisProcesos();
+      setAvisoSync(`✓ ${r.procesos} consultado(s) · ${r.conNovedad} con novedades${r.errores ? ` · ${r.errores} con error` : ""}.`);
+      setReloadNonce((n) => n + 1);
+    } catch {
+      setAvisoSync("No se pudo sincronizar. Intenta más tarde.");
+    } finally {
+      setSincronizando(false);
+    }
+  }
   // Opciones de responsable: se acumulan de los procesos vistos (no hay endpoint
   // de equipo accesible a JURIDICO). Una vez visto, el responsable queda en el filtro.
   const responsablesRef = useRef<Map<string, string>>(new Map());
@@ -183,7 +200,7 @@ function ProcesosInner() {
       })
       .catch((e) => setError(errorMessage(e, "Error al cargar")))
       .finally(() => setLoading(false));
-  }, [areas, areaNombre, estadoLabel, q, responsableId, conNovedades]);
+  }, [areas, areaNombre, estadoLabel, q, responsableId, conNovedades, reloadNonce]);
 
   const nombreArea = useMemo(
     () => (slug: string | null) => areas.find((a) => a.slug === slug)?.nombre ?? slug ?? "—",
@@ -534,6 +551,15 @@ function ProcesosInner() {
         >
           🟢 Con novedades
         </button>
+        {/* P16 — sincroniza mis procesos con la Rama de un tirón. */}
+        <button
+          onClick={actualizarMisProcesos}
+          disabled={sincronizando}
+          className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-hover disabled:opacity-50"
+        >
+          {sincronizando ? "Sincronizando…" : "↻ Actualizar con la Rama"}
+        </button>
+        {avisoSync && <span className="text-xs text-emerald-600 dark:text-emerald-400">{avisoSync}</span>}
         <div className="w-64">
           <Input value={qInput} onChange={setQInput} placeholder="Buscar por código, título, cliente o radicado…" />
         </div>
