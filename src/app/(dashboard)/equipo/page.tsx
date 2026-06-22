@@ -85,8 +85,13 @@ export default function EquipoPage() {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  // Enlace de activación a compartir manualmente (no hay envío por email aún).
-  const [link, setLink] = useState<{ url: string; nombre: string } | null>(null);
+  // Resultado del envío + enlace de activación de respaldo (copiable).
+  const [link, setLink] = useState<{
+    url: string;
+    nombre: string;
+    correoEnviado: boolean;
+    email?: string;
+  } | null>(null);
 
   // Confirmación (modal acorde al portal, en vez de window.confirm).
   const [confirm, setConfirm] = useState<{
@@ -176,9 +181,10 @@ export default function EquipoPage() {
     }
     setSaving(true);
     try {
-      const { user, activationUrl } = await api.post<{
+      const { user, activationUrl, correoEnviado } = await api.post<{
         user: Miembro;
         activationUrl: string;
+        correoEnviado: boolean;
       }>("/mi-empresa/usuarios", {
         email: form.email.trim(),
         nombre: form.nombre.trim(),
@@ -186,7 +192,7 @@ export default function EquipoPage() {
       });
       setFormOpen(false);
       await cargar();
-      setLink({ url: activationUrl, nombre: user.nombre });
+      setLink({ url: activationUrl, nombre: user.nombre, correoEnviado, email: user.email });
     } catch (err) {
       setFormError(
         errorMessage(err, "Error al crear el usuario"),
@@ -252,12 +258,12 @@ export default function EquipoPage() {
 
   // Regenera el enlace de activación (reenvío / restablecer). Lanza en error.
   async function generarEnlace(m: Miembro) {
-    const { activationUrl } = await api.post<{ activationUrl: string }>(
-      `/mi-empresa/usuarios/${m.id}/activation`,
-      {},
-    );
+    const { activationUrl, correoEnviado } = await api.post<{
+      activationUrl: string;
+      correoEnviado: boolean;
+    }>(`/mi-empresa/usuarios/${m.id}/activation`, {});
     await cargar();
-    setLink({ url: activationUrl, nombre: m.nombre });
+    setLink({ url: activationUrl, nombre: m.nombre, correoEnviado, email: m.email });
   }
 
   function reenviarEnlace(m: Miembro) {
@@ -609,12 +615,21 @@ export default function EquipoPage() {
         <div className="fixed inset-0 z-[55] flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60">
           <Card className="w-full max-w-lg">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-              Enlace de activación
+              {link.correoEnviado ? "Correo enviado" : "Enlace de activación"}
             </h3>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-              Comparte este enlace con <strong>{link.nombre}</strong> para que defina su
-              contraseña. Es de un solo uso y vence en 48 horas.
-            </p>
+            {link.correoEnviado ? (
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                ✓ Le enviamos un correo
+                {link.email ? <> a <strong>{link.email}</strong></> : null} a{" "}
+                <strong>{link.nombre}</strong> con el enlace para definir su contraseña
+                (vence en 48 horas). ¿No le llegó? También puedes compartirle este enlace:
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
+                ⚠ No se pudo enviar el correo a <strong>{link.nombre}</strong>. Comparte
+                este enlace para que defina su contraseña. Es de un solo uso y vence en 48 horas.
+              </p>
+            )}
             <div className="mt-4 flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-200 dark:bg-slate-600 px-3 py-2">
               <input
                 readOnly
