@@ -22,7 +22,7 @@ import {
   type CampoEsquema,
   type EtapaDef,
 } from "@/lib/procesos";
-import { actualizarDatos, subirArchivoProceso, type DocumentoProceso, type ProcesoDetalle } from "@/lib/procesos-api";
+import { actualizarDatos, subirArchivoProceso, validarRadicado, type DocumentoProceso, type ProcesoDetalle } from "@/lib/procesos-api";
 
 // Permite a la ficha "vaciar" (guardar) los cambios del formulario sin guardar ANTES
 // de intentar avanzar de etapa: así el avance evalúa lo recién diligenciado.
@@ -398,6 +398,29 @@ export const DatosProceso = forwardRef<
         </>
       );
     }
+    // Ejecutivo de mínima cuantía (único tipo con radicado + juzgado + fechaRadicacion
+    // como campos de ficha): bajo "Número de radicado", un botón que al tener los 23
+    // dígitos consulta la Rama Judicial (CPNU) y autollena "Juzgado asignado" + "Fecha
+    // de radicación" en el mismo formulario. Solo llena el form (no persiste): el
+    // abogado revisa y guarda. Mismo origen que el panel de actuaciones de la ficha.
+    if (!readOnly && tieneCampo("radicado") && tieneCampo("juzgado") && tieneCampo("fechaRadicacion")) {
+      const prev = slots.radicado;
+      slots.radicado = (
+        <>
+          <BotonActualizarRadicado
+            radicado={String(borrador.radicado ?? "")}
+            onAutollenar={(despacho, fechaProceso) =>
+              setBorrador((d) => ({
+                ...d,
+                juzgado: despacho ?? d.juzgado,
+                fechaRadicacion: fechaProceso ? fechaProceso.slice(0, 10) : d.fechaRadicacion,
+              }))
+            }
+          />
+          {prev}
+        </>
+      );
+    }
   } else {
     // DdP enviado usa requierePoder/contestaron; el recibido no tiene requierePoder y
     // su "respuesta" es `contestada`. Se elige el campo que EXISTA en el esquema.
@@ -499,6 +522,59 @@ export const DatosProceso = forwardRef<
     </div>
   );
 });
+
+/**
+ * Botón "Actualizar con la Rama" bajo el campo de radicado (mínima cuantía). Aparece
+ * solo cuando el radicado tiene EXACTAMENTE 23 dígitos. Al hacer clic consulta la Rama
+ * Judicial (CPNU) vía `validarRadicado` y, si encuentra el proceso, autollena el
+ * juzgado y la fecha de radicación del formulario (sin guardar; el abogado revisa y
+ * guarda). Informa los casos "reservado" y "aún no publicado" sin bloquear.
+ */
+function BotonActualizarRadicado({
+  radicado,
+  onAutollenar,
+}: {
+  radicado: string;
+  onAutollenar: (despacho: string | null, fechaProceso: string | null) => void;
+}) {
+  const [cargando, setCargando] = useState(false);
+  const [feedback, setFeedback] = useState<{ texto: string; warn: boolean } | null>(null);
+  const digitos = radicado.replace(/\D/g, "").length;
+  if (digitos !== 23) return null;
+
+  async function actualizar() {
+    setCargando(true);
+    setFeedback(null);
+    try {
+      const r = await validarRadicado(radicado.trim());
+      if (r.esPrivado) {
+        setFeedback({ texto: "El proceso figura como reservado en la Rama: no publica datos.", warn: true });
+      } else if (!r.encontrado) {
+        setFeedback({ texto: "El radicado aún no aparece en la Rama (puede tardar días en publicarse).", warn: true });
+      } else {
+        onAutollenar(r.despacho, r.fechaProceso);
+        setFeedback({ texto: "✓ Juzgado y fecha de radicación traídos de la Rama. Revisa y guarda.", warn: false });
+      }
+    } catch {
+      setFeedback({ texto: "No se pudo consultar la Rama Judicial. Intenta más tarde.", warn: true });
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  return (
+    <div className="mt-1.5 mb-4">
+      <Button variant="ghost" onClick={actualizar} disabled={cargando}>
+        {cargando ? "Consultando la Rama…" : "Actualizar con la Rama Judicial"}
+      </Button>
+      {feedback && (
+        <p className={`mt-1 text-xs ${feedback.warn ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+          {feedback.texto}
+        </p>
+      )}
+    </div>
+  );
+}
 
 // Nombre real del archivo subido a partir de su URL (último segmento del path).
 export function nombreArchivo(url?: string | null): string | null {
