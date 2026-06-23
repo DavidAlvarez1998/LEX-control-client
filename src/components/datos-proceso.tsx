@@ -484,12 +484,15 @@ export const DatosProceso = forwardRef<
         </>
       );
     }
-    // Ejecutivo de mínima cuantía (único tipo con radicado + juzgado + fechaRadicacion
-    // como campos de ficha): bajo "Número de radicado", un botón que al tener los 23
-    // dígitos consulta la Rama Judicial (CPNU) y autollena "Juzgado asignado" + "Fecha
-    // de radicación" en el mismo formulario. Solo llena el form (no persiste): el
-    // abogado revisa y guarda. Mismo origen que el panel de actuaciones de la ficha.
-    if (!readOnly && tieneCampo("radicado") && tieneCampo("juzgado") && tieneCampo("fechaRadicacion")) {
+    // Radicado con consulta a la Rama: bajo el campo del radicado, un botón que al tener
+    // los 23 dígitos consulta la Rama Judicial (CPNU) y autollena el juzgado (+ la fecha
+    // de radicación si el tipo la maneja) en el mismo formulario. Aplica a los judiciales
+    // cuyo radicado es campo de ficha: mínima cuantía, verbal y sumario (todos con
+    // `radicado` + `juzgado`). Solo llena el form; al guardar, `radicado` se refleja a la
+    // columna `proceso.radicado` (espejoColumnasDesdeDatos) y habilita el resto de la
+    // integración (panel de actuaciones). El abogado revisa y guarda.
+    if (!readOnly && tieneCampo("radicado") && tieneCampo("juzgado")) {
+      const tieneFecha = tieneCampo("fechaRadicacion");
       const prev = slots.radicado;
       slots.radicado = (
         <>
@@ -499,7 +502,7 @@ export const DatosProceso = forwardRef<
               setBorrador((d) => ({
                 ...d,
                 juzgado: despacho ?? d.juzgado,
-                fechaRadicacion: fechaProceso ? fechaProceso.slice(0, 10) : d.fechaRadicacion,
+                ...(tieneFecha && fechaProceso ? { fechaRadicacion: fechaProceso.slice(0, 10) } : {}),
               }))
             }
           />
