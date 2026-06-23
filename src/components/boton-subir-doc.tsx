@@ -89,7 +89,7 @@ export function BotonSubirDoc({
         {/* Input nativo oculto: botón y textos en español (el nativo muestra
             "Browse" / "No file selected" en el idioma del navegador). */}
         <div className="mt-1 flex flex-wrap items-center gap-2">
-          <label className="cursor-pointer rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300">
+          <label className="cursor-pointer rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20">
             Elegir archivo
             <input
               type="file"
