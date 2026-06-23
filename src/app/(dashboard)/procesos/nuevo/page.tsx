@@ -423,7 +423,25 @@ export default function NuevoProcesoPage() {
     // deben estar adjuntos para crear. Los opcionales (reiteración) no bloquean.
     const docsFaltan = documentosRequeridosDeEtapas(etapasDeCreacion(tipo.etapas), datos).filter((d) => !archivos[d]);
     setDocsError(docsFaltan.length ? `Faltan documentos obligatorios: ${docsFaltan.map(etiquetaDoc).join(", ")}.` : null);
-    if (!ok || !tituloOk || (clienteRequerido && !hayCliente) || !hayResponsable || docsFaltan.length > 0) return;
+    if (!ok || !tituloOk || (clienteRequerido && !hayCliente) || !hayResponsable || docsFaltan.length > 0) {
+      // Sube/baja al PRIMER campo inválido (en orden del DOM) y lo enfoca, para que el
+      // usuario lo vea sin tener que buscarlo. Cada campo lleva un ancla `data-campo`.
+      const invalidos = new Set<string>([
+        ...(!tituloOk ? ["titulo"] : []),
+        ...(clienteRequerido && !hayCliente ? ["clienteId"] : []),
+        ...(!hayResponsable ? ["responsableId"] : []),
+        ...keysFaltantes,
+        ...(docsFaltan.length ? ["__docs"] : []),
+      ]);
+      requestAnimationFrame(() => {
+        const nodos = Array.from(document.querySelectorAll<HTMLElement>("[data-campo]"));
+        const primero = nodos.find((n) => invalidos.has(n.dataset.campo ?? ""));
+        if (!primero) return;
+        primero.scrollIntoView({ behavior: "smooth", block: "center" });
+        primero.querySelector<HTMLElement>("input, select, textarea, button")?.focus({ preventScroll: true });
+      });
+      return;
+    }
 
     setGuardando(true);
     setApiError(null);
@@ -650,17 +668,20 @@ export default function NuevoProcesoPage() {
             En trámites ante entidad (DdP), acciones constitucionales (tutela) y procesos
             laborales se auto-genera y se oculta; queda editable luego en la ficha. */}
         {tipo.esJudicial && tipo.grupo !== "CONSTITUCIONAL" && !esLitigioVs(tipo) && (
+        <div data-campo="titulo">
         <Card>
           <Field label="Título del caso" requerido error={tituloError ? "Obligatorio" : undefined}>
             <Input value={titulo} onChange={setTitulo} placeholder="Ej. Pérez vs. Aseguradora XYZ" />
           </Field>
         </Card>
+        </div>
         )}
 
         {/* Cliente dueño del proceso. Oculto en trámites dirigidos al despacho (DdP
             recibido, clienteOpcional): por defecto van hacia la propia empresa, sin
             cliente del CRM (se crea con clienteId nulo). */}
         {!tipo.clienteOpcional && (
+        <div data-campo="clienteId">
         <Card>
           <h3 className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
             Cliente <span className="font-normal text-red-500">*</span>
@@ -732,6 +753,7 @@ export default function NuevoProcesoPage() {
             <p className="mt-2 text-xs text-red-600">Elige o crea un cliente para el proceso.</p>
           )}
         </Card>
+        </div>
         )}
 
         {/* Otros peticionarios / accionantes: en peticiones (trámite ante entidad) son
@@ -826,6 +848,7 @@ export default function NuevoProcesoPage() {
         )}
 
         {/* Abogado responsable */}
+        <div data-campo="responsableId">
         <Card>
           <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
             Abogado responsable
@@ -849,6 +872,7 @@ export default function NuevoProcesoPage() {
             </p>
           )}
         </Card>
+        </div>
 
         <Card>
           <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -985,7 +1009,7 @@ export default function NuevoProcesoPage() {
         })()}
 
         {docsError && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{docsError}</p>
+          <p data-campo="__docs" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{docsError}</p>
         )}
 
         {/* Datos judiciales: solo para procesos que van ante un juez (no en trámites
