@@ -208,6 +208,8 @@ export type SugerenciaHito = {
   etapaNombre: string;
   campoFecha: string | null;
   fechaSugerida: string | null;
+  campoValor: string | null; // campo de decisión a pre-llenar (p. ej. decisionCalificacion)
+  valorSugerido: string | null; // valor para campoValor (p. ej. "Admite" / "Inadmite")
   actuacion: string;
 };
 export type ValidarRadicadoResp = {

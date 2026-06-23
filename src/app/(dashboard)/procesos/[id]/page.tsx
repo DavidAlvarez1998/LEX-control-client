@@ -652,13 +652,17 @@ function ActuacionesJuzgado({
     cargar();
   }
 
-  // #1: pre-llena el campo de fecha sugerido (dispara el auto-avance del motor si
-  // se cumplen los requisitos). El abogado igual debe adjuntar el documento del juez.
-  async function usarFecha(s: SugerenciaHito) {
-    if (!s.campoFecha || !s.fechaSugerida) return;
+  // #1: pre-llena lo que reveló la actuación — la fecha del auto y, cuando aplica, el
+  // campo de decisión (p. ej. la calificación Admite/Inadmite). Dispara el auto-avance
+  // del motor si se cumplen los requisitos; el abogado igual adjunta el doc del juez.
+  async function usarSugerencia(s: SugerenciaHito) {
+    const patch: Record<string, unknown> = {};
+    if (s.campoFecha && s.fechaSugerida) patch[s.campoFecha] = s.fechaSugerida;
+    if (s.campoValor && s.valorSugerido) patch[s.campoValor] = s.valorSugerido;
+    if (Object.keys(patch).length === 0) return;
     setAplicando(s.etapaKey);
     try {
-      await actualizarProceso(procesoId, { datos: { ...datos, [s.campoFecha]: s.fechaSugerida } });
+      await actualizarProceso(procesoId, { datos: { ...datos, ...patch } });
       onChanged();
       cargar();
     } finally {
@@ -754,15 +758,15 @@ function ActuacionesJuzgado({
                       return (
                         <div className="mt-1 flex flex-wrap items-center gap-2 rounded-md bg-indigo-50 px-2 py-1 text-xs dark:bg-indigo-500/10">
                           <span className="text-indigo-900 dark:text-indigo-200">
-                            ↳ ¿avanzar a <strong>{s.etapaNombre}</strong>{s.fechaSugerida ? ` (${fecha(s.fechaSugerida)})` : ""}?
+                            ↳ ¿avanzar a <strong>{s.etapaNombre}</strong>{s.fechaSugerida ? ` (${fecha(s.fechaSugerida)})` : ""}{s.valorSugerido ? ` — ${s.valorSugerido}` : ""}?
                           </span>
-                          {!readOnly && s.campoFecha && s.fechaSugerida && (
+                          {!readOnly && ((s.campoFecha && s.fechaSugerida) || (s.campoValor && s.valorSugerido)) && (
                             <button
-                              onClick={() => usarFecha(s)}
+                              onClick={() => usarSugerencia(s)}
                               disabled={aplicando === s.etapaKey}
                               className="rounded-md bg-indigo-600 px-2 py-0.5 font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                             >
-                              {aplicando === s.etapaKey ? "…" : "Usar fecha"}
+                              {aplicando === s.etapaKey ? "…" : s.campoValor && s.valorSugerido ? `Usar (${s.valorSugerido})` : "Usar fecha"}
                             </button>
                           )}
                         </div>
