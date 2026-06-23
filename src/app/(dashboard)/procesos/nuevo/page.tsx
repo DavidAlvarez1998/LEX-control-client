@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Button, Card, Modal, PageHeader } from "@/components/ui";
 import { BuscadorSelect, CorreosInput, Field, Input, MoneyInput, NATURALEZA_LABEL, Notificaciones, Select, SelectableCard } from "@/components/form-ui";
 import { FormularioDinamico } from "@/components/formulario-dinamico";
+import { BotonActualizarRadicado } from "@/components/boton-actualizar-radicado";
 import { VencimientoHint } from "@/components/vencimiento-hint";
 import { BotonSubirDoc } from "@/components/boton-subir-doc";
 import { DocumentosUploader } from "@/components/documentos-uploader";
@@ -1026,6 +1027,18 @@ export default function NuevoProcesoPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Radicado (23 dígitos)">
                 <Input value={radicado} onChange={setRadicado} placeholder="Aún sin radicar" />
+                {/* Con los 23 dígitos, consulta la Rama y rellena despacho/juzgado y, si el
+                    tipo tiene esos campos, demandante/demandado. Misma fuente que la ficha. */}
+                <BotonActualizarRadicado
+                  radicado={radicado}
+                  className="mt-1.5"
+                  onAutollenar={({ despacho, demandante, demandado }) => {
+                    if (despacho) setDespachoJuzgado(despacho);
+                    const tiene = (k: string) => tipo.esquemaFormulario.some((c) => c.key === k);
+                    if (demandante && tiene("demandanteNombre")) setCampo("demandanteNombre", demandante);
+                    if (demandado && tiene("demandadoNombre")) setCampo("demandadoNombre", demandado);
+                  }}
+                />
               </Field>
               <Field label="Despacho / juzgado">
                 <Input value={despachoJuzgado} onChange={setDespachoJuzgado} placeholder="Ej. Juzgado 5º Civil del Circuito" />
