@@ -444,26 +444,15 @@ export const DatosProceso = forwardRef<
         </>
       );
     }
-    // Ejecutivo: notificación al demandado — la constancia de notificación de cada
-    // demandado se ADJUNTA al expediente (lista repetible, prefijo "Notificación: "),
-    // bajo "Fecha de notificación". NO la enviamos nosotros: la notificación le llega
-    // al correo del demandado/demandante por la vía judicial; acá solo guardamos la
-    // constancia. El mandamiento de pago va aparte (un único doc, la orden).
+    // Ejecutivo: notificación al demandado — constancia de notificación, UN solo
+    // documento (opcional), bajo "Fecha de notificación". NO la enviamos nosotros: la
+    // notificación le llega al correo del demandado/demandante por la vía judicial;
+    // acá solo se guarda la constancia. El mandamiento de pago va aparte (otro doc).
     if (tieneCampo("fechaNotificacion") && onDocSubido) {
       slots.fechaNotificacion = (
         <>
           {slots.fechaNotificacion}
-          <AdjuntosLibres
-            procesoId={procesoId}
-            docs={documentos}
-            prefix="Notificación: "
-            titulo="Notificaciones al demandado"
-            opcional
-            descripcion="La constancia de notificación de cada demandado, para el expediente. El mandamiento de pago va aparte (es un solo documento)."
-            onSubido={onDocSubido}
-            onEliminado={(id) => onDocEliminado?.(id)}
-            readOnly={readOnly}
-          />
+          {bloqueDocs("Notificación al demandado", ["notificacion-demandado.pdf"], [])}
         </>
       );
     }

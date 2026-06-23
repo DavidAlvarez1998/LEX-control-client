@@ -364,6 +364,7 @@ const DOC_ETIQUETAS: Record<string, string> = {
   "auto-citacion": "Auto de citación a audiencia",
   "auto-silencio": "Constancia de silencio (no contestó)",
   notificacion: "Notificación de la demanda",
+  "notificacion-demandado": "Notificación al demandado",
   subsanacion: "Escrito de subsanación",
   "demanda-reformada": "Demanda reformada",
   reconvencion: "Demanda de reconvención",
