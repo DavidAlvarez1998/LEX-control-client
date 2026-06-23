@@ -456,6 +456,27 @@ export const DatosProceso = forwardRef<
         </>
       );
     }
+    // Ejecutivo: en "Impulsos procesales" se adjuntan VARIOS documentos para impulsar
+    // el proceso (memoriales, oficios, requerimientos, trámites). Multi-archivo libre
+    // (prefijo "Trámite: ") bajo el campo "Impulsos procesales".
+    if (tieneCampo("descripcionImpulso") && onDocSubido) {
+      slots.descripcionImpulso = (
+        <>
+          {slots.descripcionImpulso}
+          <AdjuntosLibres
+            procesoId={procesoId}
+            docs={documentos}
+            prefix="Trámite: "
+            titulo="Memoriales, oficios y trámites"
+            opcional
+            descripcion="Adjuntá los memoriales, oficios, requerimientos y demás trámites del impulso (uno o varios)."
+            onSubido={onDocSubido}
+            onEliminado={(id) => onDocEliminado?.(id)}
+            readOnly={readOnly}
+          />
+        </>
+      );
+    }
     // Ejecutivo de mínima cuantía (único tipo con radicado + juzgado + fechaRadicacion
     // como campos de ficha): bajo "Número de radicado", un botón que al tener los 23
     // dígitos consulta la Rama Judicial (CPNU) y autollena "Juzgado asignado" + "Fecha
