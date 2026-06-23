@@ -8,7 +8,6 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type Reac
 import { Button } from "./ui";
 import { BotonSubirDoc } from "./boton-subir-doc";
 import { AdjuntosLibres } from "./adjuntos-libres";
-import { NotificacionesDemandados } from "./notificaciones-demandados";
 import { FormularioDinamico } from "./formulario-dinamico";
 import { VencimientoHint } from "./vencimiento-hint";
 import { errorMessage } from "@/lib/api";
@@ -23,7 +22,7 @@ import {
   type CampoEsquema,
   type EtapaDef,
 } from "@/lib/procesos";
-import { actualizarDatos, subirArchivoProceso, validarRadicado, type DocumentoProceso, type ParteDetalle, type ProcesoDetalle } from "@/lib/procesos-api";
+import { actualizarDatos, subirArchivoProceso, validarRadicado, type DocumentoProceso, type ProcesoDetalle } from "@/lib/procesos-api";
 
 // Permite a la ficha "vaciar" (guardar) los cambios del formulario sin guardar ANTES
 // de intentar avanzar de etapa: así el avance evalúa lo recién diligenciado.
@@ -40,7 +39,6 @@ export const DatosProceso = forwardRef<
     etapas?: EtapaDef[]; // para mostrar los documentos requeridos/opcionales inline
     datos: Record<string, unknown>;
     onSaved: (proceso: ProcesoDetalle) => void; // proceso completo (incluye etapa auto-avanzada)
-    partes?: ParteDetalle[]; // demandados para el panel de notificaciones (ejecutivo)
     documentos?: DocumentoProceso[]; // para saber qué documentos ya están adjuntos
     onDocSubido?: (doc: DocumentoProceso) => void; // refleja la subida en la ficha
     onDocEliminado?: (docId: string) => void; // refleja el borrado (multi-adjuntos libres)
@@ -59,7 +57,6 @@ export const DatosProceso = forwardRef<
   etapas = [],
   datos,
   onSaved,
-  partes = [],
   documentos = [],
   onDocSubido,
   onDocEliminado,
@@ -447,19 +444,22 @@ export const DatosProceso = forwardRef<
         </>
       );
     }
-    // Ejecutivo: notificación al demandado — panel estructurado POR demandado (la
-    // notificación es personal a cada ejecutado): lista los demandados con su correo y
-    // adjunta la notificación de cada uno, bajo "Fecha de notificación". El mandamiento
-    // de pago va aparte (un único doc, la orden). Base para el futuro botón "Notificar"
-    // (bloqueado: el microservicio SES no soporta adjuntos — coordinar con Finova).
+    // Ejecutivo: notificación al demandado — la constancia de notificación de cada
+    // demandado se ADJUNTA al expediente (lista repetible, prefijo "Notificación: "),
+    // bajo "Fecha de notificación". NO la enviamos nosotros: la notificación le llega
+    // al correo del demandado/demandante por la vía judicial; acá solo guardamos la
+    // constancia. El mandamiento de pago va aparte (un único doc, la orden).
     if (tieneCampo("fechaNotificacion") && onDocSubido) {
       slots.fechaNotificacion = (
         <>
           {slots.fechaNotificacion}
-          <NotificacionesDemandados
+          <AdjuntosLibres
             procesoId={procesoId}
-            partes={partes}
             docs={documentos}
+            prefix="Notificación: "
+            titulo="Notificaciones al demandado"
+            opcional
+            descripcion="La constancia de notificación de cada demandado, para el expediente. El mandamiento de pago va aparte (es un solo documento)."
             onSubido={onDocSubido}
             onEliminado={(id) => onDocEliminado?.(id)}
             readOnly={readOnly}

@@ -539,7 +539,6 @@ export default function ExpedientePage() {
           etapas={proceso.tipoProceso.etapas ?? []}
           datos={proceso.datos}
           onSaved={(actualizado) => { setProceso(actualizado); cargarCaso(); }}
-          partes={proceso.partes ?? []}
           documentos={proceso.documentos ?? []}
           onDocSubido={(doc) =>
             setProceso((p) =>
