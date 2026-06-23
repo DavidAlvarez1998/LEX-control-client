@@ -14,6 +14,8 @@ export function AdjuntosLibres({
   docs,
   prefix,
   titulo = "Documentos",
+  descripcion,
+  opcional = false,
   onSubido,
   onEliminado,
   readOnly = false,
@@ -22,6 +24,8 @@ export function AdjuntosLibres({
   docs: DocumentoProceso[];
   prefix: string; // p. ej. "audiencia: " — agrupa los docs de esta sección
   titulo?: string;
+  descripcion?: string; // texto guía bajo el título (desambigua qué se sube acá)
+  opcional?: boolean; // muestra "(opcional)" junto al título (no bloquea el avance)
   onSubido: (doc: DocumentoProceso) => void;
   onEliminado: (docId: string) => void;
   readOnly?: boolean;
@@ -33,7 +37,8 @@ export function AdjuntosLibres({
   return (
     <DocumentosUploader
       titulo={titulo}
-      opcional={false}
+      descripcion={descripcion}
+      opcional={opcional}
       readOnly={readOnly}
       existentes={existentes}
       subir={async (file) => {

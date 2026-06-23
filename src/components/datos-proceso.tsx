@@ -423,6 +423,51 @@ export const DatosProceso = forwardRef<
         </>
       );
     }
+    // Ejecutivo: oficios cautelares — el juzgado libra VARIOS (uno por entidad
+    // oficiada: bancos, empleador, registro, tránsito…), así que es lista repetible
+    // (prefijo "Oficio cautelar: ") bajo "Entidades oficiadas", no un único doc fijo.
+    if (tieneCampo("entidadesOficiadas") && onDocSubido) {
+      slots.entidadesOficiadas = (
+        <>
+          {slots.entidadesOficiadas}
+          <AdjuntosLibres
+            procesoId={procesoId}
+            docs={documentos}
+            prefix="Oficio cautelar: "
+            titulo="Oficios cautelares"
+            opcional
+            descripcion="El PDF de cada oficio que libra el juzgado (uno por entidad). El campo obligatorio de arriba es la lista de entidades."
+            onSubido={onDocSubido}
+            onEliminado={(id) => onDocEliminado?.(id)}
+            readOnly={readOnly}
+          />
+        </>
+      );
+    }
+    // Ejecutivo: notificación al demandado — UNA por cada demandado (la notificación
+    // es personal a cada ejecutado), así que es lista repetible (prefijo
+    // "Notificación: ") bajo "Fecha de notificación al demandado". El mandamiento de
+    // pago en cambio es un único doc (es la orden, igual para todos). Pendiente: botón
+    // "Notificar" por correo con adjuntos (bloqueado: el microservicio SES no soporta
+    // adjuntos — coordinar con Finova).
+    if (tieneCampo("fechaNotificacion") && onDocSubido) {
+      slots.fechaNotificacion = (
+        <>
+          {slots.fechaNotificacion}
+          <AdjuntosLibres
+            procesoId={procesoId}
+            docs={documentos}
+            prefix="Notificación: "
+            titulo="Notificaciones al demandado"
+            opcional
+            descripcion="La constancia/acto de notificación, una por cada demandado. El mandamiento de pago va aparte (es un solo documento)."
+            onSubido={onDocSubido}
+            onEliminado={(id) => onDocEliminado?.(id)}
+            readOnly={readOnly}
+          />
+        </>
+      );
+    }
     // Ejecutivo de mínima cuantía (único tipo con radicado + juzgado + fechaRadicacion
     // como campos de ficha): bajo "Número de radicado", un botón que al tener los 23
     // dígitos consulta la Rama Judicial (CPNU) y autollena "Juzgado asignado" + "Fecha
