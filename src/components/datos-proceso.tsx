@@ -359,6 +359,45 @@ export const DatosProceso = forwardRef<
     }
     docsSinAnclar = a.sinAnclar;
     reqSinAnclar = a.sinAnclarReq;
+    // Ejecutivo de mínima cuantía: la solicitud de medidas cautelares y sus soportes
+    // se suben como VARIOS documentos con nombre libre (mismo prefijo "Solicitud
+    // cautelar: " que el formulario de creación), bajo "Otras medidas cautelares".
+    // Sin esto la ficha solo ofrecía el slot de un único doc fijo y NO mostraba los
+    // que se adjuntaron al crear. Mismo patrón que la audiencia laboral (conciliable).
+    if (tieneCampo("otrasCautelares") && onDocSubido) {
+      slots.otrasCautelares = (
+        <>
+          {slots.otrasCautelares}
+          <AdjuntosLibres
+            procesoId={procesoId}
+            docs={documentos}
+            prefix="Solicitud cautelar: "
+            titulo="Documentos de medidas cautelares"
+            onSubido={onDocSubido}
+            onEliminado={(id) => onDocEliminado?.(id)}
+            readOnly={readOnly}
+          />
+        </>
+      );
+    }
+    // Ejecutivo: documentos de prueba (mismo prefijo "Prueba: " que la creación) como
+    // lista repetible bajo "Pruebas a solicitar". Mismo motivo que las cautelares.
+    if (tieneCampo("pruebas") && onDocSubido) {
+      slots.pruebas = (
+        <>
+          {slots.pruebas}
+          <AdjuntosLibres
+            procesoId={procesoId}
+            docs={documentos}
+            prefix="Prueba: "
+            titulo="Documentos de prueba"
+            onSubido={onDocSubido}
+            onEliminado={(id) => onDocEliminado?.(id)}
+            readOnly={readOnly}
+          />
+        </>
+      );
+    }
   } else {
     // DdP enviado usa requierePoder/contestaron; el recibido no tiene requierePoder y
     // su "respuesta" es `contestada`. Se elige el campo que EXISTA en el esquema.
