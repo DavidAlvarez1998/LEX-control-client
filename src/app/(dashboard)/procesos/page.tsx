@@ -146,7 +146,9 @@ function ProcesosInner() {
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [responsableId, setResponsableId] = useState("");
-  const [conNovedades, setConNovedades] = useState(false); // P1: solo procesos con novedades del juzgado
+  // P1: solo procesos con novedades del juzgado. Inicializa desde la URL para que la
+  // campanita del topbar (P17) deep-linkee a /procesos?conNovedades=1 con el filtro puesto.
+  const [conNovedades, setConNovedades] = useState(searchParams.get("conNovedades") === "1");
   const [sincronizando, setSincronizando] = useState(false); // P16
   const [avisoSync, setAvisoSync] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);

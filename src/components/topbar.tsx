@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GlobalSearch } from "@/components/global-search";
+import { NovedadesCampana } from "@/components/novedades-campana";
 import { useSidebar } from "@/components/sidebar-context";
 
 export function Topbar() {
@@ -35,6 +36,7 @@ export function Topbar() {
 
       <div className="flex shrink-0 items-center gap-3">
         <GlobalSearch />
+        <NovedadesCampana />
         <ThemeToggle />
       </div>
     </header>
