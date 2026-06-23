@@ -979,6 +979,25 @@ export default function NuevoProcesoPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="# Radicado de la demanda">
                 <Input value={radicado} onChange={setRadicado} placeholder="Aún sin radicar" />
+                {/* Con los 23 dígitos, consulta la Rama y rellena juzgado + agrega la
+                    contraparte como sujeto procesal. Igual que en los verbales. */}
+                <BotonActualizarRadicado
+                  radicado={radicado}
+                  className="mt-1.5"
+                  onAutollenar={({ despacho, demandante, demandado }) => {
+                    if (despacho) setDespachoJuzgado(despacho);
+                    const clienteEsPasivo = String(datos.rol ?? "") === "Demandado";
+                    const nombre = (clienteEsPasivo ? demandante : demandado)?.trim();
+                    if (!nombre) return;
+                    const { activo, pasivo } = rolesLitigio(tipo);
+                    const base = parteVacia(clienteEsPasivo ? activo : pasivo);
+                    setPartes((ps) =>
+                      ps.some((p) => p.litigante.nombre.trim().toLowerCase() === nombre.toLowerCase())
+                        ? ps
+                        : [...ps, { ...base, litigante: { ...base.litigante, nombre } }],
+                    );
+                  }}
+                />
               </Field>
               <Field label="Juzgado o corporación">
                 <Input value={despachoJuzgado} onChange={setDespachoJuzgado} placeholder="Ej. Juzgado 5º Laboral del Circuito" />
