@@ -458,8 +458,15 @@ export const DatosProceso = forwardRef<
     }
     // Ejecutivo: en "Impulsos procesales" se adjuntan VARIOS documentos para impulsar
     // el proceso (memoriales, oficios, requerimientos, trámites). Multi-archivo libre
-    // (prefijo "Trámite: ") bajo el campo "Impulsos procesales".
+    // (prefijo "Trámite: ") bajo el campo. Un subtítulo "Impulsos procesales" agrupa la
+    // sección (el campo es la descripción, no el título). Estos campos solo aparecen
+    // cuando la ejecución sigue (lo gatea el `mostrarSi` del seed).
     if (tieneCampo("descripcionImpulso") && onDocSubido) {
+      slotsAntes.descripcionImpulso = (
+        <h4 className="mt-2 border-t border-slate-200 pt-3 text-sm font-semibold text-slate-700 dark:border-slate-600 dark:text-slate-200">
+          Impulsos procesales
+        </h4>
+      );
       slots.descripcionImpulso = (
         <>
           {slots.descripcionImpulso}
@@ -584,6 +591,7 @@ export const DatosProceso = forwardRef<
           // Documentos INLINE bajo su campo (suben al instante): los base bajo
           // requierePoder/queSolicita y los de la respuesta bajo contestaron/contestada.
           slotDespuesDe={slots}
+          slotAntesDe={slotsAntes}
         />
       )}
       {docsSinAnclar.length > 0 && (
