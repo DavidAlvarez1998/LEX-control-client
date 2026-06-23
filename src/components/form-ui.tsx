@@ -417,6 +417,41 @@ export function MoneyInput({
   );
 }
 
+export function PorcentajeInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string; // número con punto decimal, p. ej. "28.5"
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  function normalizar(raw: string): string {
+    // Solo dígitos y un separador decimal (acepta coma, guarda punto).
+    let s = raw.replace(",", ".").replace(/[^\d.]/g, "");
+    const partes = s.split(".");
+    if (partes.length > 2) s = partes[0] + "." + partes.slice(1).join("");
+    // Tope: ninguna tasa válida supera el 100 %.
+    if (s !== "" && s !== "." && Number(s) > 100) s = "100";
+    return s;
+  }
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => onChange(normalizar(e.target.value))}
+        placeholder={placeholder}
+        className={`${base} pr-8`}
+      />
+      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted">
+        %
+      </span>
+    </div>
+  );
+}
+
 /** Tarjeta seleccionable/clicable (para la grilla de áreas y tipos). */
 export function SelectableCard({
   title,

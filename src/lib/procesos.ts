@@ -39,6 +39,8 @@ export type CampoTipo =
   | "texto"
   | "textoLargo"
   | "numero"
+  | "moneda" // entero en pesos; captura/muestra con separador de miles (9.999.999)
+  | "porcentaje" // número 0–100 con decimales; captura/muestra con sufijo %
   | "fecha"
   | "boolean"
   | "select"

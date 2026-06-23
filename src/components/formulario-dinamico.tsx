@@ -12,8 +12,10 @@ import {
   CorreosInput,
   Field,
   Input,
+  MoneyInput,
   MultiSelect,
   NumberInput,
+  PorcentajeInput,
   Select,
   Textarea,
 } from "./form-ui";
@@ -118,6 +120,18 @@ export function FormularioDinamico({
           case "numero":
             control = (
               <NumberInput value={(v as string) ?? ""} onChange={(x) => onChange(campo.key, x)} />
+            );
+            break;
+          case "moneda":
+            // Guarda dígitos crudos; muestra con separador de miles (9.999.999).
+            control = (
+              <MoneyInput value={(v as string) ?? ""} onChange={(x) => onChange(campo.key, x)} />
+            );
+            break;
+          case "porcentaje":
+            // Solo número con decimales, tope 100; muestra sufijo %.
+            control = (
+              <PorcentajeInput value={(v as string) ?? ""} onChange={(x) => onChange(campo.key, x)} />
             );
             break;
           case "fecha":
