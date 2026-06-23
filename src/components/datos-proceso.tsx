@@ -70,6 +70,31 @@ export const DatosProceso = forwardRef<
   const [erroresGuardar, setErroresGuardar] = useState<string[]>([]); // keys marcadas al validar al guardar
   const formRef = useRef<HTMLDivElement>(null);
 
+  // Si los `datos` del proceso cambian DESDE AFUERA mientras el form está en edición
+  // (p. ej. al aplicar una sugerencia del hito de la Rama: calificación/fecha, o el
+  // botón "Actualizar con la Rama"), se fusionan esos cambios en el borrador SOLO para
+  // los campos que el usuario NO tocó (su valor en el borrador sigue igual al previo).
+  // Sin esto el form no refleja lo recién aplicado y, peor, un "Guardar" posterior lo
+  // PISARÍA con el valor viejo del borrador. En modo lectura no aplica (la vista lee
+  // `datos` directo).
+  const datosPrevRef = useRef(datos);
+  useEffect(() => {
+    const prev = datosPrevRef.current;
+    datosPrevRef.current = datos;
+    if (prev === datos || !editando) return;
+    setBorrador((b) => {
+      let next = b;
+      let cambio = false;
+      for (const k of Object.keys(datos)) {
+        if (datos[k] !== prev[k] && b[k] === prev[k]) {
+          if (!cambio) { next = { ...b }; cambio = true; }
+          next[k] = datos[k];
+        }
+      }
+      return cambio ? next : b;
+    });
+  }, [datos, editando]);
+
   // Al intentar avanzar una etapa bloqueada (por datos O documentos), se abre el
   // form en edición partiendo de los datos actuales para que el campo y/o su
   // documento aparezcan inline. El nonce re-dispara en cada intento.
