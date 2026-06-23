@@ -590,6 +590,31 @@ export const DatosProceso = forwardRef<
               </div>
             ))}
         </div>
+      ) : grupo === "JUDICIAL" ? (
+        // Judiciales (mínima cuantía, verbal, sumario): mismo agrupado por etapa que el
+        // laboral pero genérico (título = nombre de la etapa). Solo presentación: NO cambia
+        // requeridos, gating ni qué campos se ven; solo los reparte en secciones con un
+        // encabezado. Cada sección se oculta si todos sus campos están ocultos.
+        <div className="space-y-6">
+          {seccionesPorEtapa(etapas, esquema, borrador)
+            .filter((s) => s.campos.some((c) => campoVisible(c, borrador)))
+            .map((s) => (
+              <div key={s.titulo}>
+                <h4 className="mb-3 border-b border-slate-200 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-600 dark:text-slate-400">
+                  {s.titulo}
+                </h4>
+                <FormularioDinamico
+                  esquema={s.campos}
+                  datos={borrador}
+                  onChange={(k, v) => setBorrador((d) => ({ ...d, [k]: v }))}
+                  errores={erroresVivos}
+                  className="space-y-4"
+                  slotDespuesDe={slots}
+                  slotAntesDe={slotsAntes}
+                />
+              </div>
+            ))}
+        </div>
       ) : (
         <FormularioDinamico
           esquema={esquema}
@@ -637,6 +662,60 @@ function formatValor(v: unknown): string {
   if (Array.isArray(v)) return v.join(", ");
   if (typeof v === "boolean") return v ? "Sí" : "No";
   return String(v);
+}
+
+/**
+ * Agrupa los campos en SECCIONES por etapa (SOLO presentación: no toca requeridos, gating
+ * ni visibilidad). Versión genérica de `seccionesLaboral` para los demás judiciales (mínima
+ * cuantía, verbal, sumario): el título de cada sección es el `nombre` de la etapa. Asigna
+ * cada campo a la etapa que lo introduce (sus `camposRequeridos` + los campos de sus
+ * condiciones); los campos que se despliegan por `mostrarSi` heredan la sección de su
+ * controlador (transitivo); los sueltos van por proximidad al campo anterior del esquema.
+ * Devuelve las secciones en orden de flujo; el render oculta las que queden vacías.
+ */
+function seccionesPorEtapa(etapas: EtapaDef[], esquema: CampoEsquema[], _datos: Record<string, unknown>): { titulo: string; campos: CampoEsquema[] }[] {
+  const orden = [...etapas].sort((a, b) => a.orden - b.orden);
+  const enEsquema = (k: string) => esquema.some((c) => c.key === k);
+  const asignado: Record<string, string> = {}; // campoKey -> stageKey
+  // 1) Campos directos de cada etapa (first-claim-wins por orden de flujo).
+  for (const e of orden) {
+    const r = e.reglas;
+    const directos = [
+      ...(r?.camposRequeridos ?? []),
+      ...(e.disponibleSi ? camposDeCondicion(e.disponibleSi) : []),
+      ...(r?.requeridosSi ?? []).flatMap((x) => camposDeCondicion(x.si)),
+      ...(r?.opcionalesSi ?? []).flatMap((x) => camposDeCondicion(x.si)),
+    ];
+    for (const k of directos) if (enEsquema(k) && asignado[k] == null) asignado[k] = e.key;
+  }
+  // 2) Dependientes (mostrarSi → sección del campo referenciado), transitivo.
+  let cambio = true;
+  while (cambio) {
+    cambio = false;
+    for (const c of esquema) {
+      if (asignado[c.key] != null || !c.mostrarSi) continue;
+      const dueno = camposDeCondicion(c.mostrarSi).map((r) => asignado[r]).find((s) => s != null);
+      if (dueno) { asignado[c.key] = dueno; cambio = true; }
+    }
+  }
+  // 3) Sueltos: sección del campo anterior en el esquema (proximidad).
+  let ultimo: string | undefined;
+  for (const c of esquema) {
+    if (asignado[c.key] != null) { ultimo = asignado[c.key]; continue; }
+    asignado[c.key] = ultimo ?? orden[0]?.key ?? "";
+    ultimo = asignado[c.key];
+  }
+  const tituloDe = (stageKey: string) => orden.find((e) => e.key === stageKey)?.nombre ?? stageKey;
+  // Secciones en orden de flujo; los campos dentro de cada una conservan el orden del esquema.
+  const titulos: string[] = [];
+  const porTitulo: Record<string, CampoEsquema[]> = {};
+  for (const e of orden) { const t = tituloDe(e.key); if (!titulos.includes(t)) { titulos.push(t); porTitulo[t] = []; } }
+  for (const c of esquema) {
+    const t = tituloDe(asignado[c.key]);
+    (porTitulo[t] ??= []).push(c);
+    if (!titulos.includes(t)) titulos.push(t);
+  }
+  return titulos.filter((t) => (porTitulo[t]?.length ?? 0) > 0).map((t) => ({ titulo: t, campos: porTitulo[t] }));
 }
 
 // Título de sección por etapa del laboral (las audiencias se fusionan en una).
