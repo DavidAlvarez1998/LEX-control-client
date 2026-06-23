@@ -1034,9 +1034,20 @@ export default function NuevoProcesoPage() {
                   className="mt-1.5"
                   onAutollenar={({ despacho, demandante, demandado }) => {
                     if (despacho) setDespachoJuzgado(despacho);
-                    const tiene = (k: string) => tipo.esquemaFormulario.some((c) => c.key === k);
-                    if (demandante && tiene("demandanteNombre")) setCampo("demandanteNombre", demandante);
-                    if (demandado && tiene("demandadoNombre")) setCampo("demandadoNombre", demandado);
+                    // El sujeto CONTRARIO (el que no es nuestro cliente) se agrega como
+                    // parte real en "Agregar sujeto procesal": si nuestro cliente es el
+                    // demandado, la contraparte es el demandante; si no, el demandado.
+                    // No duplica si ya existe una parte con ese nombre.
+                    const clienteEsPasivo = String(datos.rol ?? "") === "Demandado";
+                    const nombre = (clienteEsPasivo ? demandante : demandado)?.trim();
+                    if (!nombre) return;
+                    const { activo, pasivo } = rolesLitigio(tipo);
+                    const base = parteVacia(clienteEsPasivo ? activo : pasivo);
+                    setPartes((ps) =>
+                      ps.some((p) => p.litigante.nombre.trim().toLowerCase() === nombre.toLowerCase())
+                        ? ps
+                        : [...ps, { ...base, litigante: { ...base.litigante, nombre } }],
+                    );
                   }}
                 />
               </Field>
