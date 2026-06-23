@@ -579,7 +579,11 @@ export const DatosProceso = forwardRef<
                   datos={borrador}
                   onChange={(k, v) => setBorrador((d) => ({ ...d, [k]: v }))}
                   errores={erroresVivos}
-                  className="grid grid-cols-1 gap-4"
+                  // Apilado vertical (NO grilla): los campos con `mostrarSi` llevan
+                  // `sm:col-span-2`, que en una `grid grid-cols-1` creaba una columna
+                  // implícita y rompía el layout (campos encimados a la izquierda). El
+                  // laboral es de una sola columna, así que se apila igual que el resto.
+                  className="space-y-4"
                   slotDespuesDe={slots}
                   slotAntesDe={slotsAntes}
                 />
