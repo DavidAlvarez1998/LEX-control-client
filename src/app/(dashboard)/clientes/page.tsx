@@ -195,8 +195,17 @@ export default function ClientesPage() {
 
   async function guardar() {
     setFormError(null);
-    if (!form.nombre.trim()) {
-      setFormError("El nombre es obligatorio");
+    // Campos obligatorios para identificar y contactar al cliente/prospecto.
+    const faltan: string[] = [];
+    if (!form.nombre.trim()) faltan.push("Nombre");
+    if (!form.tipoPersona) faltan.push("Tipo de persona");
+    if (!form.tipoDocumento) faltan.push("Tipo de documento");
+    if (!form.numeroDocumento.trim()) faltan.push("Número de documento");
+    if (!form.telefono.trim()) faltan.push("Teléfono");
+    if (!form.correos.some((c) => c.trim())) faltan.push("Correo");
+    if (!form.tipoCaso) faltan.push("Tipo de caso");
+    if (faltan.length > 0) {
+      setFormError(`Completa los campos obligatorios: ${faltan.join(", ")}.`);
       return;
     }
     setSaving(true);
@@ -388,29 +397,31 @@ export default function ClientesPage() {
                   <Input value={form.nombre} onChange={(v) => setForm({ ...form, nombre: v })} placeholder="Nombre y apellido / razón social" />
                 </Field>
               </div>
-              <Field label="Tipo de persona">
+              <Field label="Tipo de persona" requerido>
                 <Select value={form.tipoPersona} onChange={(v) => setForm({ ...form, tipoPersona: v })} opciones={["NATURAL", "JURIDICA"]} placeholder="—" />
               </Field>
               <Field label="Canal de ingreso">
                 <Select value={form.canalIngreso} onChange={(v) => setForm({ ...form, canalIngreso: v })} opciones={CANAL} />
               </Field>
-              <Field label="Tipo de documento">
+              <Field label="Tipo de documento" requerido>
                 <Select value={form.tipoDocumento} onChange={(v) => setForm({ ...form, tipoDocumento: v })} opciones={TIPO_DOC} />
               </Field>
-              <Field label="Número de documento">
+              <Field label="Número de documento" requerido>
                 <Input value={form.numeroDocumento} onChange={(v) => setForm({ ...form, numeroDocumento: v })} placeholder="Documento" />
               </Field>
-              <Field label="Teléfono">
+              <Field label="Teléfono" requerido>
                 <Input value={form.telefono} onChange={(v) => setForm({ ...form, telefono: v })} placeholder="Teléfono" />
               </Field>
               <div>
-                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Correos</span>
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Correos<span className="ml-0.5 text-red-500">*</span>
+                </span>
                 <CorreosInput value={form.correos} onChange={(v) => setForm({ ...form, correos: v })} />
               </div>
               <Field label="Ciudad">
                 <Input value={form.ciudad} onChange={(v) => setForm({ ...form, ciudad: v })} placeholder="Ciudad" />
               </Field>
-              <Field label="Tipo de caso">
+              <Field label="Tipo de caso" requerido>
                 {/* Área de práctica del catálogo, agrupada por jurisdicción (optgroups);
                     conserva un valor legado fuera del catálogo. */}
                 <Select
