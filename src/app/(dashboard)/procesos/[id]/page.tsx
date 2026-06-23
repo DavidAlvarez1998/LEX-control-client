@@ -304,7 +304,16 @@ export default function ExpedientePage() {
           <Dato label="Código interno" value={proceso.codigoInterno} />
           {/* Datos judiciales: solo para procesos que van ante un juez. */}
           {proceso.tipoProceso.esJudicial && (
-            <RadicadoDato procesoId={proceso.id} valor={proceso.radicado} onSaved={setProceso} readOnly={!puedeEditar} />
+            <RadicadoDato
+              procesoId={proceso.id}
+              valor={proceso.radicado}
+              onSaved={setProceso}
+              readOnly={!puedeEditar}
+              // En mínima cuantía el radicado es campo del formulario de etapa y el botón
+              // "Actualizar" vive ahí; en los demás judiciales (verbal/sumario/laboral/
+              // tutela) el radicado vive en este encabezado → el botón va acá.
+              mostrarActualizar={!(proceso.tipoProceso.esquemaFormulario ?? []).some((c) => c.key === "radicado")}
+            />
           )}
           <Dato label="Estado" value={ESTADO_LABEL[proceso.estado]} />
           <Dato label="Cliente" value={proceso.cliente?.nombre ?? "—"} />
@@ -1072,15 +1081,22 @@ function RadicadoDato({
   valor,
   onSaved,
   readOnly = false,
+  mostrarActualizar = false,
 }: {
   procesoId: string;
   valor: string | null;
   onSaved: (p: ProcesoDetalle) => void;
   readOnly?: boolean;
+  // Muestra el botón "Actualizar con la Rama" junto al radicado ya guardado. Se usa en los
+  // procesos judiciales cuyo radicado vive aquí (verbal/sumario/laboral/tutela); en el
+  // ejecutivo de mínima cuantía el botón va en el formulario de etapa (campo `radicado`),
+  // así que ahí se deja en false para no duplicarlo.
+  mostrarActualizar?: boolean;
 }) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(valor ?? "");
   const [guardando, setGuardando] = useState(false);
+  const [actualizando, setActualizando] = useState(false);
   // Feedback de validación contra la Rama Judicial (no bloquea; solo informa).
   const [feedback, setFeedback] = useState<{ texto: string; warn: boolean } | null>(null);
   // P12 — preview en vivo de lo que trae la Rama al teclear 23 dígitos (antes de vincular).
@@ -1120,6 +1136,31 @@ function RadicadoDato({
       }
     } finally {
       setGuardando(false);
+    }
+  }
+
+  // Botón "Actualizar con la Rama" sobre el radicado YA guardado (sin entrar a editar):
+  // consulta la Rama y autocompleta juzgado + fecha de radicación + actuaciones del
+  // proceso. Mismo origen y efecto que el autollenado al guardar, pero accionable a
+  // demanda. Solo aplica con 23 dígitos válidos.
+  async function actualizarConRama() {
+    setActualizando(true);
+    setFeedback({ texto: "Consultando la Rama Judicial…", warn: false });
+    try {
+      const r = await sincronizarActuaciones(procesoId);
+      if (r.reservado) {
+        setFeedback({ texto: "El proceso figura como reservado en la Rama: no publica datos.", warn: true });
+      } else if (!r.encontrado) {
+        setFeedback({ texto: "El radicado aún no aparece en la Rama (puede tardar días en publicarse).", warn: true });
+      } else {
+        const fresco = await getProceso(procesoId);
+        onSaved(fresco);
+        setFeedback({ texto: "✓ Juzgado, fecha de radicación y actuaciones actualizados.", warn: false });
+      }
+    } catch {
+      setFeedback({ texto: "No se pudo consultar la Rama Judicial. Intenta más tarde.", warn: true });
+    } finally {
+      setActualizando(false);
     }
   }
 
@@ -1231,7 +1272,7 @@ function RadicadoDato({
           )}
         </div>
       ) : (
-        <div className="mt-0.5 flex items-center gap-2">
+        <div className="mt-0.5 flex flex-wrap items-center gap-2">
           <span className={`font-medium ${valor ? "text-slate-700 dark:text-slate-200" : "text-slate-400"}`}>
             {valor ?? "Sin radicar"}
           </span>
@@ -1244,6 +1285,15 @@ function RadicadoDato({
               className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
             >
               editar
+            </button>
+          )}
+          {mostrarActualizar && !readOnly && (valor ?? "").replace(/\D/g, "").length === 23 && (
+            <button
+              onClick={actualizarConRama}
+              disabled={actualizando}
+              className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400 disabled:opacity-50"
+            >
+              {actualizando ? "Actualizando…" : "Actualizar con la Rama"}
             </button>
           )}
         </div>
