@@ -39,9 +39,11 @@ type FormState = {
   email: string;
   nombre: string;
   roles: Rol[];
+  cedula: string;
+  tarjetaProfesional: string;
 };
 
-const EMPTY_FORM: FormState = { email: "", nombre: "", roles: ["JURIDICO"] };
+const EMPTY_FORM: FormState = { email: "", nombre: "", roles: ["JURIDICO"], cedula: "", tarjetaProfesional: "" };
 
 const ESTADO_STYLES: Record<Estado, string> = {
   ACTIVO: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
@@ -189,6 +191,8 @@ export default function EquipoPage() {
         email: form.email.trim(),
         nombre: form.nombre.trim(),
         roles: form.roles,
+        cedula: form.cedula.trim(),
+        tarjetaProfesional: form.tarjetaProfesional.trim(),
       });
       setFormOpen(false);
       await cargar();
@@ -545,6 +549,25 @@ export default function EquipoPage() {
                   placeholder="Nombre y apellido"
                 />
               </Field>
+
+              {/* Datos del abogado para firmar escritos generados (poder, demanda…).
+                  Opcionales: salen en los documentos como C.C. y Tarjeta Profesional. */}
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Cédula">
+                  <Input
+                    value={form.cedula}
+                    onChange={(v) => setForm({ ...form, cedula: v })}
+                    placeholder="C.C. del abogado"
+                  />
+                </Field>
+                <Field label="Tarjeta profesional">
+                  <Input
+                    value={form.tarjetaProfesional}
+                    onChange={(v) => setForm({ ...form, tarjetaProfesional: v })}
+                    placeholder="N.º de tarjeta"
+                  />
+                </Field>
+              </div>
 
               <div>
                 <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
