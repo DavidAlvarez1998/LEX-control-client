@@ -119,10 +119,18 @@ export function listProcesos(filtros: {
 }
 
 // --- Sincronización masiva on-demand (P16) ---
-export type SyncMisResp = { procesos: number; conNovedad: number; nuevasTotal: number; errores: number };
-/** Sincroniza mis procesos con radicado (los no sincronizados en las últimas 6 h). */
-export function sincronizarMisProcesos(): Promise<SyncMisResp> {
-  return api.post<SyncMisResp>(`/procesos/rama/sincronizar-mis`, {});
+export type ResultadoSyncProceso =
+  | "ACTUALIZADO" | "SIN_NOVEDAD" | "NO_PUBLICADO" | "RESERVADO"
+  | "RADICADO_INVALIDO" | "FUENTE_NO_DISPONIBLE";
+export type ItemSyncMis = { procesoId: string; titulo: string | null; radicado: string | null; resultado: ResultadoSyncProceso };
+export type SyncMisResp = {
+  procesos: number; conNovedad: number; nuevasTotal: number; errores: number;
+  resultados: ItemSyncMis[];
+};
+/** Sincroniza mis procesos con radicado (los no sincronizados en las últimas 6 h).
+ *  Con `procesoIds` = reintento dirigido de solo esos (p. ej. los que fallaron). */
+export function sincronizarMisProcesos(procesoIds?: string[]): Promise<SyncMisResp> {
+  return api.post<SyncMisResp>(`/procesos/rama/sincronizar-mis`, procesoIds?.length ? { procesoIds } : {});
 }
 
 // --- Detalle de un proceso ---
