@@ -103,6 +103,7 @@ export function listProcesos(filtros: {
   clienteId?: string;
   page?: number;
   conNovedades?: boolean;
+  orden?: "vencimiento"; // ordena vencidos→por vencer→al día→sin fecha→cerrados (server-side)
 } = {}): Promise<ListaProcesos> {
   const qs = new URLSearchParams();
   if (filtros.area) qs.set("area", filtros.area);
@@ -112,6 +113,7 @@ export function listProcesos(filtros: {
   if (filtros.clienteId) qs.set("clienteId", filtros.clienteId);
   if (filtros.page) qs.set("page", String(filtros.page));
   if (filtros.conNovedades) qs.set("conNovedades", "1");
+  if (filtros.orden) qs.set("orden", filtros.orden);
   const q = qs.toString();
   return api.get<ListaProcesos>(`/procesos${q ? `?${q}` : ""}`);
 }
