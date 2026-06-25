@@ -313,7 +313,7 @@ export default function NuevoProcesoPage() {
   }
 
   // Ejecutivo de mínima cuantía: la "Solicitud de medidas cautelares" se ancla
-  // INLINE bajo "Otras medidas cautelares" (solo aparece si pidió cautelares), en
+  // INLINE bajo "Tipo(s) de medida cautelar" (solo aparece si pidió cautelares), en
   // vez de quedar en el bloque "Documentos del proceso" del final. Data-driven:
   // el doc es el opcional que surge solo al poner solicitaCautelares=Sí.
   const slotsEjecutivo: Record<string, ReactNode> = {};
@@ -327,7 +327,7 @@ export default function NuevoProcesoPage() {
     );
     if (docsCautelares.length) {
       // Lista repetible (N archivos con nombre), no el slot de un único doc fijo.
-      slotsEjecutivo.otrasCautelares = cautelaresUploader;
+      slotsEjecutivo.tipoCautelares = cautelaresUploader;
       docsCautelares.forEach((d) => ancladosEjecutivo.add(d.toLowerCase()));
     }
     // La demanda y el poder se anclan INLINE en torno a "Pruebas a solicitar":

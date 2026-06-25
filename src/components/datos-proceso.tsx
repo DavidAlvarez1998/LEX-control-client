@@ -393,13 +393,13 @@ export const DatosProceso = forwardRef<
     reqSinAnclar = a.sinAnclarReq;
     // Ejecutivo de mínima cuantía: la solicitud de medidas cautelares y sus soportes
     // se suben como VARIOS documentos con nombre libre (mismo prefijo "Solicitud
-    // cautelar: " que el formulario de creación), bajo "Otras medidas cautelares".
+    // cautelar: " que el formulario de creación), bajo "Tipo(s) de medida cautelar".
     // Sin esto la ficha solo ofrecía el slot de un único doc fijo y NO mostraba los
     // que se adjuntaron al crear. Mismo patrón que la audiencia laboral (conciliable).
-    if (tieneCampo("otrasCautelares") && onDocSubido) {
-      slots.otrasCautelares = (
+    if (tieneCampo("tipoCautelares") && onDocSubido) {
+      slots.tipoCautelares = (
         <>
-          {slots.otrasCautelares}
+          {slots.tipoCautelares}
           <AdjuntosLibres
             procesoId={procesoId}
             docs={documentos}
