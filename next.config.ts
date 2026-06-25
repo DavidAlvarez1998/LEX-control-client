@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Build a self-contained server bundle (.next/standalone) for slim Docker images:
+  // the runtime copies only the bundled server + the node_modules it actually needs.
+  output: "standalone",
   experimental: {
     // Habilita la integración de la View Transitions API de React en el App Router:
     // las navegaciones de ruta pasan a ser transiciones y el <ViewTransition> de React
