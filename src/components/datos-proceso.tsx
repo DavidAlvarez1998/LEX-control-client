@@ -359,13 +359,19 @@ export const DatosProceso = forwardRef<
     // demanda", Soporte de radicación → "Medio de radicación", Poder → "Calidad". El
     // resto de etapas conserva su anclaje. Solo mueve docs cuyo campo destino exista.
     const a = anclasPorCampo(etapas, borrador, tieneCampo);
-    const mapaPresentacion: Record<string, string> = {
-      "demanda.pdf": "sintesis",
-      "pruebas.pdf": "sintesis",
-      "anexos.pdf": "sintesis",
-      "soporte-radicacion.pdf": "medioRadicacion",
-      "poder.pdf": "calidad",
-    };
+    // Ejecutivo de mínima cuantía: la demanda va bajo "Pruebas a solicitar" y el poder
+    // bajo "Fecha de otorgamiento del poder" (junto a ciudad/fecha de firma del poder),
+    // igual que en el formulario de creación. El verbal usa Síntesis/Calidad.
+    const esEjec = tieneCampo("capitalAdeudado");
+    const mapaPresentacion: Record<string, string> = esEjec
+      ? { "demanda.pdf": "pruebas", "poder.pdf": "fechaPoder" }
+      : {
+          "demanda.pdf": "sintesis",
+          "pruebas.pdf": "sintesis",
+          "anexos.pdf": "sintesis",
+          "soporte-radicacion.pdf": "medioRadicacion",
+          "poder.pdf": "calidad",
+        };
     const reqSet = new Set(documentosRequeridosDeEtapas(etapas, borrador).map((d) => d.toLowerCase()));
     const porCampo: Record<string, { docs: string[]; req: string[] }> = {};
     for (const [campo, info] of Object.entries(a.porCampo)) {
@@ -457,17 +463,42 @@ export const DatosProceso = forwardRef<
         </>
       );
     }
+    // Ejecutivo: depósitos judiciales — después del mandamiento/notificación. Un campo
+    // de texto (títulos, valores, observaciones) con su propio subtítulo, y un uploader
+    // de VARIOS comprobantes (consignaciones del deudor, embargos, remate) con nombre
+    // libre (prefijo "Depósito: "). Multi-archivo opcional; no bloquea el avance. Mismo
+    // patrón que "Impulsos procesales".
+    if (tieneCampo("depositosJudiciales") && onDocSubido) {
+      slotsAntes.depositosJudiciales = (
+        <h4 className="mt-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+          Depósitos judiciales
+        </h4>
+      );
+      slots.depositosJudiciales = (
+        <>
+          {slots.depositosJudiciales}
+          <AdjuntosLibres
+            procesoId={procesoId}
+            docs={documentos}
+            prefix="Depósito: "
+            titulo="Comprobantes de depósitos judiciales"
+            opcional
+            descripcion="Títulos de depósito a órdenes del juzgado: consignaciones del deudor, sumas embargadas, producto del remate (uno o varios)."
+            onSubido={onDocSubido}
+            onEliminado={(id) => onDocEliminado?.(id)}
+            readOnly={readOnly}
+          />
+        </>
+      );
+    }
     // Ejecutivo: en "Impulsos procesales" se adjuntan VARIOS documentos para impulsar
     // el proceso (memoriales, oficios, requerimientos, trámites). Multi-archivo libre
     // (prefijo "Trámite: ") bajo el campo. Un subtítulo "Impulsos procesales" agrupa la
     // sección (el campo es la descripción, no el título). Estos campos solo aparecen
     // cuando la ejecución sigue (lo gatea el `mostrarSi` del seed).
     if (tieneCampo("descripcionImpulso") && onDocSubido) {
-      slotsAntes.descripcionImpulso = (
-        <h4 className="mt-2 border-t border-slate-200 pt-3 text-sm font-semibold text-slate-700 dark:border-slate-600 dark:text-slate-200">
-          Impulsos procesales
-        </h4>
-      );
+      // La sección ya se titula "Impulsos procesales" (nombre de la etapa), así que NO
+      // agregamos un subtítulo aparte: duplicaba el texto y dejaba dos rayas.
       slots.descripcionImpulso = (
         <>
           {slots.descripcionImpulso}

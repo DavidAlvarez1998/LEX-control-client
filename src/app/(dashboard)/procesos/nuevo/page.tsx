@@ -320,6 +320,7 @@ export default function NuevoProcesoPage() {
   const ancladosEjecutivo = new Set<string>();
   if (tipo && esEjecutivo(tipo)) {
     const etapasCrea = etapasDeCreacion(tipo.etapas);
+    const req = documentosRequeridosDeEtapas(etapasCrea, datos);
     const sinCautelares = { ...datos, solicitaCautelares: "" };
     const docsCautelares = documentosOpcionalesDeEtapas(etapasCrea, datos).filter(
       (d) => !documentosOpcionalesDeEtapas(etapasCrea, sinCautelares).includes(d),
@@ -329,6 +330,18 @@ export default function NuevoProcesoPage() {
       slotsEjecutivo.otrasCautelares = cautelaresUploader;
       docsCautelares.forEach((d) => ancladosEjecutivo.add(d.toLowerCase()));
     }
+    // La demanda y el poder se anclan INLINE en torno a "Pruebas a solicitar":
+    // la demanda justo debajo de ese campo, y el poder debajo de "Ciudad de firma /
+    // Fecha de otorgamiento del poder" (allí mismo donde se diligencian esos datos),
+    // en vez de quedar juntos en el bloque "Documentos del proceso" del final.
+    const anclarEj = (campo: string, ...nombres: string[]) => {
+      const docs = req.filter((d) => nombres.includes(d.toLowerCase()));
+      if (!docs.length) return;
+      slotsEjecutivo[campo] = slotDocs(docs, req);
+      docs.forEach((d) => ancladosEjecutivo.add(d.toLowerCase()));
+    };
+    anclarEj("pruebas", "demanda.pdf");
+    anclarEj("fechaPoder", "poder.pdf");
   }
 
   const clienteSeleccionado = clienteNuevo

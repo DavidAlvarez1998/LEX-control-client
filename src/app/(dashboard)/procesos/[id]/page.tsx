@@ -264,7 +264,17 @@ export default function ExpedientePage() {
         titleStyle={{ viewTransitionName: vtName("proceso-titulo", proceso.id) }}
         subtitle={`${proceso.tipoProceso.nombre} · ${JURISDICCION_LABEL[proceso.jurisdiccion]}`}
         action={
-          <Link href="/procesos">
+          // Vuelve a la LISTA del tipo donde estaba (p. ej. mínima cuantía), no al
+          // landing por jurisdicción. Reconstruye la URL desde el propio proceso, así
+          // funciona aunque haya recargado: los grupos que viven en la vista "Sección"
+          // (petición/constitucional/laboral) vuelven allí; el resto, por jurisdicción.
+          <Link
+            href={
+              ["PETICION", "CONSTITUCIONAL", "LABORAL"].includes(proceso.tipoProceso.grupo)
+                ? `/procesos?vista=seccion&grupo=${proceso.tipoProceso.grupo}&tipo=${proceso.tipoProceso.id}`
+                : `/procesos?jurisdiccion=${proceso.tipoProceso.jurisdiccion}&tipo=${proceso.tipoProceso.id}`
+            }
+          >
             <Button variant="ghost">← Procesos</Button>
           </Link>
         }
