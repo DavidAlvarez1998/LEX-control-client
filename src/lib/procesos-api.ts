@@ -78,6 +78,10 @@ export type ProcesoListItem = {
   // Deadline-first + caso (change procesos-ux-ddp-tutela)
   etapaActual: string;
   etapaNombre: string;
+  // Descriptor del plazo de la etapa actual (mensaje de vencimiento unificado).
+  plazoEtiqueta: string | null;
+  plazoDias: number | null;
+  plazoTipoDias: "habiles" | "calendario" | null;
   fechaLimite: string | null;
   semaforo: "vencido" | "por_vencer" | "al_dia";
   responsableId: string | null;
@@ -542,6 +546,10 @@ export type VencimientoItem = {
   radicado: string | null;
   titulo: string;
   etapaActual: string;
+  etapaNombre: string;
+  plazoEtiqueta: string | null;
+  plazoDias: number | null;
+  plazoTipoDias: "habiles" | "calendario" | null;
   estado: EstadoProceso;
   fechaLimite: string | null;
   semaforo: "vencido" | "por_vencer" | "al_dia";

@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { getUser } from "@/lib/auth";
 import { getVencimientos, listProcesos, type ProcesoListItem, type Vencimientos } from "@/lib/procesos-api";
+import { vencimientoTexto } from "@/lib/vencimiento";
 
 type Cliente = { id: string; nombre: string; estado: string; fechaIngreso: string };
 type CarteraRow = { saldoPendiente: number | null };
@@ -105,18 +106,13 @@ export default function InicioPage() {
           </div>
           <ul className="space-y-1.5 text-sm">
             {[...venc.vencido, ...venc.por_vencer].slice(0, 5).map((p) => {
-              const vencido = p.semaforo === "vencido";
-              const fecha = p.fechaLimite
-                ? new Date(p.fechaLimite).toLocaleDateString("es-CO", { day: "2-digit", month: "short", timeZone: "UTC" })
-                : "";
+              const v = vencimientoTexto(p);
               return (
-                <li key={p.id} className="flex items-center justify-between gap-3">
+                <li key={p.id} className="flex flex-col gap-0.5">
                   <Link href={`/procesos/${p.id}`} className="truncate font-medium text-indigo-600 hover:underline">
                     {p.codigoInterno} · {p.titulo}
                   </Link>
-                  <span className={`shrink-0 text-xs font-medium ${vencido ? "text-rose-600 dark:text-rose-400" : "text-amber-600 dark:text-amber-400"}`}>
-                    {fecha} {vencido ? "(vencido)" : "(por vencer)"}
-                  </span>
+                  {v && <span className={`text-xs ${v.cls}`}>{v.texto}</span>}
                 </li>
               );
             })}

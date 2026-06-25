@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getVencimientos, type Vencimientos } from "@/lib/procesos-api";
+import { vencimientoTexto } from "@/lib/vencimiento";
 
 export function VencimientosBanner() {
   const [v, setV] = useState<Vencimientos | null>(null);
@@ -27,21 +28,18 @@ export function VencimientosBanner() {
         {v.por_vencer.length} por vencer
       </div>
       <ul className="space-y-1 text-xs">
-        {urgentes.slice(0, 5).map((p) => (
-          <li key={p.id} className="flex items-center gap-2">
-            <Link href={`/procesos/${p.id}`} className="font-medium text-indigo-600 hover:underline">
-              {p.codigoInterno}
-            </Link>
-            <span className="truncate text-slate-600 dark:text-slate-300">{p.titulo}</span>
-            <span
-              className={`ml-auto shrink-0 ${
-                p.semaforo === "vencido" ? "font-semibold text-red-600" : "text-amber-600"
-              }`}
-            >
-              {p.fechaLimite?.slice(0, 10)} {p.semaforo === "vencido" ? "(vencido)" : "(por vencer)"}
-            </span>
-          </li>
-        ))}
+        {urgentes.slice(0, 5).map((p) => {
+          const v = vencimientoTexto(p);
+          return (
+            <li key={p.id} className="flex flex-wrap items-center gap-x-2">
+              <Link href={`/procesos/${p.id}`} className="font-medium text-indigo-600 hover:underline">
+                {p.codigoInterno}
+              </Link>
+              <span className="truncate text-slate-600 dark:text-slate-300">{p.titulo}</span>
+              {v && <span className={`ml-auto shrink-0 ${v.cls}`}>{v.texto}</span>}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
