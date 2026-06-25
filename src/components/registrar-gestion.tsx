@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { Button, Modal } from "@/components/ui";
 import { Field, Input, Select, Textarea } from "@/components/form-ui";
-import { api, ApiError } from "@/lib/api";
+import { api, isApiError } from "@/lib/api";
 import { comercialApi, DISPOSICION, DISPOSICION_LABEL, TIPO_GESTION, type Disposicion } from "@/lib/comercial-api";
 
 export function RegistrarGestion({
@@ -46,7 +46,7 @@ export function RegistrarGestion({
       onSaved();
       onClose();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "No se pudo registrar la gestión");
+      setError(isApiError(e) ? e.message : "No se pudo registrar la gestión");
     } finally {
       setBusy(false);
     }

@@ -23,6 +23,20 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Type-guard de ApiError robusto frente a la duplicación de módulos del bundler.
+ * Con Turbopack, importar `lib/api` por alias (`@/lib/api`) en un módulo y por ruta
+ * relativa (`./api`) en otro puede crear DOS clases `ApiError` distintas; entonces
+ * `err instanceof ApiError` da false aunque el error sea uno nuestro y el `catch`
+ * lo traga en silencio. Verificamos por forma (`name` + `status`), no por identidad.
+ */
+export function isApiError(err: unknown): err is ApiError {
+  return (
+    err instanceof ApiError ||
+    (typeof err === "object" && err !== null && (err as { name?: unknown }).name === "ApiError" && "status" in err)
+  );
+}
+
 /** Diccionario opcional para traducir nombres de campo técnicos a etiquetas. */
 type FieldLabels = Record<string, string>;
 
@@ -38,7 +52,7 @@ function humanizaCampo(key: string): string {
  * en vez del texto genérico. Opcionalmente recibe un mapa de etiquetas por campo.
  */
 export function errorMessage(err: unknown, fallback = "Ocurrió un error", labels?: FieldLabels): string {
-  if (err instanceof ApiError && Array.isArray(err.issues) && err.issues.length > 0) {
+  if (isApiError(err) && Array.isArray(err.issues) && err.issues.length > 0) {
     const issues = err.issues as { path?: (string | number)[]; message?: string }[];
     return issues
       .map((i) => {

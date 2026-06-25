@@ -9,7 +9,7 @@ import { DocumentosProceso } from "@/components/documentos-proceso";
 import { DatosProceso, type DatosProcesoHandle } from "@/components/datos-proceso";
 import { PartesProceso } from "@/components/partes-proceso";
 import { CasoChain } from "@/components/caso-chain";
-import { ApiError } from "@/lib/api";
+import { isApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type Condicion, type EtapaDef } from "@/lib/procesos";
 import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getDetalleRama, getProceso, getSugerenciasActuaciones, importarDocumentosRama, importarPartesRama, listActuaciones, listarDocumentosRama, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, sugerirPartesRama, validarRadicado, type ActuacionItem, type CasoNodo, type DetalleRama, type DocumentoRamaItem, type ProcesoDetalle, type SugerenciaHito, type SujetoRamaItem } from "@/lib/procesos-api";
@@ -115,19 +115,78 @@ export default function ExpedientePage() {
         {e.reglas.plazoDias} días{e.reglas.plazoTipoDias === "habiles" ? " háb." : ""}
       </span>
     ) : null;
+  const etiquetaCampo = (k: string) =>
+    (proceso.tipoProceso.esquemaFormulario ?? []).find((c) => c.key === k)?.label ?? k;
   const bloqueoMsg = (key: string) =>
     bloqueo?.etapa === key ? (
-      <div className="ml-9 mt-1 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-500/10 dark:text-red-300">
+      <div className="ml-9 mt-1 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300">
+        <div className="font-semibold">No se puede avanzar a esta etapa todavía</div>
         {bloqueo.motivo ?? (
           <>
-            {bloqueo.faltantes.length > 0 && <div>Faltan datos para avanzar: te llevé al formulario y marqué los campos a llenar ↓</div>}
+            {bloqueo.faltantes.length > 0 && (
+              <div className="mt-1">
+                Completa en el formulario ↓: {bloqueo.faltantes.map(etiquetaCampo).join(", ")}
+              </div>
+            )}
             {(bloqueo.documentosFaltantes?.length ?? 0) > 0 && (
-              <div>Faltan documentos: {bloqueo.documentosFaltantes!.join(", ")} — súbelos en el formulario ↓</div>
+              <div className="mt-1">Sube el/los documento(s): {bloqueo.documentosFaltantes!.join(", ")}</div>
             )}
           </>
         )}
       </div>
     ) : null;
+
+  // Guía local cuando una etapa no está disponible por `disponibleSi` (mismo texto
+  // que antes daba el 422 del backend). `datos` = estado más fresco a evaluar.
+  const guiarPorCondicion = (key: string, condicion: { campo?: string; igualA?: unknown } | undefined, datos: Record<string, unknown>) => {
+    const campo = condicion?.campo;
+    if (campo) {
+      const label = (proceso!.tipoProceso.esquemaFormulario ?? []).find((c) => c.key === campo)?.label ?? campo;
+      const actual = datos[campo];
+      const vacio = actual === undefined || actual === null || actual === "" || (Array.isArray(actual) && actual.length === 0);
+      const esperado = (Array.isArray(condicion?.igualA) ? condicion!.igualA : [condicion?.igualA]).filter((v) => v != null).map(String).join(" o ");
+      setResaltarCampos({ keys: [campo], nonce: Date.now() });
+      setBloqueo({
+        etapa: key,
+        faltantes: [],
+        motivo: vacio
+          ? `Para habilitar esta etapa, completa "${label}" en el formulario ↓`
+          : `Esta etapa solo aplica si "${label}" es ${esperado} — actualmente es "${Array.isArray(actual) ? actual.join(", ") : String(actual)}". Si corresponde, usa la otra opción disponible o corrige el campo ↓`,
+      });
+    } else {
+      const campos = condicion ? camposDeCondicion(condicion as Condicion) : [];
+      const pendiente = campos.find((c) => { const v = datos[c]; return v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0); });
+      if (pendiente) {
+        const label = (proceso!.tipoProceso.esquemaFormulario ?? []).find((c) => c.key === pendiente)?.label ?? pendiente;
+        setResaltarCampos({ keys: [pendiente], nonce: Date.now() });
+        setBloqueo({ etapa: key, faltantes: [], motivo: `Para habilitar esta etapa, completa "${label}" en el formulario ↓` });
+      } else {
+        setBloqueo({ etapa: key, faltantes: [], motivo: "Esta etapa no está disponible con los datos actuales del proceso." });
+      }
+    }
+  };
+
+  // Guía local cuando faltan campos/documentos para avanzar (mismo texto que daba el 400).
+  const guiarPorFaltantes = (key: string, faltantes: string[], documentosFaltantes: string[]) => {
+    if (faltantes.length === 0 && documentosFaltantes.length === 0) {
+      setBloqueo({ etapa: key, faltantes: [], motivo: "No se pudo mover a esta etapa." });
+      return;
+    }
+    setBloqueo({ etapa: key, faltantes, documentosFaltantes });
+    setResaltarCampos({ keys: faltantes, nonce: Date.now() });
+  };
+
+  // Requisitos faltantes de la etapa destino — RÉPLICA del backend (procesos.service.moverEtapa)
+  // para pre-validar en el cliente y no disparar un 400 "esperado" en la consola del navegador.
+  const requisitosFaltantes = (destino: EtapaDef, datos: Record<string, unknown>, documentos: { nombre: string }[]) => {
+    const r = destino.reglas;
+    const camposReq = [...(r?.camposRequeridos ?? []), ...(r?.requeridosSi ?? []).filter((x) => evaluarCondicion(x.si, datos)).flatMap((x) => x.camposRequeridos ?? [])];
+    const docsReq = [...(r?.documentosRequeridos ?? []), ...(r?.requeridosSi ?? []).filter((x) => evaluarCondicion(x.si, datos)).flatMap((x) => x.documentosRequeridos ?? [])];
+    const faltantes = [...new Set(camposReq)].filter((k) => { const v = datos[k]; return v === undefined || v === null || v === ""; });
+    const presentes = new Set(documentos.map((d) => d.nombre.trim().toLowerCase()));
+    const documentosFaltantes = [...new Set(docsReq)].filter((n) => !presentes.has(n.trim().toLowerCase()));
+    return { faltantes, documentosFaltantes };
+  };
 
   async function irAEtapa(key: string) {
     // Guarda primero lo diligenciado sin guardar, para que el avance evalúe lo último.
@@ -139,68 +198,47 @@ export default function ExpedientePage() {
       setResaltarCampos(null);
       return;
     }
+    // PRE-VALIDACIÓN LOCAL (contiene el ruido): con el MISMO esquema que usa el backend,
+    // si ya sabemos que el avance no procede, mostramos la guía y NO llamamos al API →
+    // así no se genera un 400/422 "esperado" en la consola. El backend igual valida como
+    // red de seguridad (defensa en profundidad), por si el cliente tuviera datos viejos.
+    const datos = flushed?.datos ?? proceso!.datos;
+    const documentos = flushed?.documentos ?? proceso!.documentos;
+    const etapaActualKey = flushed?.etapaActual ?? proceso!.etapaActual;
+    const etapasDef = proceso!.tipoProceso.etapas ?? [];
+    const destino = etapasDef.find((e) => e.key === key);
+    if (destino) {
+      if (destino.disponibleSi && !evaluarCondicion(destino.disponibleSi, datos)) {
+        guiarPorCondicion(key, destino.disponibleSi as { campo?: string; igualA?: unknown }, datos);
+        return;
+      }
+      const ordenActual = etapasDef.find((e) => e.key === etapaActualKey)?.orden ?? 0;
+      const esRetroceso = destino.orden < ordenActual;
+      if (!esRetroceso) {
+        const { faltantes, documentosFaltantes } = requisitosFaltantes(destino, datos, documentos);
+        if (faltantes.length > 0 || documentosFaltantes.length > 0) {
+          guiarPorFaltantes(key, faltantes, documentosFaltantes);
+          return;
+        }
+      }
+    }
     try {
       const actualizado = await moverEtapa(proceso!.id, key);
       setProceso(actualizado);
       setBloqueo(null);
       setResaltarCampos(null);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 400) {
+      // Red de seguridad: si el backend rechaza por algo que el cliente no previó.
+      if (isApiError(e) && e.status === 400) {
         const faltantes = (e.issues as { faltantes?: string[] })?.faltantes ?? [];
         const documentosFaltantes = (e.issues as { documentosFaltantes?: string[] })?.documentosFaltantes ?? [];
-        if (faltantes.length === 0 && documentosFaltantes.length === 0) {
-          // Otro tipo de 400 (p. ej. proceso archivado): muestra el mensaje real.
-          setBloqueo({ etapa: key, faltantes: [], motivo: e.message || "No se pudo mover a esta etapa." });
-          return;
-        }
-        // GUÍA: abre el formulario en edición y marca los campos faltantes; los
-        // documentos viven inline en el formulario (bajo su campo), así que con
-        // abrir el form + scroll basta. `keys` vacío igual abre la edición.
-        setBloqueo({ etapa: key, faltantes, documentosFaltantes });
-        // El scroll al primer campo faltante lo hace DatosProceso (sabe cuáles
-        // resaltó y cuándo renderizó el form en edición).
-        setResaltarCampos({ keys: faltantes, nonce: Date.now() });
-      } else if (e instanceof ApiError && e.status === 422) {
-        // La etapa depende de un campo del formulario (disponibleSi): guía a él.
+        guiarPorFaltantes(key, faltantes, documentosFaltantes);
+      } else if (isApiError(e) && e.status === 422) {
         const condicion = (e.issues as { condicion?: { campo?: string; igualA?: unknown } })?.condicion;
-        const campo = condicion?.campo;
-        const def = campo
-          ? (proceso!.tipoProceso.esquemaFormulario ?? []).find((c) => c.key === campo)
-          : undefined;
-        if (campo) {
-          const label = def?.label ?? campo;
-          const actual = proceso!.datos[campo];
-          const vacio = actual === undefined || actual === null || actual === "" || (Array.isArray(actual) && actual.length === 0);
-          const esperado = (Array.isArray(condicion?.igualA) ? condicion!.igualA : [condicion?.igualA])
-            .filter((v) => v != null)
-            .map(String)
-            .join(" o ");
-          // Distingue "falta llenar" de "el valor no habilita esta rama" (p. ej.
-          // reiteración exige respuesta PARCIAL, pero la respuesta fue NO).
-          setResaltarCampos({ keys: [campo], nonce: Date.now() });
-          setBloqueo({
-            etapa: key,
-            faltantes: [],
-            motivo: vacio
-              ? `Para habilitar esta etapa, completa "${label}" en el formulario ↓`
-              : `Esta etapa solo aplica si "${label}" es ${esperado} — actualmente es "${Array.isArray(actual) ? actual.join(", ") : String(actual)}". Si corresponde, usa la otra opción disponible o corrige el campo ↓`,
-          });
-        } else {
-          // Condición compuesta (todas/alguna): guía al primer campo referenciado
-          // que esté vacío; si todos tienen valor, mensaje genérico.
-          const campos = condicion ? camposDeCondicion(condicion as Condicion) : [];
-          const pendiente = campos.find((c) => {
-            const v = proceso!.datos[c];
-            return v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
-          });
-          if (pendiente) {
-            const label = (proceso!.tipoProceso.esquemaFormulario ?? []).find((c) => c.key === pendiente)?.label ?? pendiente;
-            setResaltarCampos({ keys: [pendiente], nonce: Date.now() });
-            setBloqueo({ etapa: key, faltantes: [], motivo: `Para habilitar esta etapa, completa "${label}" en el formulario ↓` });
-          } else {
-            setBloqueo({ etapa: key, faltantes: [], motivo: "Esta etapa no está disponible con los datos actuales del proceso." });
-          }
-        }
+        guiarPorCondicion(key, condicion, proceso!.datos);
+      } else {
+        // Cualquier otro error (red, 500, forma inesperada) SIEMPRE se muestra.
+        setBloqueo({ etapa: key, faltantes: [], motivo: e instanceof Error ? e.message : "No se pudo mover a esta etapa." });
       }
     }
   }
@@ -212,7 +250,7 @@ export default function ExpedientePage() {
       setDerivado({ id: nuevo.id, nuevo: true });
       cargarCaso(); // refresca la barra de caso con el nuevo proceso
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409) {
+      if (isApiError(e) && e.status === 409) {
         const procesoId = (e.issues as { procesoId?: string })?.procesoId;
         if (procesoId) setDerivado({ id: procesoId, nuevo: false });
       }
