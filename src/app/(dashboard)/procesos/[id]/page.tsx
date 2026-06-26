@@ -367,15 +367,7 @@ export default function ExpedientePage() {
           <Dato label="Cliente" value={proceso.cliente?.nombre ?? "—"} />
           <Dato label="Abogado responsable" value={proceso.responsable?.nombre ?? "Sin asignar"} />
           {proceso.tipoProceso.esJudicial && (
-            <div>
-              <div className="text-xs text-slate-400">Despacho / juzgado</div>
-              <div className="mt-0.5 flex items-center gap-1.5">
-                <span className="font-medium text-slate-700 dark:text-slate-200">{proceso.despachoJuzgado ?? "—"}</span>
-                {(proceso.camposRamaCsv ?? "").split(",").includes("despachoJuzgado") && (
-                  <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-600 dark:text-slate-300">de la Rama</span>
-                )}
-              </div>
-            </div>
+            <Dato label="Despacho / juzgado" value={proceso.despachoJuzgado ?? "—"} />
           )}
           {proceso.tipoProceso.esJudicial && (
             <Dato label="Cuantía" value={proceso.cuantiaValor ? `$${formatMoney(proceso.cuantiaValor)}` : "—"} />
