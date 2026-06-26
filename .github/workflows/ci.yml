@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    name: Lint + Build
+    name: Lint + Test + Build
     runs-on: ubuntu-latest
     env:
       # next build no necesita backend real; se setea para que no falle por env ausente.
@@ -20,5 +20,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm test
       - run: pnpm lint
       - run: pnpm build
