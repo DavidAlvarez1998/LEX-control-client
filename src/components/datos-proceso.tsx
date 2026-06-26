@@ -516,6 +516,29 @@ export const DatosProceso = forwardRef<
         </>
       );
     }
+    // Ejecutivo: cuando las excepciones NO prosperan, la parte vencida puede recurrir.
+    // Bajo "Actuaciones siguientes" se adjuntan VARIOS soportes del trámite posterior
+    // (memoriales, oficios, providencias) con nombre libre (prefijo "Actuación: ").
+    // Multi-archivo opcional; no bloquea el avance. La apelación y la decisión del
+    // juzgado son un solo adjunto cada una (van por opcionalesSi del seed, arriba).
+    if (tieneCampo("actuacionesSiguientesApelacion") && onDocSubido) {
+      slots.actuacionesSiguientesApelacion = (
+        <>
+          {slots.actuacionesSiguientesApelacion}
+          <AdjuntosLibres
+            procesoId={procesoId}
+            docs={documentos}
+            prefix="Actuación: "
+            titulo="Soportes de las actuaciones siguientes"
+            opcional
+            descripcion="Adjuntá los memoriales, oficios y providencias del trámite posterior a la decisión (uno o varios)."
+            onSubido={onDocSubido}
+            onEliminado={(id) => onDocEliminado?.(id)}
+            readOnly={readOnly}
+          />
+        </>
+      );
+    }
     // Radicado con consulta a la Rama: bajo el campo del radicado, un botón que al tener
     // los 23 dígitos consulta la Rama Judicial (CPNU) y autollena el juzgado (+ la fecha
     // de radicación si el tipo la maneja) en el mismo formulario. Aplica a los judiciales

@@ -385,6 +385,9 @@ const DOC_ETIQUETAS: Record<string, string> = {
   pruebas: "Pruebas",
   anexos: "Anexos",
   radicacion: "Radicación",
+  apelacion: "Apelación",
+  "decision-juzgado": "Decisión del juzgado",
+  "actuaciones-siguientes": "Actuaciones siguientes",
 };
 export function etiquetaDoc(nombre: string): string {
   const base = nombre.replace(/\.[^.]+$/, "").trim();
