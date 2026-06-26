@@ -2,11 +2,11 @@
 import { describe, expect, it } from "vitest";
 import { vencimientoTexto } from "./vencimiento";
 
-const base = { etapaNombre: "Subsanación", plazoEtiqueta: null, plazoDias: null, plazoTipoDias: null } as never;
+const base = { etapaNombre: "Subsanación", plazoEtiqueta: null, plazoDias: null, plazoTipoDias: null };
 
 describe("vencimientoTexto", () => {
   it("null si no hay fecha límite", () => {
-    expect(vencimientoTexto({ ...base, fechaLimite: null, semaforo: null })).toBeNull();
+    expect(vencimientoTexto({ ...base, fechaLimite: null, semaforo: null } as never)).toBeNull();
   });
 
   it("arma 'etiqueta: fecha (N días …) — estado' y marca vencido", () => {

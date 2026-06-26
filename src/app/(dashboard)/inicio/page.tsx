@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, StatCard } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -38,30 +38,28 @@ export default function InicioPage() {
   const [venc, setVenc] = useState<Vencimientos | null>(null);
   const [novedades, setNovedades] = useState<ProcesoListItem[]>([]); // P2
   const [loading, setLoading] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      await Promise.all([
-        puedeClientes
-          ? api.get<Cliente[]>("/clientes").then(setClientes).catch(() => {})
-          : null,
-        puedeProcesos
-          ? api.get<{ total: number }>("/procesos").then((p) => setProcesos(p.total ?? 0)).catch(() => {})
-          : null,
-        puedeProcesos ? getVencimientos().then(setVenc).catch(() => {}) : null,
-        puedeProcesos ? listProcesos({ conNovedades: true }).then((r) => setNovedades(r.items)).catch(() => {}) : null,
-        puedeContable
-          ? api.get<CarteraRow[]>("/contable/cartera").then((ca) => setCartera(ca.reduce((s, c) => s + (c.saldoPendiente ?? 0), 0))).catch(() => {})
-          : null,
-        puedeContable
-          ? api.get<Reporte>(`/contable/reportes?periodo=${periodo()}`).then((r) => setUtilidad(r.utilidadNeta)).catch(() => {})
-          : null,
-        puedeComercial ? api.get<Alertas>("/comercial/alertas").then(setAlertas).catch(() => {}) : null,
-      ]);
-      setLoading(false);
-    })();
+  // Cada widget es independiente; un fallo NO debe verse como "0" real → si alguno
+  // falla, se marca `errorCarga` y se ofrece reintentar (en vez de tragar el error).
+  const cargar = useCallback(async () => {
+    setLoading(true);
+    setErrorCarga(false);
+    const falla = () => setErrorCarga(true);
+    await Promise.all([
+      puedeClientes ? api.get<Cliente[]>("/clientes").then(setClientes).catch(falla) : null,
+      puedeProcesos ? api.get<{ total: number }>("/procesos").then((p) => setProcesos(p.total ?? 0)).catch(falla) : null,
+      puedeProcesos ? getVencimientos().then(setVenc).catch(falla) : null,
+      puedeProcesos ? listProcesos({ conNovedades: true }).then((r) => setNovedades(r.items)).catch(falla) : null,
+      puedeContable ? api.get<CarteraRow[]>("/contable/cartera").then((ca) => setCartera(ca.reduce((s, c) => s + (c.saldoPendiente ?? 0), 0))).catch(falla) : null,
+      puedeContable ? api.get<Reporte>(`/contable/reportes?periodo=${periodo()}`).then((r) => setUtilidad(r.utilidadNeta)).catch(falla) : null,
+      puedeComercial ? api.get<Alertas>("/comercial/alertas").then(setAlertas).catch(falla) : null,
+    ]);
+    setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => { cargar(); }, [cargar]);
 
   const prospectos = clientes.filter((c) => c.estado === "PROSPECTO").length;
   const money = (v: number | null) => (v == null ? "—" : `$${formatMoney(v)}`);
@@ -82,6 +80,13 @@ export default function InicioPage() {
         <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Bienvenido a tu portal</h2>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Resumen de tu despacho · {periodo()}</p>
       </div>
+
+      {errorCarga && !loading && (
+        <Card className="border-amber-200 bg-amber-50 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          No se pudieron cargar algunos datos del resumen (los números pueden estar incompletos).{" "}
+          <button onClick={cargar} className="font-medium underline">Reintentar</button>
+        </Card>
+      )}
 
       {/* KPIs clicables — solo los de las secciones a las que el rol tiene acceso. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
