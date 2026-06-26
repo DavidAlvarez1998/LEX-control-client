@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, StatCard } from "@/components/ui";
-import { api } from "@/lib/api";
+import { api, isApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { getUser } from "@/lib/auth";
 import { getVencimientos, listProcesos, type ProcesoListItem, type Vencimientos } from "@/lib/procesos-api";
@@ -42,10 +42,17 @@ export default function InicioPage() {
 
   // Cada widget es independiente; un fallo NO debe verse como "0" real → si alguno
   // falla, se marca `errorCarga` y se ofrece reintentar (en vez de tragar el error).
+  // Excepción: 403/404 = el módulo no está habilitado para el plan/rol de la empresa
+  // (típico en una empresa recién creada y vacía); eso NO es un fallo de carga, así
+  // que se ignora en silencio y el widget queda en su estado vacío. Solo errores
+  // reales (5xx, red, timeout) muestran el aviso de "datos incompletos".
   const cargar = useCallback(async () => {
     setLoading(true);
     setErrorCarga(false);
-    const falla = () => setErrorCarga(true);
+    const falla = (err: unknown) => {
+      if (isApiError(err) && (err.status === 403 || err.status === 404)) return;
+      setErrorCarga(true);
+    };
     await Promise.all([
       puedeClientes ? api.get<Cliente[]>("/clientes").then(setClientes).catch(falla) : null,
       puedeProcesos ? api.get<{ total: number }>("/procesos").then((p) => setProcesos(p.total ?? 0)).catch(falla) : null,
