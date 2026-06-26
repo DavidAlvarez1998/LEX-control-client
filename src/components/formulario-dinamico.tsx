@@ -4,7 +4,7 @@
 // su esquema (lista de campos). Un solo componente sirve para todos los tipos de
 // proceso de todas las áreas. Ver lib/procesos.ts (CampoEsquema).
 
-import { type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import type { CampoEsquema } from "@/lib/procesos";
 import { campoEfectivamenteRequerido, campoVisible, camposDeCondicion } from "@/lib/procesos";
 import {
@@ -49,21 +49,30 @@ export function FormularioDinamico({
   // Sin `mostrarSi` → 0; si su condición referencia un campo de nivel N → N+1. Así los
   // campos que se despliegan al elegir una opción quedan indentados bajo ella (jerarquía
   // visual, solo presentación). Memoizado y anti-ciclos.
-  const porKey = new Map(esquema.map((c) => [c.key, c]));
-  const nivelCache = new Map<string, number>();
-  const nivelDe = (key: string, visitando: Set<string> = new Set()): number => {
-    if (nivelCache.has(key)) return nivelCache.get(key)!;
-    const campo = porKey.get(key);
-    if (!campo?.mostrarSi || visitando.has(key)) return 0;
-    visitando.add(key);
-    // Solo cuentan los campos que están EN ESTE formulario: si el `mostrarSi` apunta a
-    // un campo de otra sección (p. ej. la instancia), aquí es un campo raíz (nivel 0).
-    const refs = camposDeCondicion(campo.mostrarSi).filter((r) => porKey.has(r));
-    const nivel = refs.length ? 1 + Math.max(...refs.map((r) => nivelDe(r, visitando))) : 0;
-    visitando.delete(key);
-    nivelCache.set(key, nivel);
-    return nivel;
-  };
+  // `porKey` y los niveles son ESTRUCTURALES (dependen solo de `esquema`, no de `datos`),
+  // así que se memoizan: sin esto se reconstruían el Map y el cálculo recursivo de nivel
+  // en CADA tecla (en el verbal son 144 campos). `nivelPorKey` precalcula el nivel de
+  // todos los campos una sola vez por esquema.
+  const porKey = useMemo(() => new Map(esquema.map((c) => [c.key, c])), [esquema]);
+  const nivelPorKey = useMemo(() => {
+    const cache = new Map<string, number>();
+    const calc = (key: string, visitando: Set<string> = new Set()): number => {
+      if (cache.has(key)) return cache.get(key)!;
+      const campo = porKey.get(key);
+      if (!campo?.mostrarSi || visitando.has(key)) return 0;
+      visitando.add(key);
+      // Solo cuentan los campos que están EN ESTE formulario: si el `mostrarSi` apunta a
+      // un campo de otra sección (p. ej. la instancia), aquí es un campo raíz (nivel 0).
+      const refs = camposDeCondicion(campo.mostrarSi).filter((r) => porKey.has(r));
+      const nivel = refs.length ? 1 + Math.max(...refs.map((r) => calc(r, visitando))) : 0;
+      visitando.delete(key);
+      cache.set(key, nivel);
+      return nivel;
+    };
+    for (const c of esquema) calc(c.key);
+    return cache;
+  }, [esquema, porKey]);
+  const nivelDe = (key: string): number => nivelPorKey.get(key) ?? 0;
 
   // Indentación EFECTIVA: la sangría solo tiene sentido si el campo aparece pegado a
   // aquello de lo que depende. Recorriendo los campos visibles en orden, un campo
