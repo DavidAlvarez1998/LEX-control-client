@@ -69,6 +69,7 @@ export const DatosProceso = forwardRef<
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [erroresGuardar, setErroresGuardar] = useState<string[]>([]); // keys marcadas al validar al guardar
+  const [aviso, setAviso] = useState<string | null>(null); // info NO bloqueante tras un guardado parcial
   const formRef = useRef<HTMLDivElement>(null);
 
   // Si los `datos` del proceso cambian DESDE AFUERA mientras el form está en edición
@@ -163,32 +164,28 @@ export const DatosProceso = forwardRef<
   };
 
   async function guardar() {
-    // Validar requeridos efectivos (incluye los que activa "¿Contestaron?") + los
-    // documentos requeridos: no se guarda hasta completarlos.
+    // El guardado SIEMPRE persiste el progreso (el server acepta datos parciales y NO
+    // avanza la etapa hasta que estén los requisitos). Antes esto bloqueaba el guardado
+    // si faltaba cualquier campo/doc requerido → no se podía guardar a medias. Ahora se
+    // guarda igual y, si faltan requisitos PARA AVANZAR, se avisa sin bloquear.
     const camposFaltan = esquema.filter(
       (c) => campoVisible(c, borrador) && campoEfectivamenteRequerido(c, borrador) && esVacio(borrador[c.key]),
     );
-    // Solo se exigen los documentos de la etapa ACTUAL y anteriores: los de etapas
-    // futuras (p. ej. citación/sentencia) no deben bloquear un guardado — y menos si
-    // el caso se va a archivar (retiro art. 67, rechazo). Si no se conoce la etapa
-    // actual, se cae al comportamiento previo (todas).
+    // Solo cuentan los documentos de la etapa ACTUAL y anteriores (los de etapas futuras
+    // no son requisito todavía). Si no se conoce la etapa actual, se consideran todas.
     const ordenActual = etapas.find((e) => e.key === etapaActual)?.orden ?? Infinity;
     const etapasHastaActual = etapas.filter((e) => e.orden <= ordenActual);
     const docsFaltan = documentosRequeridosDeEtapas(etapasHastaActual, borrador).filter((n) => !presente(n));
-    if (camposFaltan.length > 0 || docsFaltan.length > 0) {
-      setErroresGuardar(camposFaltan.map((c) => c.key));
-      setError(
-        `Completa antes de guardar: ${[...camposFaltan.map((c) => c.label), ...docsFaltan.map(etiquetaDoc)].join(", ")}.`,
-      );
-      return;
-    }
-    setErroresGuardar([]);
+
+    setErroresGuardar(camposFaltan.map((c) => c.key)); // resalta lo pendiente, sin impedir guardar
     setGuardando(true);
     setError(null);
     try {
       const actualizado = await actualizarDatos(procesoId, borrador);
       onSaved(actualizado); // proceso completo: refleja la etapa auto-avanzada sin refrescar
       setEditando(false);
+      const faltan = [...camposFaltan.map((c) => c.label), ...docsFaltan.map(etiquetaDoc)];
+      setAviso(faltan.length ? `Progreso guardado. Para avanzar de etapa falta completar: ${faltan.join(", ")}.` : null);
     } catch (e) {
       setError(errorMessage(e, "Error al guardar"));
     } finally {
@@ -222,6 +219,11 @@ export const DatosProceso = forwardRef<
     const visibles = esquema.filter((c) => campoVisible(c, datos) && !esVacio(datos[c.key]));
     return (
       <div>
+        {aviso && (
+          <p className="mb-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+            {aviso}
+          </p>
+        )}
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
           {visibles.map((c) => (
             <div key={c.key} className={c.tipo === "textoLargo" ? "sm:col-span-2 lg:col-span-3" : undefined}>
@@ -236,6 +238,7 @@ export const DatosProceso = forwardRef<
             variant="ghost"
             className="mt-3"
             onClick={() => {
+              setAviso(null);
               setBorrador(datos);
               setEditando(true);
             }}
