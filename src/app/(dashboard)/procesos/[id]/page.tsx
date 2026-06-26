@@ -12,7 +12,7 @@ import { CasoChain } from "@/components/caso-chain";
 import { isApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type Condicion, type EtapaDef } from "@/lib/procesos";
-import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getDetalleRama, getProceso, getSugerenciasActuaciones, importarDocumentosRama, importarPartesRama, listActuaciones, listarDocumentosRama, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, sugerirPartesRama, validarRadicado, type ActuacionItem, type CasoNodo, type DetalleRama, type DocumentoRamaItem, type ProcesoDetalle, type SugerenciaHito, type SujetoRamaItem } from "@/lib/procesos-api";
+import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getDetalleRama, getProceso, importarDocumentosRama, importarPartesRama, listActuaciones, listarDocumentosRama, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, sugerirPartesRama, validarRadicado, type ActuacionItem, type CasoNodo, type DetalleRama, type DocumentoRamaItem, type ProcesoDetalle, type SujetoRamaItem } from "@/lib/procesos-api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
@@ -620,7 +620,6 @@ export default function ExpedientePage() {
           <ActuacionesJuzgado
             procesoId={proceso.id}
             radicado={proceso.radicado}
-            datos={proceso.datos}
             syncAt={proceso.actuacionesSyncAt}
             onChanged={() => getProceso(proceso.id).then(setProceso).catch(() => {})}
             readOnly={!puedeEditar}
@@ -648,33 +647,29 @@ export default function ExpedientePage() {
 }
 
 /** Panel de actuaciones de la Rama Judicial: lista + "Actualizar" (sync) +
- *  badges "nueva" PERSISTENTES (no leídas, #3) + "Marcar como vistas" +
- *  sugerencias de avance de etapa derivadas de los hitos (#1). */
+ *  badges "nueva" PERSISTENTES (no leídas, #3) + "Marcar como vistas".
+ *  El sync autollena fechas y posiciona la etapa solo (motor de hitos en la API);
+ *  ya no se muestran sugerencias "¿avanzar?" inline. */
 function ActuacionesJuzgado({
   procesoId,
   radicado,
-  datos,
   syncAt,
   onChanged,
   readOnly = false,
 }: {
   procesoId: string;
   radicado: string | null;
-  datos: Record<string, unknown>;
   syncAt: string | null;
   onChanged: () => void;
   readOnly?: boolean;
 }) {
   const [items, setItems] = useState<ActuacionItem[] | null>(null);
-  const [sugerencias, setSugerencias] = useState<SugerenciaHito[]>([]);
   const [sincronizando, setSincronizando] = useState(false);
-  const [aplicando, setAplicando] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ texto: string; tono: "ok" | "info" | "warn" } | null>(null);
 
   const cargar = () => {
     if (!radicado) { setItems([]); return; }
     listActuaciones(procesoId).then(setItems).catch(() => setItems([]));
-    getSugerenciasActuaciones(procesoId).then(setSugerencias).catch(() => setSugerencias([]));
   };
   useEffect(cargar, [procesoId, radicado]);
 
@@ -707,36 +702,6 @@ function ActuacionesJuzgado({
   async function marcarVistas() {
     await marcarActuacionesVistas(procesoId).catch(() => {});
     cargar();
-  }
-
-  // #1: pre-llena lo que reveló la actuación — la fecha del auto y, cuando aplica, el
-  // campo de decisión (p. ej. la calificación Admite/Inadmite). Dispara el auto-avance
-  // del motor si se cumplen los requisitos; el abogado igual adjunta el doc del juez.
-  async function usarSugerencia(s: SugerenciaHito) {
-    const patch: Record<string, unknown> = {};
-    if (s.campoFecha && s.fechaSugerida) patch[s.campoFecha] = s.fechaSugerida;
-    if (s.campoValor && s.valorSugerido) patch[s.campoValor] = s.valorSugerido;
-    if (Object.keys(patch).length === 0) return;
-    setAplicando(s.etapaKey);
-    try {
-      await actualizarProceso(procesoId, { datos: { ...datos, ...patch } });
-      onChanged();
-      cargar();
-    } finally {
-      setAplicando(null);
-    }
-  }
-
-  // P4: asigna cada sugerencia a la actuación (más reciente) que la disparó, para
-  // mostrarla inline en el timeline en vez de en una card aparte.
-  const sugPorItem = new Map<string, SugerenciaHito>();
-  {
-    const restantes = new Map(sugerencias.map((s) => [s.etapaKey, s] as const));
-    for (const a of items ?? []) {
-      for (const [k, s] of restantes) {
-        if (s.actuacion === a.actuacion) { sugPorItem.set(a.id, s); restantes.delete(k); break; }
-      }
-    }
   }
 
   const tono = aviso?.tono === "ok"
@@ -808,27 +773,6 @@ function ActuacionesJuzgado({
                       )}
                     </div>
                     {a.anotacion && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{a.anotacion}</p>}
-                    {/* P4: sugerencia de avance inline (junto a la actuación que la dispara). */}
-                    {(() => {
-                      const s = sugPorItem.get(a.id);
-                      if (!s) return null;
-                      return (
-                        <div className="mt-1 flex flex-wrap items-center gap-2 rounded-md bg-indigo-50 px-2 py-1 text-xs dark:bg-indigo-500/10">
-                          <span className="text-indigo-900 dark:text-indigo-200">
-                            ↳ ¿avanzar a <strong>{s.etapaNombre}</strong>{s.fechaSugerida ? ` (${fecha(s.fechaSugerida)})` : ""}{s.valorSugerido ? ` — ${s.valorSugerido}` : ""}?
-                          </span>
-                          {!readOnly && ((s.campoFecha && s.fechaSugerida) || (s.campoValor && s.valorSugerido)) && (
-                            <button
-                              onClick={() => usarSugerencia(s)}
-                              disabled={aplicando === s.etapaKey}
-                              className="rounded-md bg-indigo-600 px-2 py-0.5 font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-                            >
-                              {aplicando === s.etapaKey ? "…" : s.campoValor && s.valorSugerido ? `Usar (${s.valorSugerido})` : "Usar fecha"}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })()}
                   </div>
                 </li>
               ))}
