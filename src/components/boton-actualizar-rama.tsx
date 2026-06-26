@@ -81,14 +81,14 @@ function ResumenSync({
   onCerrar: () => void;
 }) {
   const por = (rs: ItemSyncMis["resultado"][]) => resp.resultados.filter((r) => rs.includes(r.resultado));
-  const actualizados = por(["ACTUALIZADO"]).length;
+  const actualizados = por(["ACTUALIZADO"]);
   const alDia = por(["SIN_NOVEDAD"]).length;
   const noPublicados = por(["NO_PUBLICADO", "RESERVADO"]).length;
   const invalidos = por(["RADICADO_INVALIDO"]);
   const fuente = por(["FUENTE_NO_DISPONIBLE"]);
 
   const chips: { label: string; n: number; cls: string }[] = [
-    { label: "Actualizados", n: actualizados, cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+    { label: "Actualizados", n: actualizados.length, cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
     { label: "Al día", n: alDia, cls: "bg-hover text-muted" },
     { label: "No publicados en la Rama", n: noPublicados, cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" },
     { label: "No se pudieron consultar", n: invalidos.length + fuente.length, cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
@@ -111,6 +111,27 @@ function ResumenSync({
         </div>
         <button onClick={onCerrar} className="shrink-0 text-muted hover:text-foreground" aria-label="Cerrar">✕</button>
       </div>
+
+      {actualizados.length > 0 && (
+        <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-500/30 dark:bg-emerald-500/10">
+          <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+            Con novedades de la Rama ({actualizados.length}) — revisá las nuevas actuaciones.
+          </p>
+          <ul className="mt-2 space-y-1">
+            {actualizados.map((r) => (
+              <li key={r.procesoId} className="flex items-center justify-between gap-3 text-sm">
+                <span className="truncate text-foreground">{nombre(r)}</span>
+                <span className="flex shrink-0 items-center gap-2">
+                  {r.radicado && <code className="rounded bg-hover px-1.5 py-0.5 text-xs text-muted">{r.radicado}</code>}
+                  <Link href={`/procesos/${r.procesoId}`} className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+                    Ver novedades
+                  </Link>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {invalidos.length > 0 && (
         <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
