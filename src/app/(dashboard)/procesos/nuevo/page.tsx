@@ -185,6 +185,9 @@ export default function NuevoProcesoPage() {
 
   const [guardando, setGuardando] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  // Ruta de la ficha del proceso recién creado, para ofrecer un link cuando algún
+  // documento NO se pudo subir (el proceso ya existe; los docs se reintentan ahí).
+  const [creadoRuta, setCreadoRuta] = useState<string | null>(null);
 
   useEffect(() => {
     setYo(getUser());
@@ -518,42 +521,39 @@ export default function NuevoProcesoPage() {
         ],
       };
       const creado = await crearProceso(body);
-      // Los documentos solo se pueden vincular una vez existe el proceso: se suben
-      // TODOS los que el usuario adjuntó (cada slot solo deja adjuntar lo pertinente,
-      // incl. los de la respuesta como la contestación de la tutela recibida). Así no
-      // se pierde ningún adjunto. Si alguna subida falla, el proceso ya quedó creado y
-      // se reintenta desde su ficha.
-      for (const [nombre, file] of Object.entries(archivos)) {
-        if (!file) continue;
+      // Los documentos solo se pueden vincular una vez existe el proceso: se suben TODOS
+      // los que el usuario adjuntó. Si alguno falla, el proceso ya quedó creado → NO se
+      // traga el error en silencio: se juntan los fallidos y se avisa con link a la ficha
+      // para reintentarlos (antes se perdían sin que el usuario se enterara).
+      const fallidos: string[] = [];
+      const subir = async (file: File, nombre: string, etiqueta: string) => {
         try {
           await subirArchivoProceso(creado.id, file, nombre);
         } catch {
-          /* reintenta en la ficha del proceso */
+          fallidos.push(etiqueta);
         }
+      };
+      for (const [nombre, file] of Object.entries(archivos)) {
+        if (file) await subir(file, nombre, nombre);
       }
-      // Documentos de prueba (nombre libre): se suben con prefijo "Prueba: " para que
-      // queden agrupados y categorizados como PRUEBA (categoriaDoc infiere por nombre).
+      // Pruebas (prefijo "Prueba: ") y cautelares ("Solicitud cautelar: "): nombre libre.
       for (const p of pruebasDocs) {
-        if (!p.file) continue;
-        try {
-          await subirArchivoProceso(creado.id, p.file, `Prueba: ${p.nombre.trim() || p.file.name}`);
-        } catch {
-          /* reintenta en la ficha del proceso */
-        }
+        if (p.file) await subir(p.file, `Prueba: ${p.nombre.trim() || p.file.name}`, `Prueba: ${p.nombre.trim() || p.file.name}`);
       }
-      // Documentos de medidas cautelares (nombre libre): se suben con prefijo
-      // "Solicitud cautelar: " para que queden agrupados en la ficha.
       for (const c of cautelaresDocs) {
-        if (!c.file) continue;
-        try {
-          await subirArchivoProceso(creado.id, c.file, `Solicitud cautelar: ${c.nombre.trim() || c.file.name}`);
-        } catch {
-          /* reintenta en la ficha del proceso */
-        }
+        if (c.file) await subir(c.file, `Solicitud cautelar: ${c.nombre.trim() || c.file.name}`, `Cautelar: ${c.nombre.trim() || c.file.name}`);
+      }
+      const ruta = rutaProceso({ id: creado.id, grupo: tipo.grupo });
+      if (fallidos.length) {
+        // El proceso existe, pero faltaron docs: NO redirigir en silencio; avisar + link.
+        setApiError(`El proceso se creó, pero ${fallidos.length} documento(s) no se subieron: ${fallidos.join(", ")}. Abrí la ficha y adjuntalos de nuevo.`);
+        setCreadoRuta(ruta);
+        setGuardando(false);
+        return;
       }
       // Una petición (no judicial) abre su ficha bajo /peticiones; un proceso
       // judicial bajo /procesos → el sidebar resalta la sección correcta.
-      router.push(rutaProceso({ id: creado.id, grupo: tipo.grupo }));
+      router.push(ruta);
     } catch (e) {
       setApiError(errorMessage(e, "No se pudo crear el proceso"));
       setGuardando(false);
@@ -1213,7 +1213,14 @@ export default function NuevoProcesoPage() {
           </Card>
         )}
         {apiError && (
-          <Card className="border-red-200 bg-red-50 text-sm text-red-700">{apiError}</Card>
+          <Card className="border-red-200 bg-red-50 text-sm text-red-700">
+            {apiError}
+            {creadoRuta && (
+              <button onClick={() => router.push(creadoRuta)} className="ml-2 font-medium underline">
+                Abrir la ficha del proceso
+              </button>
+            )}
+          </Card>
         )}
 
         <div className="flex justify-end gap-2">
