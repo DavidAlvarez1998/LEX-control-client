@@ -9,7 +9,7 @@ import { DocumentosProceso } from "@/components/documentos-proceso";
 import { DatosProceso, type DatosProcesoHandle } from "@/components/datos-proceso";
 import { PartesProceso } from "@/components/partes-proceso";
 import { CasoChain } from "@/components/caso-chain";
-import { isApiError } from "@/lib/api";
+import { errorMessage, isApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type CampoEsquema, type Condicion, type EtapaDef } from "@/lib/procesos";
 import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getDetalleRama, getProceso, getSugerenciasActuaciones, importarDocumentosRama, importarPartesRama, listActuaciones, listarDocumentosRama, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, sugerirPartesRama, validarRadicado, type ActuacionItem, type CasoNodo, type DetalleRama, type DocumentoRamaItem, type ProcesoDetalle, type SugerenciasRama, type SujetoRamaItem } from "@/lib/procesos-api";
@@ -723,8 +723,10 @@ function ActuacionesJuzgado({
       }
       cargar();
       if (r.encontrado && r.nuevas > 0) onChanged(); // refresca datos (ultimaActuacion / juzgado)
-    } catch {
-      setAviso({ texto: "No se pudo consultar la Rama Judicial. Intenta más tarde.", tono: "warn" });
+    } catch (e) {
+      // Surfacear la causa real del backend (p. ej. "radicado inválido de 23 dígitos")
+      // en vez de un genérico que esconde el motivo y dificulta el diagnóstico.
+      setAviso({ texto: errorMessage(e, "No se pudo consultar la Rama Judicial. Intenta más tarde."), tono: "warn" });
     } finally {
       setSincronizando(false);
     }
