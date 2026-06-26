@@ -7,6 +7,7 @@ import { Reveal } from "@/components/reveal";
 import { formatMoney } from "@/lib/format";
 import { getUser, type AuthUser } from "@/lib/auth";
 import { enviarContacto, getPlanesPublicos, solicitudCuenta, type PlanPublico } from "@/lib/publico-api";
+import { errorMessage, isApiError } from "@/lib/api";
 
 // Módulos de la plataforma (los mismos del portal). Icono = SVG inline minimal.
 const MODULOS: { titulo: string; desc: string; icon: React.ReactNode }[] = [
@@ -36,15 +37,14 @@ export default function LandingPage() {
   const [planes, setPlanes] = useState<PlanPublico[] | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [demo, setDemo] = useState({
-    nombreEmpresa: "", nit: "", emailEmpresa: "", telefonoEmpresa: "",
-    nombreContacto: "", email: "", telefono: "", planClave: "", website: "",
+    nombreEmpresa: "", nit: "", tarjeta: "",
+    nombreContacto: "", email: "", telefono: "", website: "",
   });
   const [demoEstado, setDemoEstado] = useState<"idle" | "enviando" | "ok" | "error">("idle");
   const [demoError, setDemoError] = useState<string | null>(null);
 
-  // Pre-selecciona un plan (desde una tarjeta) y baja al formulario.
-  function elegirPlan(clave: string) {
-    setDemo((d) => ({ ...d, planClave: clave }));
+  // Baja al formulario de alta (la cuenta nace en plan trial; no se elige plan).
+  function elegirPlan() {
     document.getElementById("cuenta")?.scrollIntoView({ behavior: "smooth" });
   }
 
@@ -60,9 +60,22 @@ export default function LandingPage() {
     try {
       await solicitudCuenta(demo);
       setDemoEstado("ok");
-    } catch {
+    } catch (err) {
       setDemoEstado("error");
-      setDemoError("No pudimos enviar tu solicitud. Revisa los datos e intenta de nuevo.");
+      // 409 (correo/NIT ya registrados) y 400 (validación) traen el detalle del
+      // servidor: lo mostramos (qué campo está mal) en vez del genérico.
+      setDemoError(
+        isApiError(err) && (err.status === 400 || err.status === 409)
+          ? errorMessage(err, "Revisa los datos e intenta de nuevo.", {
+              nombreEmpresa: "Despacho / abogado",
+              nit: "NIT/CC",
+              nombreContacto: "Nombre del usuario",
+              email: "Correo",
+              telefono: "Teléfono",
+              tarjeta: "Tarjeta profesional",
+            })
+          : "No pudimos crear tu cuenta. Intenta de nuevo en un momento.",
+      );
     }
   }
 
@@ -216,8 +229,8 @@ export default function LandingPage() {
                         ))}
                         {p.modulos.length > 0 && <li>· Módulos: {p.modulos.join(", ")}</li>}
                       </ul>
-                      <button type="button" onClick={() => elegirPlan(p.clave)} className="mt-6 rounded-lg border border-indigo-600 px-4 py-2 text-center text-sm font-medium text-indigo-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500/20 dark:hover:text-white">
-                        Quiero este plan
+                      <button type="button" onClick={elegirPlan} className="mt-6 rounded-lg border border-indigo-600 px-4 py-2 text-center text-sm font-medium text-indigo-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500/20 dark:hover:text-white">
+                        Empezar gratis
                       </button>
                     </div>
                   </Reveal>
@@ -279,58 +292,45 @@ export default function LandingPage() {
           <Reveal>
             <h2 className="text-center text-2xl font-bold sm:text-3xl">Crea tu cuenta</h2>
             <p className="mt-3 text-center text-slate-600 dark:text-slate-400">
-              Déjanos los datos de tu despacho y del administrador. Revisamos la solicitud y activamos tu cuenta.
+              Registra tu despacho y empieza gratis hoy. Te enviamos un correo para activar tu cuenta.
             </p>
           </Reveal>
 
           {demoEstado === "ok" ? (
             <div className="lex-fade-up mt-8 rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-              <p className="font-semibold">¡Gracias! Recibimos tu solicitud.</p>
-              <p className="mt-1 text-sm">La revisaremos y te avisaremos al correo del administrador para activar tu cuenta.</p>
+              <p className="font-semibold">¡Listo! Tu cuenta fue creada.</p>
+              <p className="mt-1 text-sm">Revisa tu correo (<span className="font-medium">{demo.email}</span>) para activar tu cuenta y entrar a tu despacho. El enlace vence en 48 horas.</p>
             </div>
           ) : (
             <form onSubmit={enviarDemo} className="mt-8 space-y-6">
               {/* Honeypot: oculto a humanos; los bots lo llenan. */}
               <input type="text" name="website" value={demo.website} onChange={set("website")} tabIndex={-1} autoComplete="off" aria-hidden className="hidden" />
 
-              {/* Datos del despacho */}
+              {/* Datos del despacho / abogado */}
               <fieldset className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-600 dark:bg-slate-700">
                 <legend className="px-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">Datos del despacho</legend>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Campo label="Nombre del despacho / empresa" value={demo.nombreEmpresa} onChange={set("nombreEmpresa")} required />
-                  <Campo label="NIT" value={demo.nit} onChange={set("nit")} />
-                  <Campo label="Correo de la empresa" type="email" value={demo.emailEmpresa} onChange={set("emailEmpresa")} />
-                  <Campo label="Teléfono de la empresa" value={demo.telefonoEmpresa} onChange={set("telefonoEmpresa")} />
+                  <Campo label="Despacho / abogado" value={demo.nombreEmpresa} onChange={set("nombreEmpresa")} required />
+                  <Campo label="Nit/cc" value={demo.nit} onChange={set("nit")} required />
                 </div>
               </fieldset>
 
-              {/* Usuario administrador */}
+              {/* Usuario */}
               <fieldset className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-600 dark:bg-slate-700">
-                <legend className="px-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">Usuario administrador</legend>
+                <legend className="px-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">Tu usuario</legend>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Campo label="Nombre del administrador" value={demo.nombreContacto} onChange={set("nombreContacto")} required />
-                  <Campo label="Correo del administrador" type="email" value={demo.email} onChange={set("email")} required />
-                  <Campo label="Celular del administrador" value={demo.telefono} onChange={set("telefono")} />
+                  <Campo label="Nombre usuario" value={demo.nombreContacto} onChange={set("nombreContacto")} required />
+                  <Campo label="Correo" type="email" value={demo.email} onChange={set("email")} required />
+                  <Campo label="Teléfono notificación personal" value={demo.telefono} onChange={set("telefono")} required />
+                  <Campo label="Tarjeta profesional" value={demo.tarjeta} onChange={set("tarjeta")} />
                 </div>
-                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Este correo será el acceso del administrador cuando se active la cuenta.</p>
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Este correo será tu acceso. Te enviaremos el enlace de activación ahí.</p>
               </fieldset>
-
-              {/* Plan */}
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Plan de interés</label>
-                <select value={demo.planClave} onChange={set("planClave")}
-                  className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-700">
-                  <option value="">Sin definir / que me asesoren</option>
-                  {(planes ?? []).map((p) => (
-                    <option key={p.clave} value={p.clave}>{p.nombre} — ${formatMoney(p.precioMensual)}/mes</option>
-                  ))}
-                </select>
-              </div>
 
               {demoError && <p className="text-sm text-red-600 dark:text-red-400">{demoError}</p>}
               <button type="submit" disabled={demoEstado === "enviando"}
                 className="w-full rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/30 active:translate-y-0 disabled:opacity-60">
-                {demoEstado === "enviando" ? "Enviando…" : "Crear cuenta"}
+                {demoEstado === "enviando" ? "Creando…" : "Crear cuenta"}
               </button>
               <p className="text-center text-xs text-slate-500 dark:text-slate-400">
                 ¿Ya tienes cuenta? <Link href="/login" className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">Ingresar</Link>
@@ -368,7 +368,7 @@ function Campo({ label, value, onChange, type = "text", required }: {
         {label}
         {required && <span className="text-red-500"> *</span>}
       </label>
-      <input type={type} value={value} onChange={onChange} required={required}
+      <input type={type} value={value ?? ""} onChange={onChange} required={required}
         className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-700" />
     </div>
   );

@@ -17,21 +17,21 @@ export function getPlanesPublicos(): Promise<PlanPublico[]> {
 }
 
 export type SolicitudCuenta = {
-  // Empresa / despacho
-  nombreEmpresa: string;
-  nit?: string;
-  emailEmpresa?: string;
-  telefonoEmpresa?: string;
+  // Despacho / abogado
+  nombreEmpresa: string; // nombre del despacho o abogado
+  nit: string; // NIT del despacho o CC del abogado
+  tarjeta?: string; // tarjeta profesional (opcional)
   // Usuario administrador
-  nombreContacto: string;
-  email: string;
-  telefono?: string;
-  // Plan elegido (clave) + honeypot
-  planClave?: string;
-  website?: string;
+  nombreContacto: string; // nombre del usuario
+  email: string; // correo (será su login)
+  telefono: string; // teléfono de notificación personal
+  website?: string; // honeypot
 };
 
-/** Solicita crear una cuenta (genera un Prospecto pendiente de aprobación). */
+/**
+ * "Crea tu cuenta": aprovisiona el despacho de una (Empresa + Usuario admin) y dispara
+ * el correo de activación. El plan es trial por defecto (lo decide el servidor).
+ */
 export function solicitudCuenta(body: SolicitudCuenta): Promise<{ ok: boolean }> {
   return api.post<{ ok: boolean }>("/publico/solicitud-cuenta", body);
 }
