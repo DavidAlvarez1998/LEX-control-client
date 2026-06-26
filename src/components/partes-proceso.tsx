@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui";
+import { Button, Modal } from "@/components/ui";
 import { Field, Input, NATURALEZA_LABEL, Notificaciones, Select } from "@/components/form-ui";
 import { errorMessage } from "@/lib/api";
 import type { GrupoProceso, NaturalezaJuridica, RolParte, TipoDocumento, TipoPersona } from "@/lib/procesos";
@@ -157,10 +157,9 @@ export function PartesProceso({
     }
   }
 
+  // Cuerpo del Modal de alta/edición (los botones van en el footer del Modal).
   const formulario = (
-    <div className="space-y-3 rounded-lg border border-indigo-200 bg-indigo-50/40 p-3 dark:border-indigo-500/30 dark:bg-indigo-500/5">
-      {/* Una sola columna: el panel "Partes" es estrecho (1/3 en pantallas grandes),
-          en dos columnas los campos se ven apretados. */}
+    <>
       <Field label="Nombre / razón social">
         <Input value={draft.nombre} onChange={(v) => setDraft((d) => ({ ...d, nombre: v }))} placeholder="Nombre de la parte" />
       </Field>
@@ -216,22 +215,14 @@ export function PartesProceso({
         onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
       />
       {error && <p className="text-xs text-red-600">{error}</p>}
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={cancelar} disabled={guardando}>
-          Cancelar
-        </Button>
-        <Button onClick={guardar} disabled={guardando}>
-          {guardando ? "Guardando…" : editando === "nueva" ? "Agregar" : "Guardar"}
-        </Button>
-      </div>
-    </div>
+    </>
   );
 
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Partes</h3>
-        {!readOnly && editando !== "nueva" && (
+        {!readOnly && (
           <button type="button" onClick={abrirAlta} className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">
             + Agregar parte
           </button>
@@ -239,45 +230,58 @@ export function PartesProceso({
       </div>
 
       <ul className="space-y-3 text-sm">
-        {proceso.partes.map((p) =>
-          editando === p.id ? (
-            <li key={p.id}>{formulario}</li>
-          ) : (
-            <li key={p.id} className="flex items-start justify-between gap-2">
-              <div>
-                <div className="font-medium text-slate-800 dark:text-slate-100">
-                  {p.litigante.nombre}
-                  {p.esNuestroCliente && (
-                    <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
-                      Nuestro cliente
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-slate-500">
-                  {p.rol}
-                  {p.litigante.tipoDocumento && ` · ${p.litigante.tipoDocumento} ${p.litigante.numeroDocumento ?? ""}`}
-                </div>
+        {proceso.partes.map((p) => (
+          <li key={p.id} className="flex items-start justify-between gap-2">
+            <div>
+              <div className="font-medium text-slate-800 dark:text-slate-100">
+                {p.litigante.nombre}
+                {p.esNuestroCliente && (
+                  <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                    Nuestro cliente
+                  </span>
+                )}
               </div>
-              {!readOnly && !p.esNuestroCliente && (
-                <div className="flex shrink-0 gap-2 text-xs">
-                  <button type="button" onClick={() => abrirEdicion(p)} className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">
-                    editar
-                  </button>
-                  <button type="button" onClick={() => quitar(p)} disabled={guardando} className="text-red-600 hover:underline disabled:opacity-50">
-                    quitar
-                  </button>
-                </div>
-              )}
-            </li>
-          ),
-        )}
-        {proceso.partes.length === 0 && editando !== "nueva" && <li className="text-slate-400">Sin partes registradas.</li>}
-        {editando === "nueva" && <li>{formulario}</li>}
+              <div className="text-xs text-slate-500">
+                {p.rol}
+                {p.litigante.tipoDocumento && ` · ${p.litigante.tipoDocumento} ${p.litigante.numeroDocumento ?? ""}`}
+              </div>
+            </div>
+            {!readOnly && !p.esNuestroCliente && (
+              <div className="flex shrink-0 gap-2 text-xs">
+                <button type="button" onClick={() => abrirEdicion(p)} className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+                  editar
+                </button>
+                <button type="button" onClick={() => quitar(p)} disabled={guardando} className="text-red-600 hover:underline disabled:opacity-50">
+                  quitar
+                </button>
+              </div>
+            )}
+          </li>
+        ))}
+        {proceso.partes.length === 0 && <li className="text-slate-400">Sin partes registradas.</li>}
       </ul>
 
-      {!readOnly && proceso.partes.length > 0 && editando === null && (
+      {!readOnly && proceso.partes.length > 0 && (
         <p className="mt-3 text-xs text-slate-400">Contraparte, terceros, etc. — el cliente se define al crear el proceso.</p>
       )}
+
+      {/* Alta/edición de parte en Modal (portaleado a body): no empuja la lista, cierra
+          con X/backdrop/Cancelar, y permite pasar de una parte a otra sin refrescar. */}
+      <Modal
+        open={editando !== null}
+        onClose={() => { if (!guardando) cancelar(); }}
+        title={editando === "nueva" ? "Agregar parte" : "Editar parte"}
+        footer={
+          <>
+            <Button variant="ghost" onClick={cancelar} disabled={guardando}>Cancelar</Button>
+            <Button onClick={guardar} disabled={guardando}>
+              {guardando ? "Guardando…" : editando === "nueva" ? "Agregar" : "Guardar"}
+            </Button>
+          </>
+        }
+      >
+        {formulario}
+      </Modal>
     </div>
   );
 }
