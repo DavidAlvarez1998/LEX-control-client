@@ -274,7 +274,7 @@ export function PartesProceso({
         footer={
           <>
             <Button variant="ghost" onClick={cancelar} disabled={guardando}>Cancelar</Button>
-            <Button onClick={guardar} disabled={guardando}>
+            <Button onClick={guardar} cargando={guardando}>
               {guardando ? "Guardando…" : editando === "nueva" ? "Agregar" : "Guardar"}
             </Button>
           </>

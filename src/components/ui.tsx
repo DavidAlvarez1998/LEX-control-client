@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 
@@ -29,12 +29,23 @@ export function PageHeader({
   );
 }
 
+/** Spinner reutilizable (indicador de carga). */
+export function Spinner({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
+    </svg>
+  );
+}
+
 export function Button({
   children,
   variant = "primary",
   type = "button",
   onClick,
   disabled = false,
+  cargando = false,
   className = "",
 }: {
   children: ReactNode;
@@ -42,6 +53,7 @@ export function Button({
   type?: "button" | "submit" | "reset";
   onClick?: () => void;
   disabled?: boolean;
+  cargando?: boolean; // muestra un spinner y deshabilita el botón mientras dura la acción
   className?: string;
 }) {
   const styles =
@@ -52,12 +64,45 @@ export function Button({
     <button
       type={type}
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || cargando}
       className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${styles} ${className}`}
     >
+      {cargando && <Spinner />}
       {children}
     </button>
   );
+}
+
+/** Botón "copiar al portapapeles": copia `texto` y muestra un ✓ por un instante. */
+export function CopiarBtn({ texto, className = "" }: { texto: string; className?: string }) {
+  const [copiado, setCopiado] = useState(false);
+  if (!texto) return null;
+  return (
+    <button
+      type="button"
+      aria-label="Copiar"
+      title={copiado ? "¡Copiado!" : "Copiar"}
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(texto);
+          setCopiado(true);
+          setTimeout(() => setCopiado(false), 1500);
+        } catch { /* clipboard no disponible (http/permiso): no-op */ }
+      }}
+      className={`inline-flex items-center align-middle text-muted transition-colors hover:text-foreground ${copiado ? "text-emerald-600 dark:text-emerald-400" : ""} ${className}`}
+    >
+      {copiado ? (
+        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+      ) : (
+        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+      )}
+    </button>
+  );
+}
+
+/** Placeholder gris animado para estados de carga (mejor que un "Cargando…" pelado). */
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded bg-hover ${className}`} aria-hidden="true" />;
 }
 
 export function Card({
@@ -234,6 +279,25 @@ export function Modal({
   footer?: ReactNode;
   size?: "md" | "lg";
 }) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  // Esc cierra el modal (atajo estándar).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+  // Foco automático en el primer campo al abrir (no hay que tocar el mouse para escribir).
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      overlayRef.current?.querySelector<HTMLElement>(
+        "input:not([type=hidden]):not([disabled]), textarea:not([disabled]), select:not([disabled])",
+      )?.focus();
+    }, 0);
+    return () => clearTimeout(t);
+  }, [open]);
+
   if (!open || typeof document === "undefined") return null;
   const max = size === "lg" ? "max-w-2xl" : "max-w-md";
   // Portal a <body>: el overlay `fixed` debe medirse contra el viewport. Si se
@@ -242,6 +306,7 @@ export function Modal({
   // el campo en vez de pantalla completa).
   return createPortal(
     <div
+      ref={overlayRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 dark:bg-black/60"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

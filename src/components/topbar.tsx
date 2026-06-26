@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/nav";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -15,6 +16,11 @@ export function Topbar() {
     NAV_ITEMS.find((i) =>
       i.href === "/" ? pathname === "/" : pathname.startsWith(i.href)
     )?.label ?? "LEX Control";
+
+  // Título de la pestaña del navegador según la ruta (para distinguir varias pestañas).
+  useEffect(() => {
+    document.title = current === "LEX Control" ? "LEX Control" : `${current} · LEX Control`;
+  }, [current]);
 
   return (
     <header className="flex h-16 items-center justify-between gap-2 border-b border-line bg-chrome px-4 sm:px-6">

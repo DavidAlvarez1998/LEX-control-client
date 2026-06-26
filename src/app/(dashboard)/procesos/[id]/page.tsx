@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Button, Card, PageHeader } from "@/components/ui";
+import { Button, Card, CopiarBtn, PageHeader, Skeleton } from "@/components/ui";
 import { vtName } from "@/lib/view-transition";
 import { DocumentosProceso } from "@/components/documentos-proceso";
 import { DatosProceso, type DatosProcesoHandle } from "@/components/datos-proceso";
@@ -53,7 +53,22 @@ export default function ExpedientePage() {
   }, [proceso?.fechaLimite, proceso?.tipoProceso.id, proceso?.datos]);
 
   if (proceso === undefined) {
-    return <Card className="text-sm text-slate-500">Cargando…</Card>;
+    return (
+      <div className="space-y-5">
+        <Skeleton className="h-7 w-2/3" />
+        <Card className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="space-y-1.5">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card><Skeleton className="h-24 w-full" /></Card>
+      </div>
+    );
   }
   if (proceso === null) {
     return (
@@ -349,7 +364,7 @@ export default function ExpedientePage() {
 
       <Card className="mb-5">
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
-          <Dato label="Código interno" value={proceso.codigoInterno} />
+          <Dato label="Código interno" value={proceso.codigoInterno} copiable />
           {/* Datos judiciales: solo para procesos que van ante un juez. */}
           {proceso.tipoProceso.esJudicial && (
             <RadicadoDato
@@ -803,7 +818,14 @@ function ActuacionesJuzgado({
           )}
 
           {items === null ? (
-            <p className="text-sm text-slate-400">Cargando…</p>
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex gap-3 border-l-2 border-slate-200 pl-3 dark:border-slate-600">
+                  <Skeleton className="h-3 w-24 shrink-0" />
+                  <Skeleton className="h-3 w-2/3" />
+                </div>
+              ))}
+            </div>
           ) : items.length === 0 ? (
             <p className="text-sm text-slate-400">
               Sin actuaciones todavía. Usa “Actualizar” para consultarlas en la Rama.
@@ -1026,11 +1048,14 @@ function DocumentosRama({
   );
 }
 
-function Dato({ label, value }: { label: string; value: string }) {
+function Dato({ label, value, copiable = false }: { label: string; value: string; copiable?: boolean }) {
   return (
     <div>
       <div className="text-xs text-slate-400">{label}</div>
-      <div className="mt-0.5 font-medium text-slate-700 dark:text-slate-200">{value}</div>
+      <div className="mt-0.5 flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-200">
+        <span className="truncate">{value}</span>
+        {copiable && value && value !== "—" && <CopiarBtn texto={value} className="shrink-0" />}
+      </div>
     </div>
   );
 }
@@ -1318,6 +1343,7 @@ function RadicadoDato({
           <span className={`font-medium ${valor ? "text-slate-700 dark:text-slate-200" : "text-slate-400"}`}>
             {valor ?? "Sin radicar"}
           </span>
+          {valor && <CopiarBtn texto={valor} />}
           {!readOnly && (
             <button
               onClick={() => {

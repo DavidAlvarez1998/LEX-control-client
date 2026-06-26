@@ -693,7 +693,7 @@ export const DatosProceso = forwardRef<
       )}
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
       <div className="mt-4 flex gap-2">
-        <Button onClick={guardar} disabled={guardando}>
+        <Button onClick={guardar} cargando={guardando}>
           {labelGuardar}
         </Button>
         <Button variant="ghost" onClick={() => setEditando(false)}>
