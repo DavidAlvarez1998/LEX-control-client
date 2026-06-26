@@ -244,7 +244,7 @@ export function DocumentosProceso({
       {/* Generar desde plantilla (oculto p. ej. en Proceso Laboral) */}
       {!ocultarPlantillas && (
       <div className="border-t border-slate-100 pt-4 dark:border-slate-600">
-        <Field label="Generar desde plantilla">
+        <Field label="Minutas">
           <select
             value={plantillaId}
             onChange={(e) => setPlantillaId(e.target.value)}

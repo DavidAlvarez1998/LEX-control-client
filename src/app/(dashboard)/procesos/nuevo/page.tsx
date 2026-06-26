@@ -334,9 +334,9 @@ export default function NuevoProcesoPage() {
       docsCautelares.forEach((d) => ancladosEjecutivo.add(d.toLowerCase()));
     }
     // La demanda y el poder se anclan INLINE en torno a "Pruebas a solicitar":
-    // la demanda justo debajo de ese campo, y el poder debajo de "Ciudad de firma /
-    // Fecha de otorgamiento del poder" (allí mismo donde se diligencian esos datos),
-    // en vez de quedar juntos en el bloque "Documentos del proceso" del final.
+    // la demanda justo debajo de ese campo, y el poder bajo los datos del poder
+    // ("Nombre del representante legal"), en vez de quedar juntos en el bloque
+    // "Documentos del proceso" del final.
     const anclarEj = (campo: string, ...nombres: string[]) => {
       const docs = req.filter((d) => nombres.includes(d.toLowerCase()));
       if (!docs.length) return;
@@ -344,7 +344,7 @@ export default function NuevoProcesoPage() {
       docs.forEach((d) => ancladosEjecutivo.add(d.toLowerCase()));
     };
     anclarEj("pruebas", "demanda.pdf");
-    anclarEj("fechaPoder", "poder.pdf");
+    anclarEj("repLegalNombre", "poder.pdf");
   }
 
   const clienteSeleccionado = clienteNuevo

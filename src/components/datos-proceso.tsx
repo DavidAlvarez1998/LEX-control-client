@@ -363,11 +363,11 @@ export const DatosProceso = forwardRef<
     // resto de etapas conserva su anclaje. Solo mueve docs cuyo campo destino exista.
     const a = anclasPorCampo(etapas, borrador, tieneCampo);
     // Ejecutivo de mínima cuantía: la demanda va bajo "Pruebas a solicitar" y el poder
-    // bajo "Fecha de otorgamiento del poder" (junto a ciudad/fecha de firma del poder),
-    // igual que en el formulario de creación. El verbal usa Síntesis/Calidad.
+    // bajo los datos del poder ("Nombre del representante legal"), igual que en el
+    // formulario de creación. El verbal usa Síntesis/Calidad.
     const esEjec = tieneCampo("capitalAdeudado");
     const mapaPresentacion: Record<string, string> = esEjec
-      ? { "demanda.pdf": "pruebas", "poder.pdf": "fechaPoder" }
+      ? { "demanda.pdf": "pruebas", "poder.pdf": "repLegalNombre" }
       : {
           "demanda.pdf": "sintesis",
           "pruebas.pdf": "sintesis",
