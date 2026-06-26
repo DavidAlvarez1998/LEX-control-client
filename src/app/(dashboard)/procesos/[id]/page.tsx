@@ -1344,7 +1344,10 @@ function RadicadoDato({
             {valor ?? "Sin radicar"}
           </span>
           {valor && <CopiarBtn texto={valor} />}
-          {!readOnly && (
+          {/* "editar" solo cuando el radicado se gestiona ACÁ (verbal/sumario/laboral/
+              tutela). En mínima cuantía el radicado es campo del formulario de etapa y
+              se edita allá, así que acá sobra (se mostraba duplicado junto al copiar). */}
+          {!readOnly && mostrarActualizar && (
             <button
               onClick={() => {
                 setTexto(valor ?? "");
