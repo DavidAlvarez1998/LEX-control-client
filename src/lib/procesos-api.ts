@@ -258,9 +258,14 @@ export function marcarActuacionesVistas(procesoId: string): Promise<{ ok: boolea
   return api.post<{ ok: boolean }>(`/procesos/${procesoId}/actuaciones/marcar-vistas`, {});
 }
 
-/** Sugerencias de avance de etapa derivadas de los hitos de las actuaciones (#1). */
-export function getSugerenciasActuaciones(procesoId: string): Promise<SugerenciaHito[]> {
-  return api.get<SugerenciaHito[]>(`/procesos/${procesoId}/actuaciones/sugerencias`);
+/** Divergencia O2: fecha cargada por el abogado ≠ fecha que trae la Rama (no se pisa). */
+export type DivergenciaFecha = { campo: string; fechaRama: string; fechaActual: string };
+export type SugerenciasRama = { hitos: SugerenciaHito[]; divergencias: DivergenciaFecha[] };
+
+/** Hitos detectados en las actuaciones (#1) + divergencias de fecha Rama-vs-abogado (O2).
+ *  Informativo: el sync ya autollena solo lo vacío; esto da consciencia, no acciona. */
+export function getSugerenciasActuaciones(procesoId: string): Promise<SugerenciasRama> {
+  return api.get<SugerenciasRama>(`/procesos/${procesoId}/actuaciones/sugerencias`);
 }
 
 // --- Detalle del proceso en el juzgado (Rama, P11) ---

@@ -11,8 +11,8 @@ import { PartesProceso } from "@/components/partes-proceso";
 import { CasoChain } from "@/components/caso-chain";
 import { isApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
-import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type Condicion, type EtapaDef } from "@/lib/procesos";
-import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getDetalleRama, getProceso, importarDocumentosRama, importarPartesRama, listActuaciones, listarDocumentosRama, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, sugerirPartesRama, validarRadicado, type ActuacionItem, type CasoNodo, type DetalleRama, type DocumentoRamaItem, type ProcesoDetalle, type SujetoRamaItem } from "@/lib/procesos-api";
+import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type CampoEsquema, type Condicion, type EtapaDef } from "@/lib/procesos";
+import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getDetalleRama, getProceso, getSugerenciasActuaciones, importarDocumentosRama, importarPartesRama, listActuaciones, listarDocumentosRama, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, sugerirPartesRama, validarRadicado, type ActuacionItem, type CasoNodo, type DetalleRama, type DocumentoRamaItem, type ProcesoDetalle, type SugerenciasRama, type SujetoRamaItem } from "@/lib/procesos-api";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
@@ -621,6 +621,10 @@ export default function ExpedientePage() {
             procesoId={proceso.id}
             radicado={proceso.radicado}
             syncAt={proceso.actuacionesSyncAt}
+            etapas={etapas}
+            etapaActual={proceso.etapaActual}
+            esquema={proceso.tipoProceso.esquemaFormulario ?? []}
+            camposRamaCsv={proceso.camposRamaCsv}
             onChanged={() => getProceso(proceso.id).then(setProceso).catch(() => {})}
             readOnly={!puedeEditar}
           />
@@ -648,28 +652,55 @@ export default function ExpedientePage() {
 
 /** Panel de actuaciones de la Rama Judicial: lista + "Actualizar" (sync) +
  *  badges "nueva" PERSISTENTES (no leídas, #3) + "Marcar como vistas".
- *  El sync autollena fechas y posiciona la etapa solo (motor de hitos en la API);
- *  ya no se muestran sugerencias "¿avanzar?" inline. */
+ *  El sync autollena fechas y posiciona la etapa solo (motor de hitos en la API).
+ *  No reintroduce el panel de "¿avanzar?": solo hace VISIBLE lo que el sync ya hizo
+ *  — qué campos completó la Rama (P8), hasta qué etapa va el juzgado, y las fechas
+ *  donde la Rama difiere de lo cargado (O2, no bloqueante). */
 function ActuacionesJuzgado({
   procesoId,
   radicado,
   syncAt,
+  etapas,
+  etapaActual,
+  esquema,
+  camposRamaCsv,
   onChanged,
   readOnly = false,
 }: {
   procesoId: string;
   radicado: string | null;
   syncAt: string | null;
+  etapas: EtapaDef[];
+  etapaActual: string;
+  esquema: CampoEsquema[];
+  camposRamaCsv: string | null;
   onChanged: () => void;
   readOnly?: boolean;
 }) {
   const [items, setItems] = useState<ActuacionItem[] | null>(null);
   const [sincronizando, setSincronizando] = useState(false);
   const [aviso, setAviso] = useState<{ texto: string; tono: "ok" | "info" | "warn" } | null>(null);
+  const [sugerencias, setSugerencias] = useState<SugerenciasRama | null>(null);
+
+  // Etiqueta legible de un campo (desde el esquema del tipo); cae a la key si no está.
+  const labelCampo = (k: string) => esquema.find((c) => c.key === k)?.label ?? k;
+  const fmtFecha = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" }); };
+
+  // Campos que la Rama completó (P8, persistente) → para la línea de transparencia.
+  const camposLlenados = (camposRamaCsv ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+
+  // Hasta qué etapa "va" el juzgado: la de mayor orden entre los hitos detectados, si
+  // está por delante de la etapa actual del despacho (consciencia, sin botón de aplicar).
+  const ordenDe = (key: string) => etapas.find((e) => e.key === key)?.orden ?? -1;
+  const ordenActual = ordenDe(etapaActual);
+  const etapaJuzgado = (sugerencias?.hitos ?? [])
+    .filter((h) => ordenDe(h.etapaKey) > ordenActual)
+    .sort((a, b) => ordenDe(b.etapaKey) - ordenDe(a.etapaKey))[0] ?? null;
 
   const cargar = () => {
-    if (!radicado) { setItems([]); return; }
+    if (!radicado) { setItems([]); setSugerencias(null); return; }
     listActuaciones(procesoId).then(setItems).catch(() => setItems([]));
+    getSugerenciasActuaciones(procesoId).then(setSugerencias).catch(() => setSugerencias(null));
   };
   useEffect(cargar, [procesoId, radicado]);
 
@@ -751,6 +782,31 @@ function ActuacionesJuzgado({
               : "Aún no consultado — usa “Actualizar” para traer las actuaciones."}
           </p>
           {aviso && <p className={`mb-3 text-xs font-medium ${tono}`}>{aviso.texto}</p>}
+
+          {/* Consciencia de lo que el sync ya hizo (no acciona): campos completados por
+              la Rama (P8), hasta qué etapa va el juzgado, y fechas divergentes (O2). */}
+          {camposLlenados.length > 0 && (
+            <p className="mb-2 rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+              ✓ La Rama completó: {camposLlenados.map(labelCampo).join(", ")}.
+            </p>
+          )}
+          {etapaJuzgado && (
+            <p className="mb-2 rounded-md bg-sky-50 px-3 py-2 text-xs text-sky-700 dark:bg-sky-500/10 dark:text-sky-300">
+              🏛️ El juzgado ya va en <b>{etapaJuzgado.etapaNombre}</b> — más adelante que tu etapa actual. Avanza la etapa cuando completes sus requisitos.
+            </p>
+          )}
+          {(sugerencias?.divergencias ?? []).length > 0 && (
+            <div className="mb-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+              <p className="font-medium">Fechas distintas en la Rama (no se sobrescribe lo que cargaste):</p>
+              <ul className="mt-1 space-y-0.5">
+                {sugerencias!.divergencias.map((d) => (
+                  <li key={d.campo}>
+                    <b>{labelCampo(d.campo)}</b>: la Rama dice {fmtFecha(d.fechaRama)} · vos tenés {fmtFecha(d.fechaActual)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {items === null ? (
             <p className="text-sm text-slate-400">Cargando…</p>
