@@ -165,6 +165,11 @@ export default function NuevoProcesoPage() {
   const [cuantiaLabel, setCuantiaLabel] = useState("");
   const [cuantiaValor, setCuantiaValor] = useState("");
   const [partes, setPartes] = useState<ParteProceso[]>([]);
+  // Alta/edición de un sujeto procesal en Modal: índice en `partes`, "nueva" para el alta,
+  // o null (cerrado). `draftParte` es la copia que se edita y solo se vuelca al confirmar.
+  const [parteModal, setParteModal] = useState<number | "nueva" | null>(null);
+  const [draftParte, setDraftParte] = useState<ParteProceso | null>(null);
+  const [parteError, setParteError] = useState(false);
   // Peticionarios adicionales (co-peticionarios) en una petición/DdP.
   const [peticionarios, setPeticionarios] = useState<ParteProceso[]>([]);
 
@@ -274,13 +279,37 @@ export default function NuevoProcesoPage() {
       descripcion="La solicitud de cautelares y sus soportes."
     />
   );
-  function actualizarParte(i: number, patch: Partial<ParteProceso>) {
-    setPartes((ps) => ps.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
+  // --- Sujeto procesal en Modal ---
+  function abrirAltaParte() {
+    setParteError(false);
+    setDraftParte(parteVacia(rolesLitigio(tipo!).pasivo));
+    setParteModal("nueva");
   }
-  function actualizarLitigante(i: number, patch: Partial<ParteProceso["litigante"]>) {
-    setPartes((ps) =>
-      ps.map((p, idx) => (idx === i ? { ...p, litigante: { ...p.litigante, ...patch } } : p)),
-    );
+  function abrirEdicionParte(i: number) {
+    setParteError(false);
+    setDraftParte({ ...partes[i], litigante: { ...partes[i].litigante } });
+    setParteModal(i);
+  }
+  function cerrarParteModal() {
+    setParteModal(null);
+    setDraftParte(null);
+    setParteError(false);
+  }
+  function guardarParteModal() {
+    if (!draftParte || !draftParte.litigante.nombre.trim()) {
+      setParteError(true);
+      return;
+    }
+    const limpio = { ...draftParte, litigante: { ...draftParte.litigante, nombre: draftParte.litigante.nombre.trim() } };
+    setPartes((ps) => (parteModal === "nueva" ? [...ps, limpio] : ps.map((p, idx) => (idx === parteModal ? limpio : p))));
+    cerrarParteModal();
+  }
+  // Edita el borrador del modal (no toca la lista hasta confirmar).
+  function actualizarDraftLitigante(patch: Partial<ParteProceso["litigante"]>) {
+    setDraftParte((d) => (d ? { ...d, litigante: { ...d.litigante, ...patch } } : d));
+  }
+  function actualizarDraftParte(patch: Partial<ParteProceso>) {
+    setDraftParte((d) => (d ? { ...d, ...patch } : d));
   }
   function actualizarPeticionario(i: number, patch: Partial<ParteProceso["litigante"]>) {
     setPeticionarios((ps) =>
@@ -335,7 +364,7 @@ export default function NuevoProcesoPage() {
     }
     // La demanda y el poder se anclan INLINE en torno a "Pruebas a solicitar":
     // la demanda justo debajo de ese campo, y el poder bajo los datos del poder
-    // ("Nombre del representante legal"), en vez de quedar juntos en el bloque
+    // ("C.C. del representante legal"), en vez de quedar juntos en el bloque
     // "Documentos del proceso" del final.
     const anclarEj = (campo: string, ...nombres: string[]) => {
       const docs = req.filter((d) => nombres.includes(d.toLowerCase()));
@@ -344,7 +373,7 @@ export default function NuevoProcesoPage() {
       docs.forEach((d) => ancladosEjecutivo.add(d.toLowerCase()));
     };
     anclarEj("pruebas", "demanda.pdf");
-    anclarEj("repLegalNombre", "poder.pdf");
+    anclarEj("repLegalDocumento", "poder.pdf");
   }
 
   const clienteSeleccionado = clienteNuevo
@@ -892,6 +921,146 @@ export default function NuevoProcesoPage() {
           <h3 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
             Datos del proceso
           </h3>
+          {/* Sujetos procesales — primer bloque dentro de "Datos del proceso": la
+              contraparte y los terceros (el demandante/ejecutante es el cliente). El alta y
+              la edición de cada uno abren un Modal que bloquea la vista (cierra con Esc,
+              backdrop o Cancelar). Solo en procesos judiciales; un trámite ante una entidad
+              (DdP) no tiene contraparte y en la tutela ofensiva el accionado va en "Autoridad
+              o particular accionado". */}
+          {tipo.esJudicial && !esTutelaOfensiva && (
+          <div className="mb-6 border-b border-slate-200 pb-6 dark:border-slate-700">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Sujetos procesales <span className="font-normal text-slate-400">(opcional)</span>
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Aquí van todos los sujetos del proceso salvo tu cliente (que está abajo como{" "}
+                  {rolesLitigio(tipo).activo.toLowerCase()}): la contraparte ({rolesLitigio(tipo).pasivo.toLowerCase()})
+                  {" "}y los terceros que necesites. Cada uno con su rol, documento y datos de notificación.
+                </p>
+              </div>
+              <Button variant="ghost" onClick={abrirAltaParte}>
+                + Agregar parte
+              </Button>
+            </div>
+            {partes.length === 0 ? (
+              <p className="text-sm text-slate-400 dark:text-slate-500">Aún no agregaste la contraparte ni terceros.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {partes.map((p, i) => (
+                  <li
+                    key={p.litigante.id}
+                    className="flex items-start justify-between gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-600"
+                  >
+                    <div>
+                      <div className="font-medium text-slate-800 dark:text-slate-100">
+                        {p.litigante.nombre || <span className="font-normal text-slate-400">Sin nombre</span>}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {p.rol}
+                        {p.litigante.tipoDocumento && ` · ${p.litigante.tipoDocumento} ${p.litigante.numeroDocumento ?? ""}`}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 gap-3 text-xs">
+                      <button type="button" onClick={() => abrirEdicionParte(i)} className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+                        editar
+                      </button>
+                      <button type="button" onClick={() => setPartes((ps) => ps.filter((_, idx) => idx !== i))} className="text-red-600 hover:underline">
+                        quitar
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Alta/edición del sujeto en Modal (portaleado a body): bloquea la vista, cierra
+                con Esc/backdrop/Cancelar, y solo vuelca a la lista al confirmar. */}
+            <Modal
+              open={parteModal !== null}
+              onClose={cerrarParteModal}
+              title={parteModal === "nueva" ? "Agregar sujeto procesal" : "Editar sujeto procesal"}
+              footer={
+                <>
+                  <Button variant="ghost" onClick={cerrarParteModal}>Cancelar</Button>
+                  <Button onClick={guardarParteModal}>{parteModal === "nueva" ? "Agregar" : "Guardar"}</Button>
+                </>
+              }
+            >
+              {draftParte && (
+                <>
+                  <Field label="Nombre / razón social" error={parteError ? "Obligatorio" : undefined}>
+                    <Input
+                      value={draftParte.litigante.nombre}
+                      onChange={(v) => actualizarDraftLitigante({ nombre: v })}
+                      placeholder="Nombre de la parte"
+                    />
+                  </Field>
+                  <Field label="Rol procesal">
+                    <Select
+                      value={draftParte.rol}
+                      onChange={(v) => actualizarDraftParte({ rol: v as RolParte })}
+                      opciones={rolesDisponibles(tipo)}
+                      placeholder="Rol"
+                    />
+                  </Field>
+                  <Field label="Tipo de persona">
+                    <Select
+                      value={draftParte.litigante.tipoPersona}
+                      onChange={(v) =>
+                        actualizarDraftLitigante(
+                          v === "JURIDICA"
+                            ? { tipoPersona: "JURIDICA", tipoDocumento: "NIT" }
+                            : { tipoPersona: "NATURAL", naturalezaJuridica: null },
+                        )
+                      }
+                      opciones={["NATURAL", "JURIDICA"]}
+                    />
+                  </Field>
+                  {draftParte.litigante.tipoPersona === "JURIDICA" && (
+                    <Field label="Naturaleza">
+                      <Select
+                        value={draftParte.litigante.naturalezaJuridica ?? ""}
+                        onChange={(v) => actualizarDraftLitigante({ naturalezaJuridica: (v as NaturalezaJuridica) || null })}
+                        opciones={["PUBLICA", "PRIVADA", "MIXTA"]}
+                        etiquetas={NATURALEZA_LABEL}
+                        placeholder="Selecciona…"
+                      />
+                    </Field>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Documento">
+                      <Select
+                        value={draftParte.litigante.tipoDocumento ?? ""}
+                        onChange={(v) => actualizarDraftLitigante({ tipoDocumento: (v as TipoDocumento) || undefined })}
+                        opciones={TIPOS_DOC}
+                        placeholder="Tipo"
+                      />
+                    </Field>
+                    <Field label="Número">
+                      <Input
+                        value={draftParte.litigante.numeroDocumento ?? ""}
+                        onChange={(v) => actualizarDraftLitigante({ numeroDocumento: v })}
+                      />
+                    </Field>
+                  </div>
+                  <Notificaciones
+                    value={{
+                      correos: draftParte.litigante.correos ?? [],
+                      correoDesconocido: draftParte.litigante.correoDesconocido ?? false,
+                      direccion: draftParte.litigante.direccion ?? "",
+                      direccionDesconocida: draftParte.litigante.direccionDesconocida ?? false,
+                      telefono: draftParte.litigante.telefono ?? "",
+                      telefonoDesconocido: draftParte.litigante.telefonoDesconocido ?? false,
+                    }}
+                    onChange={(patch) => actualizarDraftLitigante(patch)}
+                  />
+                </>
+              )}
+            </Modal>
+          </div>
+          )}
           <FormularioDinamico
             esquema={tipo.esquemaFormulario.filter((c) => !c.soloFicha)}
             datos={datos}
@@ -1094,117 +1263,6 @@ export default function NuevoProcesoPage() {
               </Field>
             </div>
           </Card>
-        )}
-
-        {/* Partes (litigantes con rol procesal) solo para procesos judiciales;
-            un trámite ante una entidad (DdP) no tiene contraparte. En la tutela ofensiva
-            el accionado se captura en el campo "Autoridad o particular accionado". */}
-        {tipo.esJudicial && !esTutelaOfensiva && (
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                Agregar sujeto procesal <span className="font-normal text-slate-400">(opcional)</span>
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Demandado, terceros, etc. — el cliente ya está arriba.
-              </p>
-            </div>
-            <Button variant="ghost" onClick={() => setPartes((p) => [...p, parteVacia(rolesLitigio(tipo).pasivo)])}>
-              + Agregar parte
-            </Button>
-          </div>
-          {partes.length === 0 ? (
-            <p className="text-sm text-slate-400 dark:text-slate-500">Sin otras partes.</p>
-          ) : (
-            <div className="space-y-4">
-              {partes.map((p, i) => (
-                <div key={p.litigante.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-600">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <Field label="Nombre / razón social">
-                      <Input
-                        value={p.litigante.nombre}
-                        onChange={(v) => actualizarLitigante(i, { nombre: v })}
-                        placeholder="Nombre de la parte"
-                      />
-                    </Field>
-                    <Field label="Rol procesal">
-                      <Select
-                        value={p.rol}
-                        onChange={(v) => actualizarParte(i, { rol: v as RolParte })}
-                        opciones={rolesDisponibles(tipo)}
-                        placeholder="Rol"
-                      />
-                    </Field>
-                    <Field label="Tipo de persona">
-                      <Select
-                        value={p.litigante.tipoPersona}
-                        onChange={(v) =>
-                          actualizarLitigante(
-                            i,
-                            v === "JURIDICA"
-                              ? { tipoPersona: "JURIDICA", tipoDocumento: "NIT" }
-                              : { tipoPersona: "NATURAL", naturalezaJuridica: null },
-                          )
-                        }
-                        opciones={["NATURAL", "JURIDICA"]}
-                      />
-                    </Field>
-                    {p.litigante.tipoPersona === "JURIDICA" && (
-                      <Field label="Naturaleza">
-                        <Select
-                          value={p.litigante.naturalezaJuridica ?? ""}
-                          onChange={(v) => actualizarLitigante(i, { naturalezaJuridica: (v as NaturalezaJuridica) || null })}
-                          opciones={["PUBLICA", "PRIVADA", "MIXTA"]}
-                          etiquetas={NATURALEZA_LABEL}
-                          placeholder="Selecciona…"
-                        />
-                      </Field>
-                    )}
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <Field label="Documento">
-                        <Select
-                          value={p.litigante.tipoDocumento ?? ""}
-                          onChange={(v) => actualizarLitigante(i, { tipoDocumento: (v as TipoDocumento) || undefined })}
-                          opciones={TIPOS_DOC}
-                          placeholder="Tipo"
-                        />
-                      </Field>
-                      <Field label="Número">
-                        <Input
-                          value={p.litigante.numeroDocumento ?? ""}
-                          onChange={(v) => actualizarLitigante(i, { numeroDocumento: v })}
-                        />
-                      </Field>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <Notificaciones
-                      value={{
-                        correos: p.litigante.correos ?? [],
-                        correoDesconocido: p.litigante.correoDesconocido ?? false,
-                        direccion: p.litigante.direccion ?? "",
-                        direccionDesconocida: p.litigante.direccionDesconocida ?? false,
-                        telefono: p.litigante.telefono ?? "",
-                        telefonoDesconocido: p.litigante.telefonoDesconocido ?? false,
-                      }}
-                      onChange={(patch) => actualizarLitigante(i, patch)}
-                    />
-                  </div>
-                  <div className="mt-3 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setPartes((ps) => ps.filter((_, idx) => idx !== i))}
-                      className="text-xs text-red-600 hover:underline"
-                    >
-                      Quitar
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
         )}
 
         {(errores.length > 0 || tituloError) && (

@@ -47,6 +47,10 @@ export const DatosProceso = forwardRef<
     // en edición y los marca; cada marca se limpia al llenar el campo. Su identidad
     // cambia en cada intento bloqueado para re-disparar el efecto.
     resaltarCampos?: { keys: string[]; nonce: number };
+    // Al consultar la Rama desde el campo del radicado, el demandante/demandado que
+    // devuelve no van a campos planos (se eliminaron): el padre los enruta a los sujetos
+    // procesales estructurados (crea/completa la contraparte).
+    onAutollenarPartes?: (info: { demandante?: string | null; demandado?: string | null }) => void;
     readOnly?: boolean;
   }
 >(function DatosProceso({
@@ -62,6 +66,7 @@ export const DatosProceso = forwardRef<
   onDocSubido,
   onDocEliminado,
   resaltarCampos,
+  onAutollenarPartes,
   readOnly = false,
 }, ref) {
   const [editando, setEditando] = useState(false);
@@ -551,22 +556,22 @@ export const DatosProceso = forwardRef<
     // integración (panel de actuaciones). El abogado revisa y guarda.
     if (!readOnly && tieneCampo("radicado") && tieneCampo("juzgado")) {
       const tieneFecha = tieneCampo("fechaRadicacion");
-      const tieneDte = tieneCampo("demandanteNombre");
-      const tieneDdo = tieneCampo("demandadoNombre");
       const prev = slots.radicado;
       slots.radicado = (
         <>
           <BotonActualizarRadicado
             radicado={String(borrador.radicado ?? "")}
-            onAutollenar={({ despacho, fechaProceso, demandante, demandado }) =>
+            onAutollenar={({ despacho, fechaProceso, demandante, demandado }) => {
               setBorrador((d) => ({
                 ...d,
                 ...(despacho ? { juzgado: despacho } : {}),
                 ...(tieneFecha && fechaProceso ? { fechaRadicacion: fechaProceso.slice(0, 10) } : {}),
-                ...(tieneDte && demandante ? { demandanteNombre: demandante } : {}),
-                ...(tieneDdo && demandado ? { demandadoNombre: demandado } : {}),
-              }))
-            }
+              }));
+              // El demandante/demandado de la Rama ya NO van a campos planos (se eliminaron):
+              // se enrutan a los sujetos procesales estructurados, que maneja el padre (crea/
+              // completa la contraparte). Aquí solo seguimos llenando juzgado + fecha.
+              if (demandante || demandado) onAutollenarPartes?.({ demandante, demandado });
+            }}
           />
           {prev}
         </>

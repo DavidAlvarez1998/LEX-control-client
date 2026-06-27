@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Button, Card, ModalPortal } from "./ui";
 
 /** Modal de confirmación acorde al portal (reemplaza window.confirm). Opcional:
@@ -29,6 +30,14 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  // Esc cancela (atajo estándar); no mientras una acción está en curso.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !busy) onCancel(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, busy, onCancel]);
+
   if (!open) return null;
   const faltaMotivo = !!input?.required && !inputValue.trim();
   return (

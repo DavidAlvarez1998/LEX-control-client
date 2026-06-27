@@ -12,7 +12,8 @@ import { CasoChain } from "@/components/caso-chain";
 import { errorMessage, isApiError } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { ESTADO_LABEL, JURISDICCION_LABEL, camposDeCondicion, documentosOpcionalesDeEtapas, etiquetaDoc, evaluarCondicion, puedeSerVerdad, rutaProceso, type CampoEsquema, type Condicion, type EtapaDef } from "@/lib/procesos";
-import { actualizarProceso, calcularVencimiento, escalarProceso, getCasoChain, getDetalleRama, getProceso, getSugerenciasActuaciones, importarDocumentosRama, importarPartesRama, listActuaciones, listarDocumentosRama, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, sugerirPartesRama, validarRadicado, type ActuacionItem, type CasoNodo, type DetalleRama, type DocumentoRamaItem, type ProcesoDetalle, type SugerenciasRama, type SujetoRamaItem } from "@/lib/procesos-api";
+import { actualizarProceso, agregarParte, calcularVencimiento, editarParte, escalarProceso, getCasoChain, getDetalleRama, getProceso, getSugerenciasActuaciones, importarDocumentosRama, importarPartesRama, listActuaciones, listarDocumentosRama, marcarActuacionesVistas, moverEtapa, sincronizarActuaciones, sugerirPartesRama, validarRadicado, type ActuacionItem, type CasoNodo, type DetalleRama, type DocumentoRamaItem, type ProcesoDetalle, type SugerenciasRama, type SujetoRamaItem } from "@/lib/procesos-api";
+import type { RolParte } from "@/lib/procesos";
 import { getUser } from "@/lib/auth";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
 
@@ -615,6 +616,35 @@ export default function ExpedientePage() {
             setProceso((p) => (p ? { ...p, documentos: (p.documentos ?? []).filter((d) => d.id !== id) } : p))
           }
           resaltarCampos={resaltarCampos ?? undefined}
+          onAutollenarPartes={async ({ demandante, demandado }) => {
+            // El radicado consultado a la Rama trae demandante/demandado. Nuestro cliente
+            // ya es una de las dos partes; la OTRA es la contraparte. La creamos/completamos
+            // como sujeto procesal estructurado (antes iba a campos planos, ya eliminados).
+            try {
+              const cliente = proceso.partes.find((p) => p.esNuestroCliente);
+              const PASIVOS: RolParte[] = ["DEMANDADO", "EJECUTADO", "ACCIONADO"];
+              const clienteEsPasivo = cliente ? PASIVOS.includes(cliente.rol) : false;
+              const nombre = (clienteEsPasivo ? demandante : demandado)?.trim();
+              if (!nombre) return;
+              const OPUESTO: Record<string, RolParte> = {
+                DEMANDANTE: "DEMANDADO", DEMANDADO: "DEMANDANTE",
+                EJECUTANTE: "EJECUTADO", EJECUTADO: "EJECUTANTE",
+                ACCIONANTE: "ACCIONADO", ACCIONADO: "ACCIONANTE",
+              };
+              const contra = proceso.partes.find((p) => !p.esNuestroCliente);
+              if (contra) {
+                // No pisar lo que el abogado ya escribió: solo completar si está sin nombre.
+                if (!contra.litigante.nombre.trim()) {
+                  setProceso(await editarParte(proceso.id, contra.id, { litigante: { nombre } }));
+                }
+              } else {
+                const rolContra: RolParte = (cliente && OPUESTO[cliente.rol]) || "DEMANDADO";
+                setProceso(await agregarParte(proceso.id, { litigante: { nombre, tipoPersona: "NATURAL" }, rol: rolContra }));
+              }
+            } catch {
+              // best-effort: si falla, el abogado puede cargar la contraparte a mano en Partes.
+            }
+          }}
           readOnly={!puedeEditar}
         />
       </Card>

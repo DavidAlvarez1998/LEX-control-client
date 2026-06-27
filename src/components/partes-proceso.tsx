@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button, Modal } from "@/components/ui";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Field, Input, NATURALEZA_LABEL, Notificaciones, Select } from "@/components/form-ui";
 import { errorMessage } from "@/lib/api";
 import type { GrupoProceso, NaturalezaJuridica, RolParte, TipoDocumento, TipoPersona } from "@/lib/procesos";
@@ -88,6 +89,8 @@ export function PartesProceso({
   const [draft, setDraft] = useState<Draft>(DRAFT_VACIO);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Parte pendiente de confirmar su eliminación (modal en vez de window.confirm).
+  const [aQuitar, setAQuitar] = useState<ParteDetalle | null>(null);
 
   const roles = proceso.tipoProceso.grupo === "LABORAL" ? ROLES_LABORAL : ROLES;
 
@@ -143,13 +146,14 @@ export function PartesProceso({
     }
   }
 
-  async function quitar(p: ParteDetalle) {
-    if (!confirm(`¿Quitar a "${p.litigante.nombre}" del proceso?`)) return;
+  async function confirmarQuitar() {
+    if (!aQuitar) return;
     setGuardando(true);
     setError(null);
     try {
-      const actualizado = await eliminarParte(proceso.id, p.id);
+      const actualizado = await eliminarParte(proceso.id, aQuitar.id);
       onChange(actualizado);
+      setAQuitar(null);
     } catch (e) {
       setError(errorMessage(e, "No se pudo quitar la parte."));
     } finally {
@@ -251,7 +255,7 @@ export function PartesProceso({
                 <button type="button" onClick={() => abrirEdicion(p)} className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">
                   editar
                 </button>
-                <button type="button" onClick={() => quitar(p)} disabled={guardando} className="text-red-600 hover:underline disabled:opacity-50">
+                <button type="button" onClick={() => setAQuitar(p)} disabled={guardando} className="text-red-600 hover:underline disabled:opacity-50">
                   quitar
                 </button>
               </div>
@@ -282,6 +286,18 @@ export function PartesProceso({
       >
         {formulario}
       </Modal>
+
+      {/* Confirmación de eliminación en modal (reemplaza window.confirm; cierra con Esc). */}
+      <ConfirmDialog
+        open={aQuitar !== null}
+        title="Quitar parte"
+        message={aQuitar ? `¿Quitar a "${aQuitar.litigante.nombre || "esta parte"}" del proceso?` : ""}
+        confirmText="Quitar"
+        danger
+        busy={guardando}
+        onConfirm={confirmarQuitar}
+        onCancel={() => { if (!guardando) setAQuitar(null); }}
+      />
     </div>
   );
 }
