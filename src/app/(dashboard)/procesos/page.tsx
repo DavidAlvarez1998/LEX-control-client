@@ -230,6 +230,9 @@ function ListaProcesosPlana({ mios }: { mios: boolean }) {
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [conNovedades, setConNovedades] = useState(false);
+  // Orden de la lista: "vencimiento" (deadline-first, default) o "reciente"
+  // (última creación o edición = updatedAt desc, lo resuelve el server).
+  const [orden, setOrden] = useState<"vencimiento" | "reciente">("vencimiento");
   const [reloadNonce, setReloadNonce] = useState(0);
 
   useEffect(() => {
@@ -242,10 +245,10 @@ function ListaProcesosPlana({ mios }: { mios: boolean }) {
     return () => clearTimeout(t);
   }, [qInput]);
 
-  // Al cambiar de filtro o de vista, volver a la primera página.
+  // Al cambiar de filtro, orden o vista, volver a la primera página.
   useEffect(() => {
     setPage(1);
-  }, [areaNombre, estadoLabel, q, conNovedades, mios]);
+  }, [areaNombre, estadoLabel, q, conNovedades, orden, mios]);
 
   useEffect(() => {
     setLoading(true);
@@ -253,7 +256,7 @@ function ListaProcesosPlana({ mios }: { mios: boolean }) {
     const area = areas.find((a) => a.nombre === areaNombre)?.slug;
     const estado = estadoLabel ? ESTADO_POR_LABEL[estadoLabel] : undefined;
     listProcesos({
-      orden: "vencimiento",
+      orden,
       responsableId: mios ? uid : undefined,
       area,
       estado,
@@ -268,7 +271,7 @@ function ListaProcesosPlana({ mios }: { mios: boolean }) {
       })
       .catch((e) => setError(errorMessage(e, "Error al cargar")))
       .finally(() => setLoading(false));
-  }, [areas, areaNombre, estadoLabel, q, conNovedades, page, mios, uid, reloadNonce]);
+  }, [areas, areaNombre, estadoLabel, q, conNovedades, orden, page, mios, uid, reloadNonce]);
 
   const nombreArea = useMemo(
     () => (slug: string | null) => areas.find((a) => a.slug === slug)?.nombre ?? slug ?? "—",
@@ -284,7 +287,13 @@ function ListaProcesosPlana({ mios }: { mios: boolean }) {
       <div>
         <PageHeader
           title="Procesos"
-          subtitle={mios ? "Los procesos en los que eres el abogado responsable." : "Todos los procesos del despacho — los más urgentes primero."}
+          subtitle={
+            mios
+              ? "Los procesos en los que eres el abogado responsable."
+              : orden === "reciente"
+                ? "Todos los procesos del despacho — los modificados más recientemente primero."
+                : "Todos los procesos del despacho — los más urgentes primero."
+          }
           action={
             <div className="flex items-center gap-2">
               <ToggleVistas vista={mios ? "mios" : "todos"} />
@@ -307,6 +316,22 @@ function ListaProcesosPlana({ mios }: { mios: boolean }) {
             🟢 Con novedades
           </button>
           <BotonActualizarRama onSynced={() => setReloadNonce((n) => n + 1)} />
+          {/* Orden: vencimiento (urgentes primero, default) o última actividad
+              (creación/edición más reciente = updatedAt desc en el server). */}
+          <div className="inline-flex rounded-lg border border-line p-0.5 text-sm">
+            {[
+              { key: "vencimiento" as const, label: "Más urgentes" },
+              { key: "reciente" as const, label: "Recién modificados" },
+            ].map((o) => (
+              <button
+                key={o.key}
+                onClick={() => setOrden(o.key)}
+                className={`rounded-md px-3 py-1.5 font-medium transition-colors ${orden === o.key ? "bg-indigo-600 text-white" : "text-muted hover:bg-hover"}`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
           <div className="w-64">
             <Input value={qInput} onChange={setQInput} placeholder="Buscar por código, título, cliente o radicado…" />
           </div>
@@ -380,6 +405,10 @@ function CatalogoProcesos() {
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [responsableId, setResponsableId] = useState("");
+  // Orden de la lista del tipo (nivel 3): "vencimiento" (urgencia, default) o
+  // "reciente" (última creación/edición). Los items ya llegan del server por
+  // updatedAt desc, así que "reciente" solo evita el re-orden por urgencia.
+  const [orden, setOrden] = useState<"vencimiento" | "reciente">("vencimiento");
   // P1: solo procesos con novedades del juzgado. Inicializa desde la URL para que la
   // campanita del topbar (P17) deep-linkee a /procesos?conNovedades=1 con el filtro puesto.
   const [conNovedades, setConNovedades] = useState(searchParams.get("conNovedades") === "1");
@@ -433,13 +462,16 @@ function CatalogoProcesos() {
   // Procesos del tipo elegido (nivel 3): se filtran por nombre de tipo, que es lo
   // único que trae el proceso en el listado.
   const ordenados = useMemo(() => {
-    return [...items].filter((i) => i.tipoProcesoNombre === tipoSelObj?.nombre).sort((a, b) => {
+    const filtrados = items.filter((i) => i.tipoProcesoNombre === tipoSelObj?.nombre);
+    // "reciente": conserva el orden del server (updatedAt desc); no re-ordena.
+    if (orden === "reciente") return filtrados;
+    return [...filtrados].sort((a, b) => {
       const ga = grupoUrgencia(a), gb = grupoUrgencia(b);
       if (ga !== gb) return ga - gb;
       if (ga === 0) return (a.fechaLimite ?? "").localeCompare(b.fechaLimite ?? "");
       return 0;
     });
-  }, [items, tipoSelObj]);
+  }, [items, tipoSelObj, orden]);
 
   // Conteos: TIPOS por jurisdicción (nivel 1) y PROCESOS por tipo (nivel 2).
   const conteoTiposPorJur = useMemo(() => {
@@ -731,6 +763,21 @@ function CatalogoProcesos() {
         </button>
         {/* P16 — sincroniza mis procesos con la Rama de un tirón (componente canónico). */}
         <BotonActualizarRama onSynced={() => setReloadNonce((n) => n + 1)} />
+        {/* Orden: urgencia (vencimiento, default) o última actividad (creación/edición). */}
+        <div className="inline-flex rounded-lg border border-line p-0.5 text-sm">
+          {[
+            { key: "vencimiento" as const, label: "Más urgentes" },
+            { key: "reciente" as const, label: "Recién modificados" },
+          ].map((o) => (
+            <button
+              key={o.key}
+              onClick={() => setOrden(o.key)}
+              className={`rounded-md px-3 py-1.5 font-medium transition-colors ${orden === o.key ? "bg-indigo-600 text-white" : "text-muted hover:bg-hover"}`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
         <div className="w-64">
           <Input value={qInput} onChange={setQInput} placeholder="Buscar por código, título, cliente o radicado…" />
         </div>

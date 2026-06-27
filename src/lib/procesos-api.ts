@@ -107,7 +107,9 @@ export function listProcesos(filtros: {
   clienteId?: string;
   page?: number;
   conNovedades?: boolean;
-  orden?: "vencimiento"; // ordena vencidos→por vencer→al día→sin fecha→cerrados (server-side)
+  // "vencimiento": vencidos→por vencer→al día→sin fecha→cerrados (server-side).
+  // "reciente": por última creación o edición (updatedAt desc, server-side).
+  orden?: "vencimiento" | "reciente";
 } = {}): Promise<ListaProcesos> {
   const qs = new URLSearchParams();
   if (filtros.area) qs.set("area", filtros.area);
