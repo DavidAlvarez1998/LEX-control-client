@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, PageHeader } from "@/components/ui";
+import { Button, Card, PageHeader } from "@/components/ui";
+import { Field, Input } from "@/components/form-ui";
 import { DocumentosContrato, type DocumentoContrato } from "@/components/documentos-contrato";
 import { api, errorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
@@ -105,6 +106,10 @@ export default function CuentaPage() {
         </Card>
       </div>
 
+      {/* Datos profesionales del propio usuario (editables). Alimentan la firma
+          de los documentos que genera (poder, demanda, etc.). */}
+      <PerfilProfesional />
+
       {/* Servicios contratados por la empresa. SOLO el administrador de empresa. */}
       {!loading && !error && empresa && user?.esAdminEmpresa && (
         <Card className="mt-4 p-0">
@@ -158,6 +163,81 @@ export default function CuentaPage() {
       {/* Mi contrato: lo que registró el despacho + carga de mis documentos. */}
       <MisContratos />
     </div>
+  );
+}
+
+// ── Datos del profesional (auto-edición) ─────────────────────────────────────
+type Perfil = { cedula: string; tarjetaProfesional: string; telefono: string };
+
+function PerfilProfesional() {
+  const [form, setForm] = useState<Perfil | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .get<{ cedula: string | null; tarjetaProfesional: string | null; telefono: string | null }>("/mi-empresa/perfil")
+      .then((p) =>
+        setForm({
+          cedula: p.cedula ?? "",
+          tarjetaProfesional: p.tarjetaProfesional ?? "",
+          telefono: p.telefono ?? "",
+        }),
+      )
+      .catch((e) => setError(errorMessage(e, "Error al cargar tu perfil")));
+  }, []);
+
+  const set = (k: keyof Perfil, v: string) => setForm((f) => (f ? { ...f, [k]: v } : f));
+
+  async function guardar() {
+    if (!form) return;
+    setSaving(true);
+    setAviso(null);
+    setError(null);
+    try {
+      await api.patch("/mi-empresa/perfil", form);
+      setAviso("Datos guardados");
+    } catch (e) {
+      setError(errorMessage(e, "Error al guardar"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card className="mt-4">
+      <h3 className="font-medium text-slate-800 dark:text-slate-100">Datos del profesional</h3>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        Se usan para firmar los documentos que generas (poder, demanda, etc.).
+      </p>
+
+      {form === null && !error ? (
+        <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">Cargando…</p>
+      ) : form ? (
+        <>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <Field label="Cédula">
+              <Input value={form.cedula} onChange={(v) => set("cedula", v)} placeholder="Número de cédula" />
+            </Field>
+            <Field label="Tarjeta profesional">
+              <Input value={form.tarjetaProfesional} onChange={(v) => set("tarjetaProfesional", v)} placeholder="T.P. No." />
+            </Field>
+            <Field label="Teléfono">
+              <Input value={form.telefono} onChange={(v) => set("telefono", v)} placeholder="Teléfono de contacto" />
+            </Field>
+          </div>
+          <div className="mt-4 flex items-center gap-3">
+            <Button onClick={guardar} disabled={saving}>
+              {saving ? "Guardando…" : "Guardar"}
+            </Button>
+            {aviso && <span className="text-sm text-emerald-600 dark:text-emerald-400">{aviso}</span>}
+          </div>
+        </>
+      ) : null}
+
+      {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+    </Card>
   );
 }
 

@@ -17,6 +17,7 @@ type Contrato = {
   nombreCompleto: string;
   tipoDocumento: string | null;
   numeroDocumento: string | null;
+  tarjetaProfesional: string | null;
   fechaNacimiento: string | null;
   direccion: string | null;
   telefono: string | null;
@@ -55,7 +56,8 @@ type Reportes = {
 };
 
 // Miembro del equipo (GET /mi-empresa/usuarios) para vincular el contrato.
-type Miembro = { id: string; nombre: string; email: string };
+// Incluye la tarjeta profesional para prellenarla al vincular.
+type Miembro = { id: string; nombre: string; email: string; tarjetaProfesional?: string | null };
 
 const TIPO_DOC = ["CC", "CE", "NIT", "TI", "PASAPORTE", "PEP_PPT"];
 const ESTADOS: Estado[] = ["ACTIVO", "FINALIZADO", "SUSPENDIDO"];
@@ -86,6 +88,7 @@ function toForm(c: Contrato): FormState {
     nombreCompleto: c.nombreCompleto ?? "",
     tipoDocumento: c.tipoDocumento ?? "",
     numeroDocumento: c.numeroDocumento ?? "",
+    tarjetaProfesional: c.tarjetaProfesional ?? "",
     fechaNacimiento: dateInput(c.fechaNacimiento),
     direccion: c.direccion ?? "",
     telefono: c.telefono ?? "",
@@ -168,7 +171,9 @@ function ContratosContent() {
     setForm((f) => ({
       ...f,
       usuarioId: id,
-      ...(m ? { nombreCompleto: m.nombre, email: m.email } : {}),
+      // Prellena nombre, correo y tarjeta profesional del usuario; todo queda
+      // editable (la tarjeta es un campo propio del contrato).
+      ...(m ? { nombreCompleto: m.nombre, email: m.email, tarjetaProfesional: m.tarjetaProfesional ?? "" } : {}),
     }));
   };
 
@@ -446,6 +451,9 @@ function ContratosContent() {
             </Field>
             <Field label="Número de documento">
               <Input value={form.numeroDocumento ?? ""} onChange={(v) => set("numeroDocumento", v)} />
+            </Field>
+            <Field label="Tarjeta profesional">
+              <Input value={form.tarjetaProfesional ?? ""} onChange={(v) => set("tarjetaProfesional", v)} placeholder="T.P. del abogado (si aplica)" />
             </Field>
             <Field label="Fecha de nacimiento">
               <Input type="date" value={form.fechaNacimiento ?? ""} onChange={(v) => set("fechaNacimiento", v)} />
