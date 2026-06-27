@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button, Card, EmptyState, ModalPortal, PageHeader, PlusIcon, Tooltip } from "@/components/ui";
-import { CorreosInput, Field, Input, Select, Textarea } from "@/components/form-ui";
+import { CorreosInput, Field, Input, placeholderDocumento, Select, Textarea } from "@/components/form-ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { api, errorMessage } from "@/lib/api";
 import { RolEmpresaGuard } from "@/components/rol-empresa-guard";
@@ -407,7 +407,7 @@ export default function ClientesPage() {
                 <Select value={form.tipoDocumento} onChange={(v) => setForm({ ...form, tipoDocumento: v })} opciones={TIPO_DOC} />
               </Field>
               <Field label="Número de documento" requerido>
-                <Input value={form.numeroDocumento} onChange={(v) => setForm({ ...form, numeroDocumento: v })} placeholder="Documento" />
+                <Input value={form.numeroDocumento} onChange={(v) => setForm({ ...form, numeroDocumento: v })} placeholder={placeholderDocumento(form.tipoDocumento)} />
               </Field>
               <Field label="Teléfono" requerido>
                 <Input value={form.telefono} onChange={(v) => setForm({ ...form, telefono: v })} placeholder="Teléfono" />

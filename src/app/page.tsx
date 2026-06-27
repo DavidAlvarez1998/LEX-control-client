@@ -311,7 +311,7 @@ export default function LandingPage() {
                 <legend className="px-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">Datos del despacho</legend>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Campo label="Despacho / abogado" value={demo.nombreEmpresa} onChange={set("nombreEmpresa")} required />
-                  <Campo label="Nit/cc" value={demo.nit} onChange={set("nit")} required />
+                  <Campo label="Nit/cc" value={demo.nit} onChange={set("nit")} required placeholder="Ej. 900123456-7 (NIT) o cédula" />
                 </div>
               </fieldset>
 
@@ -322,7 +322,7 @@ export default function LandingPage() {
                   <Campo label="Nombre usuario" value={demo.nombreContacto} onChange={set("nombreContacto")} required />
                   <Campo label="Correo" type="email" value={demo.email} onChange={set("email")} required />
                   <Campo label="Teléfono notificación personal" value={demo.telefono} onChange={set("telefono")} required />
-                  <Campo label="Tarjeta profesional" value={demo.tarjeta} onChange={set("tarjeta")} />
+                  <Campo label="Tarjeta profesional" value={demo.tarjeta} onChange={set("tarjeta")} placeholder="T.P. No." />
                 </div>
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Este correo será tu acceso. Te enviaremos el enlace de activación ahí.</p>
               </fieldset>
@@ -355,12 +355,13 @@ export default function LandingPage() {
   );
 }
 
-function Campo({ label, value, onChange, type = "text", required }: {
+function Campo({ label, value, onChange, type = "text", required, placeholder }: {
   label: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   type?: string;
   required?: boolean;
+  placeholder?: string;
 }) {
   return (
     <div>
@@ -368,7 +369,7 @@ function Campo({ label, value, onChange, type = "text", required }: {
         {label}
         {required && <span className="text-red-500"> *</span>}
       </label>
-      <input type={type} value={value ?? ""} onChange={onChange} required={required}
+      <input type={type} value={value ?? ""} onChange={onChange} required={required} placeholder={placeholder}
         className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-700" />
     </div>
   );

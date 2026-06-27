@@ -102,6 +102,13 @@ export function NumberInput({
   );
 }
 
+/** Placeholder de un campo "número de documento" según el tipo elegido. El NIT lleva el
+ *  dígito de verificación tras un guion (900123456-7); el resto es texto libre (los
+ *  pasaportes/PEP pueden llevar letras), así que solo se sugiere "Número". */
+export function placeholderDocumento(tipoDoc?: string | null): string {
+  return tipoDoc === "NIT" ? "Ej. 900123456-7" : "Número";
+}
+
 export function Select({
   value,
   onChange,

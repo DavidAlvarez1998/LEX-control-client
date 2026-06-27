@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, Card, EmptyState, Modal, PageHeader, PlusIcon, StatCard } from "@/components/ui";
-import { Field, Input, MoneyInput, NumberInput, Select, Textarea } from "@/components/form-ui";
+import { Field, Input, MoneyInput, NumberInput, placeholderDocumento, Select, Textarea } from "@/components/form-ui";
 import { AdminEmpresaGuard } from "@/components/admin-empresa-guard";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { DocumentosContrato, type DocumentoContrato as Documento } from "@/components/documentos-contrato";
@@ -217,9 +217,28 @@ function ContratosContent() {
     );
   })();
 
+  // Miembros del equipo que AÚN no tienen contrato (uno o más). Se muestran
+  // aparte, marcados, para que el equipo completo sea visible desde Contratos.
+  const idsConContrato = new Set(contratos.map((c) => c.usuarioId).filter(Boolean) as string[]);
+  const equipoSinContrato = miembros.filter((m) => {
+    if (idsConContrato.has(m.id)) return false;
+    const t = filtro.trim().toLowerCase();
+    return !t || m.nombre.toLowerCase().includes(t) || m.email.toLowerCase().includes(t);
+  });
+
   function abrirCrear() {
     setEditId(null);
     setForm(EMPTY);
+    setDocs([]);
+    setTab("Datos");
+    setFormError(null);
+    setOpen(true);
+  }
+
+  // Abre "Nuevo contrato" ya vinculado a un miembro del equipo (prellena sus datos).
+  function crearParaMiembro(m: Miembro) {
+    setEditId(null);
+    setForm({ ...EMPTY, usuarioId: m.id, nombreCompleto: m.nombre, email: m.email, tarjetaProfesional: m.tarjetaProfesional ?? "" });
     setDocs([]);
     setTab("Datos");
     setFormError(null);
@@ -378,6 +397,46 @@ function ContratosContent() {
         </Card>
       )}
 
+      {/* Equipo sin contrato: miembros del despacho que aún no tienen ninguno.
+          Así el equipo completo es visible desde Contratos, marcando a quién falta. */}
+      {!loading && equipoSinContrato.length > 0 && (
+        <div className="mt-6">
+          <h3 className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+            Equipo sin contrato
+            <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+              {equipoSinContrato.length}
+            </span>
+          </h3>
+          <Card className="overflow-x-auto p-0">
+            <table className="w-full text-sm">
+              <tbody>
+                {equipoSinContrato.map((m) => (
+                  <tr key={m.id} className="border-b border-slate-100 last:border-0 dark:border-slate-600/60">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-slate-800 dark:text-slate-100">{m.nombre}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{m.email}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                        Sin contrato
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <button
+                        onClick={() => crearParaMiembro(m)}
+                        className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                      >
+                        Crear contrato
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </div>
+      )}
+
       {/* Modal crear/editar */}
       <Modal
         open={open}
@@ -450,7 +509,7 @@ function ContratosContent() {
               <Select value={form.tipoDocumento ?? ""} onChange={(v) => set("tipoDocumento", v)} opciones={TIPO_DOC} />
             </Field>
             <Field label="Número de documento">
-              <Input value={form.numeroDocumento ?? ""} onChange={(v) => set("numeroDocumento", v)} />
+              <Input value={form.numeroDocumento ?? ""} onChange={(v) => set("numeroDocumento", v)} placeholder={placeholderDocumento(form.tipoDocumento)} />
             </Field>
             <Field label="Tarjeta profesional">
               <Input value={form.tarjetaProfesional ?? ""} onChange={(v) => set("tarjetaProfesional", v)} placeholder="T.P. del abogado (si aplica)" />

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button, Card, Modal, PageHeader } from "@/components/ui";
-import { BuscadorSelect, CorreosInput, Field, Input, MoneyInput, NATURALEZA_LABEL, Notificaciones, Select, SelectableCard } from "@/components/form-ui";
+import { BuscadorSelect, CorreosInput, Field, Input, MoneyInput, NATURALEZA_LABEL, Notificaciones, placeholderDocumento, Select, SelectableCard } from "@/components/form-ui";
 import { FormularioDinamico } from "@/components/formulario-dinamico";
 import { BotonActualizarRadicado } from "@/components/boton-actualizar-radicado";
 import { VencimientoHint } from "@/components/vencimiento-hint";
@@ -857,6 +857,7 @@ export default function NuevoProcesoPage() {
                         <Input
                           value={p.litigante.numeroDocumento ?? ""}
                           onChange={(v) => actualizarPeticionario(i, { numeroDocumento: v })}
+                          placeholder={placeholderDocumento(p.litigante.tipoDocumento)}
                         />
                       </Field>
                       <Field label="Teléfono">
@@ -1042,6 +1043,7 @@ export default function NuevoProcesoPage() {
                       <Input
                         value={draftParte.litigante.numeroDocumento ?? ""}
                         onChange={(v) => actualizarDraftLitigante({ numeroDocumento: v })}
+                        placeholder={placeholderDocumento(draftParte.litigante.tipoDocumento)}
                       />
                     </Field>
                   </div>
@@ -1349,6 +1351,7 @@ export default function NuevoProcesoPage() {
             <Input
               value={nuevoForm.numeroDocumento ?? ""}
               onChange={(v) => setNuevoForm((f) => ({ ...f, numeroDocumento: v }))}
+              placeholder={placeholderDocumento(nuevoForm.tipoDocumento)}
             />
           </Field>
         </div>

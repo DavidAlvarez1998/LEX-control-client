@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button, Modal } from "@/components/ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Field, Input, NATURALEZA_LABEL, Notificaciones, Select } from "@/components/form-ui";
+import { Field, Input, NATURALEZA_LABEL, Notificaciones, placeholderDocumento, Select } from "@/components/form-ui";
 import { errorMessage } from "@/lib/api";
 import type { GrupoProceso, NaturalezaJuridica, RolParte, TipoDocumento, TipoPersona } from "@/lib/procesos";
 import {
@@ -204,7 +204,11 @@ export function PartesProceso({
           />
         </Field>
         <Field label="Número">
-          <Input value={draft.numeroDocumento} onChange={(v) => setDraft((d) => ({ ...d, numeroDocumento: v }))} />
+          <Input
+            value={draft.numeroDocumento}
+            onChange={(v) => setDraft((d) => ({ ...d, numeroDocumento: v }))}
+            placeholder={placeholderDocumento(draft.tipoDocumento)}
+          />
         </Field>
       </div>
       <Notificaciones
