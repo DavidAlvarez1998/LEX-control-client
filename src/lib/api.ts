@@ -189,6 +189,15 @@ export async function refreshSession(): Promise<void> {
 }
 
 /**
+ * Devuelve el correo (y nombre) asociado a un token de activación válido. Sirve
+ * para mostrar el correo —no editable— en la pantalla de activación. Lanza
+ * ApiError si el token es inválido o expiró.
+ */
+export async function getActivationInfo(token: string): Promise<{ email: string; nombre: string }> {
+  return api.get<{ email: string; nombre: string }>(`/auth/activacion/${encodeURIComponent(token)}`);
+}
+
+/**
  * Define la contraseña del usuario usando el token de activación (público,
  * sin sesión). Resuelve si la cuenta quedó activada; lanza ApiError si no.
  */

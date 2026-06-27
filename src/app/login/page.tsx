@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api, errorMessage } from "@/lib/api";
 import { setSession, type AuthUser } from "@/lib/auth";
 
 type LoginResponse = { token: string; user: AuthUser };
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  // Tras activar la cuenta llegamos con ?email=… → precargamos el correo para que
+  // el usuario solo escriba la contraseña.
+  const emailInicial = useSearchParams().get("email") ?? "";
+  const [email, setEmail] = useState(emailInicial);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -93,5 +96,17 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-slate-300 dark:bg-slate-800 p-4" />
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

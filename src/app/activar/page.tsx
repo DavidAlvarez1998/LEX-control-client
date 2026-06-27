@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui";
-import { errorMessage, setPassword } from "@/lib/api";
+import { errorMessage, getActivationInfo, isApiError, setPassword } from "@/lib/api";
 import { clearSession } from "@/lib/auth";
 
 const MIN_LEN = 8;
@@ -17,6 +17,10 @@ function ActivarForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  // Correo dueño del token (se muestra no editable). null = aún no resuelto.
+  const [email, setEmail] = useState<string | null>(null);
+  const [tokenInvalido, setTokenInvalido] = useState(false);
+  const [cargandoInfo, setCargandoInfo] = useState(true);
 
   // Activar es para una cuenta NUEVA: descarta cualquier sesión previa en este
   // navegador (p. ej. otro usuario ya logueado) para no completar la activación
@@ -24,6 +28,30 @@ function ActivarForm() {
   useEffect(() => {
     clearSession();
   }, []);
+
+  // Resuelve el correo del token para mostrarlo (no editable). Un 400 = token
+  // inválido/expirado → se muestra el aviso temprano. Otros errores (red) no
+  // bloquean: se deja seguir y el submit revalidará.
+  useEffect(() => {
+    if (!token) {
+      setCargandoInfo(false);
+      return;
+    }
+    let vivo = true;
+    getActivationInfo(token)
+      .then((info) => {
+        if (vivo) setEmail(info.email);
+      })
+      .catch((err) => {
+        if (vivo && isApiError(err) && err.status === 400) setTokenInvalido(true);
+      })
+      .finally(() => {
+        if (vivo) setCargandoInfo(false);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [token]);
 
   // Sin token en la URL no hay nada que activar.
   if (!token) {
@@ -36,6 +64,20 @@ function ActivarForm() {
     );
   }
 
+  if (cargandoInfo) {
+    return <Card className="w-full max-w-sm text-sm text-slate-500 dark:text-slate-400">Cargando…</Card>;
+  }
+
+  if (tokenInvalido) {
+    return (
+      <Message
+        title="Enlace inválido o expirado"
+        tone="error"
+        body="Este enlace de activación ya no es válido. Pídele a tu administrador uno nuevo."
+      />
+    );
+  }
+
   if (done) {
     return (
       <Message
@@ -44,7 +86,7 @@ function ActivarForm() {
         body="Tu contraseña quedó configurada. Inicia sesión con tu correo y tu nueva contraseña."
         action={
           <Link
-            href="/login"
+            href={email ? `/login?email=${encodeURIComponent(email)}` : "/login"}
             className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
           >
             Iniciar sesión
@@ -88,6 +130,20 @@ function ActivarForm() {
       </p>
 
       <form onSubmit={onSubmit} className="mt-5 space-y-3">
+        {email && (
+          <label className="block">
+            <span className="text-sm text-slate-600 dark:text-slate-300">Correo</span>
+            <input
+              type="email"
+              value={email}
+              readOnly
+              disabled
+              autoComplete="username"
+              className="mt-1 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400"
+            />
+          </label>
+        )}
+
         <PasswordField
           label="Contraseña"
           value={password}
